@@ -4,6 +4,7 @@
   "formulaNote": "cost = baseCost * pow(level + 1, multCost)",
   "canCalculateCost": true,
   "isTree": false,
+  "menuIcon": "_tournPts.png",
   "groups": {
     "Combat": [
       {

@@ -4,6 +4,7 @@
   "formulaNote": "Runes have no gold cost — cost is paid in rune types.",
   "canCalculateCost": false,
   "isTree": false,
+  "menuIcon": "_rune_2.png",
   "groups": {
     "Common": [
       {

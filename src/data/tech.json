@@ -5,6 +5,7 @@
   "note": "Tech uses a tree structure in-game. waveReq=0 means no wave lock (gated by tree prerequisites instead). Wave Perk Rerolls (8000) and Supreme Shadow Chance (15000) have explicit wave locks.",
   "canCalculateCost": true,
   "isTree": true,
+  "menuIcon": "_techPts_2.png",
   "groups": {
     "Tech": [
       {

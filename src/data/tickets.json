@@ -4,6 +4,7 @@
   "formulaNote": "cost = baseCost (same every level)",
   "canCalculateCost": true,
   "isTree": false,
+  "menuIcon": "_ticket.png",
   "groups": {
     "Combat": [
       {

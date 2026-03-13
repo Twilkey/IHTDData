@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(npm run:*)",
-      "Bash(sleep 2 && curl -s http://localhost:5173 | head -5)"
+      "Bash(sleep 2 && curl -s http://localhost:5173 | head -5)",
+      "Bash(for f:*)",
+      "Bash(do echo:*)",
+      "Read(//c/Users/princ/AppProjects/IHTDData/**)",
+      "Bash(done)"
     ]
   }
 }

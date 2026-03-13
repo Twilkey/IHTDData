@@ -1,9 +1,10 @@
 {
   "label": "Spells",
-  "costFormula": "exponential",
-  "formulaNote": "cost = baseCost * pow(multCost, level)",
+  "costFormula": "spell",
+  "formulaNote": "Regular upgrades cost energy: base * multCost^(level+1), then x2 if level>=3, x6 if level>=6 (except noBreakpointMult spells). Base by level range: baseCost (0-9), baseCost*2 (10-14), base15 (16-19), base20 (21-24). Level 15 and 20 are one-time tier unlock costs in a separate currency (see tier2Unlock, tier3Unlock).",
   "canCalculateCost": true,
   "isTree": false,
+  "menuIcon": "_energy.png",
   "groups": {
     "Combat": [
       {
@@ -13,6 +14,16 @@
         "maxLevel": 25,
         "baseCost": 10.0,
         "multCost": 2.0,
+        "base15": 1600,
+        "base20": 10000,
+        "tier2Unlock": {
+          "currency": "prestigePower",
+          "amount": 1e+25
+        },
+        "tier3Unlock": {
+          "currency": "tournamentPoints",
+          "amount": 500000
+        },
         "icon": "_mapDmg.png",
         "bgColor": "#E6EDFE",
         "borderColor": "#E6EDFE"
@@ -24,6 +35,16 @@
         "maxLevel": 25,
         "baseCost": 50.0,
         "multCost": 2.0,
+        "base15": 200,
+        "base20": 10000,
+        "tier2Unlock": {
+          "currency": "prestigePower",
+          "amount": 1e+25
+        },
+        "tier3Unlock": {
+          "currency": "tournamentPoints",
+          "amount": 500000
+        },
         "icon": "freeze.png",
         "bgColor": "#E6EDFE",
         "borderColor": "#E6EDFE"
@@ -37,6 +58,16 @@
         "maxLevel": 25,
         "baseCost": 10.0,
         "multCost": 2.0,
+        "base15": 200,
+        "base20": 10000,
+        "tier2Unlock": {
+          "currency": "techPoints",
+          "amount": 1000
+        },
+        "tier3Unlock": {
+          "currency": "tokensBlue",
+          "amount": 2500
+        },
         "icon": "dps.png",
         "bgColor": "#E6EDFE",
         "borderColor": "#E6EDFE"
@@ -48,6 +79,16 @@
         "maxLevel": 25,
         "baseCost": 10.0,
         "multCost": 2.0,
+        "base15": 200,
+        "base20": 5000,
+        "tier2Unlock": {
+          "currency": "techPoints",
+          "amount": 1000
+        },
+        "tier3Unlock": {
+          "currency": "tokensGreen",
+          "amount": 2500
+        },
         "icon": "_attSpeed_2.png",
         "bgColor": "#E6EDFE",
         "borderColor": "#E6EDFE"
@@ -59,6 +100,16 @@
         "maxLevel": 25,
         "baseCost": 25.0,
         "multCost": 2.0,
+        "base15": 400,
+        "base20": 30000,
+        "tier2Unlock": {
+          "currency": "techPoints",
+          "amount": 1000
+        },
+        "tier3Unlock": {
+          "currency": "tokensGreen",
+          "amount": 2500
+        },
         "icon": "_range.png",
         "bgColor": "#E6EDFE",
         "borderColor": "#E6EDFE"
@@ -70,6 +121,16 @@
         "maxLevel": 25,
         "baseCost": 25.0,
         "multCost": 2.0,
+        "base15": 400,
+        "base20": 10000,
+        "tier2Unlock": {
+          "currency": "techPoints",
+          "amount": 1000
+        },
+        "tier3Unlock": {
+          "currency": "tokensBlue",
+          "amount": 2500
+        },
         "icon": "_critDmg.png",
         "bgColor": "#E6EDFE",
         "borderColor": "#E6EDFE"
@@ -81,6 +142,16 @@
         "maxLevel": 25,
         "baseCost": 50.0,
         "multCost": 2.0,
+        "base15": 400,
+        "base20": 20000,
+        "tier2Unlock": {
+          "currency": "techPoints",
+          "amount": 1000
+        },
+        "tier3Unlock": {
+          "currency": "tokensBlue",
+          "amount": 2500
+        },
         "icon": "critChance.png",
         "bgColor": "#E6EDFE",
         "borderColor": "#E6EDFE"
@@ -92,6 +163,16 @@
         "maxLevel": 25,
         "baseCost": 50.0,
         "multCost": 2.0,
+        "base15": 800,
+        "base20": 40000,
+        "tier2Unlock": {
+          "currency": "techPoints",
+          "amount": 1000
+        },
+        "tier3Unlock": {
+          "currency": "tokensRed",
+          "amount": 2500
+        },
         "icon": "_skillCd2.png",
         "bgColor": "#E6EDFE",
         "borderColor": "#E6EDFE"
@@ -103,6 +184,16 @@
         "maxLevel": 25,
         "baseCost": 250.0,
         "multCost": 2.0,
+        "base15": 400,
+        "base20": 30000,
+        "tier2Unlock": {
+          "currency": "techPoints",
+          "amount": 1000
+        },
+        "tier3Unlock": {
+          "currency": "tokensRed",
+          "amount": 2500
+        },
         "icon": "_skillPower2.png",
         "bgColor": "#E6EDFE",
         "borderColor": "#E6EDFE"
@@ -116,6 +207,16 @@
         "maxLevel": 25,
         "baseCost": 10.0,
         "multCost": 2.0,
+        "base15": 200,
+        "base20": 5000,
+        "tier2Unlock": {
+          "currency": "weeklyTickets",
+          "amount": 200
+        },
+        "tier3Unlock": {
+          "currency": "gems",
+          "amount": 500
+        },
         "icon": "gold.png",
         "bgColor": "#E6EDFE",
         "borderColor": "#E6EDFE"
@@ -127,6 +228,16 @@
         "maxLevel": 25,
         "baseCost": 25.0,
         "multCost": 2.0,
+        "base15": 1200,
+        "base20": 40000,
+        "tier2Unlock": {
+          "currency": "weeklyTickets",
+          "amount": 200
+        },
+        "tier3Unlock": {
+          "currency": "gems",
+          "amount": 500
+        },
         "icon": "exp.png",
         "bgColor": "#E6EDFE",
         "borderColor": "#E6EDFE"
@@ -138,6 +249,16 @@
         "maxLevel": 25,
         "baseCost": 100.0,
         "multCost": 2.0,
+        "base15": 1600,
+        "base20": 50000,
+        "tier2Unlock": {
+          "currency": "weeklyTickets",
+          "amount": 200
+        },
+        "tier3Unlock": {
+          "currency": "gems",
+          "amount": 500
+        },
         "icon": "gameSpeed.png",
         "bgColor": "#E6EDFE",
         "borderColor": "#E6EDFE"
@@ -149,6 +270,17 @@
         "maxLevel": 25,
         "baseCost": 150.0,
         "multCost": 2.0,
+        "base15": 400,
+        "base20": 20000,
+        "tier2Unlock": {
+          "currency": "weeklyTickets",
+          "amount": 200
+        },
+        "tier3Unlock": {
+          "currency": "gems",
+          "amount": 500
+        },
+        "noBreakpointMult": true,
         "icon": "energy.png",
         "bgColor": "#E6EDFE",
         "borderColor": "#E6EDFE"

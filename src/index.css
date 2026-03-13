@@ -2,3 +2,49 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; padding: 0; }
+
+/* Card grid — 2 col desktop, 1 col mobile */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+@media (max-width: 640px) {
+  .card-grid { grid-template-columns: 1fr; }
+}
+
+/* Modal box — fixed size so content changes don't resize it */
+.modal-box {
+  width: 100%;
+  max-width: 600px;
+  height: 80vh;
+  border-radius: 12px;
+  margin: 0;
+}
+@media (max-width: 640px) {
+  .modal-box {
+    max-width: 100%;
+    height: 100vh;
+    border-radius: 0;
+  }
+}
+
+/* Sidebar drawer — permanent on desktop, overlay on mobile */
+.sidebar {
+  width: 190px;
+  flex-shrink: 0;
+}
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    top: 0; left: 0;
+    height: 100vh;
+    z-index: 200;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    overflow-y: auto;
+  }
+  .sidebar.open {
+    transform: translateX(0);
+  }
+}

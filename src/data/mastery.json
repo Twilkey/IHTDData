@@ -4,6 +4,7 @@
   "formulaNote": "cost = baseCost * min(level + 1, stopCostIncreaseAt)",
   "canCalculateCost": true,
   "isTree": false,
+  "menuIcon": "_mastery_2.png",
   "groups": {
     "Combat": [
       {

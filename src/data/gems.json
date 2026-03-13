@@ -4,6 +4,7 @@
   "formulaNote": "cost = baseCost (same every level)",
   "canCalculateCost": true,
   "isTree": false,
+  "menuIcon": "_gem_2.png",
   "groups": {
     "Combat": [
       {

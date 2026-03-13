@@ -5,6 +5,7 @@
   "note": "maxLevel is 100 for all Ultimus upgrades (from in-game UI).",
   "canCalculateCost": true,
   "isTree": false,
+  "menuIcon": "token_red.png",
   "groups": {
     "Melee Boss": [
       {

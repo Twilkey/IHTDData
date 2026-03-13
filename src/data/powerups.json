@@ -5,6 +5,7 @@
   "note": "5 upgrades override to exponential_endgame formula — see per-item costFormula field.",
   "canCalculateCost": true,
   "isTree": false,
+  "menuIcon": "_prestigePower.png",
   "groups": {
     "Combat": [
       {
