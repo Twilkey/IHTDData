@@ -1,0 +1,400 @@
+{
+  "label": "Tickets",
+  "costFormula": "flat",
+  "formulaNote": "cost = baseCost (same every level)",
+  "canCalculateCost": true,
+  "isTree": false,
+  "groups": {
+    "Combat": [
+      {
+        "id": "damage_i",
+        "name": "Damage I",
+        "statKey": "damage",
+        "waveReq": 0,
+        "statAmt": 5,
+        "maxLevel": 999999,
+        "baseCost": 5,
+        "icon": "_dps.png",
+        "bgColor": "#960000",
+        "borderColor": "#FF0000"
+      },
+      {
+        "id": "crit_damage",
+        "name": "Crit Damage",
+        "statKey": "crit_damage",
+        "waveReq": 0,
+        "statAmt": 5,
+        "maxLevel": 10,
+        "baseCost": 10,
+        "icon": "_critDmg_2.png",
+        "bgColor": "#994B00",
+        "borderColor": "#FF8000"
+      },
+      {
+        "id": "crit_chance",
+        "name": "Crit Chance",
+        "statKey": "crit_chance",
+        "waveReq": 0,
+        "statAmt": 1,
+        "maxLevel": 10,
+        "baseCost": 15,
+        "icon": "_critChance2.png",
+        "bgColor": "#994B00",
+        "borderColor": "#FF8000"
+      },
+      {
+        "id": "super_crit_damage",
+        "name": "Super Crit Damage",
+        "statKey": "super_crit_damage",
+        "waveReq": 2500,
+        "statAmt": 5,
+        "maxLevel": 10,
+        "baseCost": 50,
+        "icon": "_critDmgSuper.png",
+        "bgColor": "#843800",
+        "borderColor": "#E16400"
+      },
+      {
+        "id": "super_crit_chance",
+        "name": "Super Crit Chance",
+        "statKey": "super_crit_chance",
+        "waveReq": 2500,
+        "statAmt": 1,
+        "maxLevel": 10,
+        "baseCost": 75,
+        "icon": "_critChanceSuper.png",
+        "bgColor": "#843800",
+        "borderColor": "#E16400"
+      },
+      {
+        "id": "damage_ii",
+        "name": "Damage II",
+        "statKey": "damage",
+        "waveReq": 4000,
+        "statAmt": 350,
+        "maxLevel": 999999,
+        "baseCost": 300,
+        "icon": "_dps.png",
+        "bgColor": "#960000",
+        "borderColor": "#FF0000"
+      },
+      {
+        "id": "instant_skill_chance",
+        "name": "Instant Skill Chance",
+        "statKey": "instant_skill_chance",
+        "waveReq": 5000,
+        "statAmt": 1,
+        "maxLevel": 10,
+        "baseCost": 75,
+        "icon": "_skillCd.png",
+        "bgColor": "#009E9F",
+        "borderColor": "#00FFFF"
+      },
+      {
+        "id": "instant_spell_chance",
+        "name": "Instant Spell Chance",
+        "statKey": "instant_spell_chance",
+        "waveReq": 5000,
+        "statAmt": 1,
+        "maxLevel": 10,
+        "baseCost": 100,
+        "icon": "_spellCd.png",
+        "bgColor": "#007879",
+        "borderColor": "#00C8C8"
+      },
+      {
+        "id": "enemy_immunity_limit",
+        "name": "Enemy Immunity Limit",
+        "statKey": "enemy_immunity_limit",
+        "waveReq": 5000,
+        "statAmt": 1,
+        "maxLevel": 2,
+        "baseCost": 300,
+        "icon": "_skill.png",
+        "bgColor": "#490000",
+        "borderColor": "#800000"
+      },
+      {
+        "id": "damage_iii",
+        "name": "Damage III",
+        "statKey": "damage",
+        "waveReq": 10000,
+        "statAmt": 1250,
+        "maxLevel": 999999,
+        "baseCost": 1000,
+        "icon": "_dps.png",
+        "bgColor": "#960000",
+        "borderColor": "#FF0000"
+      },
+      {
+        "id": "skill_power",
+        "name": "Skill Power",
+        "statKey": "skill_power",
+        "waveReq": 15000,
+        "statAmt": 3,
+        "maxLevel": 5,
+        "baseCost": 250,
+        "icon": "_skillPower_2.png",
+        "bgColor": "#009F9F",
+        "borderColor": "#00DEE0"
+      },
+      {
+        "id": "free_hero_level_chance",
+        "name": "Free Hero Level Chance",
+        "statKey": "free_hero_level_chance",
+        "waveReq": 20000,
+        "statAmt": 1,
+        "maxLevel": 10,
+        "baseCost": 450,
+        "icon": "_star.png",
+        "bgColor": "#969600",
+        "borderColor": "#FFFE00"
+      }
+    ],
+    "Resources": [
+      {
+        "id": "progressive_rank_exp",
+        "name": "Progressive Rank Exp",
+        "statKey": "progressive_rank_exp",
+        "waveReq": 0,
+        "statAmt": 2,
+        "maxLevel": 999,
+        "baseCost": 30,
+        "icon": "_exp.png",
+        "bgColor": "#0B6B9F",
+        "borderColor": "#19AFFF"
+      },
+      {
+        "id": "super_gold_amount",
+        "name": "Super Gold Amount",
+        "statKey": "super_gold_amount",
+        "waveReq": 2500,
+        "statAmt": 5,
+        "maxLevel": 10,
+        "baseCost": 50,
+        "icon": "_goldSuper.png",
+        "bgColor": "#8E8D04",
+        "borderColor": "#E9E90C"
+      },
+      {
+        "id": "super_gold_chance",
+        "name": "Super Gold Chance",
+        "statKey": "super_gold_chance",
+        "waveReq": 2500,
+        "statAmt": 1,
+        "maxLevel": 10,
+        "baseCost": 75,
+        "icon": "_goldSuper.png",
+        "bgColor": "#8E8D04",
+        "borderColor": "#E9E90C"
+      },
+      {
+        "id": "energy_income",
+        "name": "Energy Income",
+        "statKey": "energy_income",
+        "waveReq": 2500,
+        "statAmt": 1,
+        "maxLevel": 10,
+        "baseCost": 150,
+        "icon": "_energy2.png",
+        "bgColor": "#00A300",
+        "borderColor": "#00FF00"
+      },
+      {
+        "id": "kill_gold_ii",
+        "name": "Kill Gold II",
+        "statKey": "kill_gold",
+        "waveReq": 4000,
+        "statAmt": 350,
+        "maxLevel": 999999,
+        "baseCost": 300,
+        "icon": "_coin.png",
+        "bgColor": "#999900",
+        "borderColor": "#FFFF00"
+      },
+      {
+        "id": "rank_exp_pct",
+        "name": "Rank Exp (%)",
+        "statKey": "rank_exp_pct",
+        "waveReq": 4000,
+        "statAmt": 1,
+        "maxLevel": 25,
+        "baseCost": 300,
+        "icon": "_exp.png",
+        "bgColor": "#0A689A",
+        "borderColor": "#1395D9"
+      },
+      {
+        "id": "hero_level_cost",
+        "name": "Hero Level Cost",
+        "statKey": "hero_level_cost",
+        "waveReq": 5000,
+        "statAmt": 1,
+        "maxLevel": 25,
+        "baseCost": 75,
+        "icon": "_star.png",
+        "bgColor": "#A09F00",
+        "borderColor": "#FFFF00"
+      },
+      {
+        "id": "kill_gold_iii",
+        "name": "Kill Gold III",
+        "statKey": "kill_gold",
+        "waveReq": 10000,
+        "statAmt": 1250,
+        "maxLevel": 999999,
+        "baseCost": 1000,
+        "icon": "_coin.png",
+        "bgColor": "#999900",
+        "borderColor": "#FFFF00"
+      },
+      {
+        "id": "ultra_gold_chance",
+        "name": "Ultra Gold Chance",
+        "statKey": "ultra_gold_chance",
+        "waveReq": 15000,
+        "statAmt": 1,
+        "maxLevel": 10,
+        "baseCost": 250,
+        "icon": "_goldUltra.png",
+        "bgColor": "#848305",
+        "borderColor": "#DDDD10"
+      },
+      {
+        "id": "ultra_exp_chance",
+        "name": "Ultra Exp Chance",
+        "statKey": "ultra_exp_chance",
+        "waveReq": 15000,
+        "statAmt": 1,
+        "maxLevel": 10,
+        "baseCost": 300,
+        "icon": "_expUltra.png",
+        "bgColor": "#00517F",
+        "borderColor": "#008DD9"
+      }
+    ],
+    "Ultra Bosses": [
+      {
+        "id": "shadow_alien_hp_scaling",
+        "name": "Shadow/Alien HP Scaling",
+        "statKey": "shadow_alien_hp_scaling",
+        "waveReq": 4000,
+        "statAmt": 2,
+        "maxLevel": 10,
+        "baseCost": 125,
+        "icon": "_enemyHp.png",
+        "bgColor": "#4E0000",
+        "borderColor": "#790000"
+      },
+      {
+        "id": "ultimus_max_spawns",
+        "name": "Ultimus Max Spawns",
+        "statKey": "ultimus_max_spawns",
+        "waveReq": 10000,
+        "statAmt": 1,
+        "maxLevel": 2,
+        "baseCost": 200,
+        "icon": "_boss.png",
+        "bgColor": "#691A1A",
+        "borderColor": "#AB3130"
+      },
+      {
+        "id": "2x_supreme_runes_chance",
+        "name": "2x Supreme Runes Chance",
+        "statKey": "2x_supreme_runes_chance",
+        "waveReq": 20000,
+        "statAmt": 1,
+        "maxLevel": 10,
+        "baseCost": 450,
+        "icon": "_rune.png",
+        "bgColor": "#770000",
+        "borderColor": "#C80000"
+      },
+      {
+        "id": "supreme_alien_chance",
+        "name": "Supreme Alien Chance",
+        "statKey": "supreme_alien_chance",
+        "waveReq": 20000,
+        "statAmt": 1,
+        "maxLevel": 2,
+        "baseCost": 1000,
+        "icon": "_boss.png",
+        "bgColor": "#770000",
+        "borderColor": "#C80000"
+      },
+      {
+        "id": "mimic_energy",
+        "name": "Mimic Energy",
+        "statKey": "mimic_energy",
+        "waveReq": 30000,
+        "statAmt": 10,
+        "maxLevel": 10,
+        "baseCost": 250,
+        "icon": "_chest.png",
+        "bgColor": "#008900",
+        "borderColor": "#00DE00"
+      }
+    ],
+    "Progress": [
+      {
+        "id": "tower_lives",
+        "name": "Tower Lives",
+        "statKey": "tower_lives",
+        "waveReq": 0,
+        "statAmt": 1,
+        "maxLevel": 10,
+        "baseCost": 25,
+        "icon": "_heart.png",
+        "bgColor": "#9C4C4C",
+        "borderColor": "#FF8080"
+      },
+      {
+        "id": "extra_boss_chance",
+        "name": "Extra Boss Chance",
+        "statKey": "extra_boss_chance",
+        "waveReq": 2500,
+        "statAmt": 1,
+        "maxLevel": 10,
+        "baseCost": 75,
+        "icon": "_boss.png",
+        "bgColor": "#490000",
+        "borderColor": "#800000"
+      },
+      {
+        "id": "max_boss_rush",
+        "name": "Max Boss Rush",
+        "statKey": "max_boss_rush",
+        "waveReq": 5000,
+        "statAmt": 1,
+        "maxLevel": 5,
+        "baseCost": 150,
+        "icon": "_gameSpeedHud.png",
+        "bgColor": "#117D11",
+        "borderColor": "#21C821"
+      },
+      {
+        "id": "wave_perk_effect",
+        "name": "Wave Perk Effect",
+        "statKey": "wave_perk_effect",
+        "waveReq": 10000,
+        "statAmt": 2,
+        "maxLevel": 10,
+        "baseCost": 250,
+        "icon": "_archmage.png",
+        "bgColor": "#002249",
+        "borderColor": "#004080"
+      }
+    ],
+    "Other": [
+      {
+        "id": "kill_gold_i",
+        "name": "Kill Gold I",
+        "statKey": "kill_gold",
+        "waveReq": 0,
+        "statAmt": 5,
+        "maxLevel": 999999,
+        "baseCost": 5
+      }
+    ]
+  }
+}

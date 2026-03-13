@@ -1,0 +1,350 @@
+{
+  "skill_duration": {
+    "unit": "s",
+    "label": "Skill Duration"
+  },
+  "spell_duration": {
+    "unit": "s",
+    "label": "Spell Duration"
+  },
+  "hoarder_cd": {
+    "unit": "s",
+    "label": "Hoarder Cooldown"
+  },
+  "producer_cd": {
+    "unit": "s",
+    "label": "Producer Cooldown"
+  },
+  "trainer_cd": {
+    "unit": "s",
+    "label": "Trainer Cooldown"
+  },
+  "training_dummy_cooldown": {
+    "unit": "s",
+    "label": "Training Dummy Cooldown"
+  },
+  "power_mage_cooldown": {
+    "unit": "s",
+    "label": "Power Mage Cooldown"
+  },
+  "mage_spawn_cooldown": {
+    "unit": "s",
+    "label": "Mage Spawn Cooldown"
+  },
+  "goblin_hoarder_cooldown": {
+    "unit": "s",
+    "label": "Goblin Hoarder Cooldown"
+  },
+  "ultimus_cooldown": {
+    "unit": "s",
+    "label": "Ultimus Cooldown"
+  },
+  "skill_cooldown": {
+    "unit": "s",
+    "label": "Skill Cooldown"
+  },
+  "spell_cooldown": {
+    "unit": "s",
+    "label": "Spell Cooldown"
+  },
+  "tower_lives": {
+    "unit": "lives",
+    "label": "Tower Lives"
+  },
+  "boss_rush_waves": {
+    "unit": "waves",
+    "label": "Boss Rush Waves"
+  },
+  "wave_perk_waves": {
+    "unit": "waves",
+    "label": "Wave Perk Waves"
+  },
+  "mage_spawns": {
+    "unit": "count",
+    "label": "Mage Spawns"
+  },
+  "ultimus_max_spawns": {
+    "unit": "count",
+    "label": "Ultimus Max Spawns"
+  },
+  "enemy_immunity_limit": {
+    "unit": "count",
+    "label": "Enemy Immunity Limit"
+  },
+  "max_game_speed": {
+    "unit": "x",
+    "label": "Max Game Speed"
+  },
+  "damage": {
+    "unit": "%",
+    "label": "Damage"
+  },
+  "kill_gold": {
+    "unit": "%",
+    "label": "Kill Gold"
+  },
+  "prestige_power": {
+    "unit": "%",
+    "label": "Prestige Power"
+  },
+  "rank_exp": {
+    "unit": "%",
+    "label": "Rank Exp"
+  },
+  "rank_exp_pct": {
+    "unit": "%",
+    "label": "Rank Exp Pct"
+  },
+  "crit_chance": {
+    "unit": "%",
+    "label": "Crit Chance"
+  },
+  "crit_damage": {
+    "unit": "%",
+    "label": "Crit Damage"
+  },
+  "attack_speed": {
+    "unit": "%",
+    "label": "Attack Speed"
+  },
+  "super_crit_chance": {
+    "unit": "%",
+    "label": "Super Crit Chance"
+  },
+  "super_crit_damage": {
+    "unit": "%",
+    "label": "Super Crit Damage"
+  },
+  "skill_power": {
+    "unit": "%",
+    "label": "Skill Power"
+  },
+  "boss_damage": {
+    "unit": "%",
+    "label": "Boss Damage"
+  },
+  "boss_gold": {
+    "unit": "%",
+    "label": "Boss Gold"
+  },
+  "boss_exp": {
+    "unit": "%",
+    "label": "Boss Exp"
+  },
+  "energy_income": {
+    "unit": "%",
+    "label": "Energy Income"
+  },
+  "battlepass_exp": {
+    "unit": "%",
+    "label": "Battlepass Exp"
+  },
+  "progressive_rank_exp": {
+    "unit": "%",
+    "label": "Progressive Rank Exp"
+  },
+  "tournament_trophies": {
+    "unit": "%",
+    "label": "Tournament Trophies"
+  },
+  "rune_rarity_chance": {
+    "unit": "%",
+    "label": "Rune Rarity Chance"
+  },
+  "shadow_alien_hp_scaling": {
+    "unit": "%",
+    "label": "Shadow Alien Hp Scaling"
+  },
+  "enemy_hp": {
+    "unit": "%",
+    "label": "Enemy Hp"
+  },
+  "synergy_effects": {
+    "unit": "%",
+    "label": "Synergy Effects"
+  },
+  "ancient_shadow_runes": {
+    "unit": "%",
+    "label": "Ancient Shadow Runes"
+  },
+  "exotic_alien_tech": {
+    "unit": "%",
+    "label": "Exotic Alien Tech"
+  },
+  "ad_bonus_duration": {
+    "unit": "%",
+    "label": "Ad Bonus Duration"
+  },
+  "ad_bonus_reward": {
+    "unit": "%",
+    "label": "Ad Bonus Reward"
+  },
+  "super_gold_chance": {
+    "unit": "%",
+    "label": "Super Gold Chance"
+  },
+  "super_exp_chance": {
+    "unit": "%",
+    "label": "Super Exp Chance"
+  },
+  "super_energy_chance": {
+    "unit": "%",
+    "label": "Super Energy Chance"
+  },
+  "super_gold_amount": {
+    "unit": "%",
+    "label": "Super Gold Amount"
+  },
+  "super_exp_amount": {
+    "unit": "%",
+    "label": "Super Exp Amount"
+  },
+  "super_energy_amount": {
+    "unit": "%",
+    "label": "Super Energy Amount"
+  },
+  "ultra_crit_damage": {
+    "unit": "%",
+    "label": "Ultra Crit Damage"
+  },
+  "ultra_gold_amount": {
+    "unit": "%",
+    "label": "Ultra Gold Amount"
+  },
+  "ultra_energy_amount": {
+    "unit": "%",
+    "label": "Ultra Energy Amount"
+  },
+  "instant_skill_chance": {
+    "unit": "%",
+    "label": "Instant Skill Chance"
+  },
+  "instant_spell_chance": {
+    "unit": "%",
+    "label": "Instant Spell Chance"
+  },
+  "free_hero_level_chance": {
+    "unit": "%",
+    "label": "Free Hero Level Chance"
+  },
+  "hero_level_cost": {
+    "unit": "%",
+    "label": "Hero Level Cost"
+  },
+  "milestone_effects": {
+    "unit": "%",
+    "label": "Milestone Effects"
+  },
+  "tier_12_synergy": {
+    "unit": "%",
+    "label": "Tier 12 Synergy"
+  },
+  "tier_34_synergy": {
+    "unit": "%",
+    "label": "Tier 34 Synergy"
+  },
+  "enemy_hp_scaling": {
+    "unit": "%",
+    "label": "Enemy Hp Scaling"
+  },
+  "enemy_hp_skip_chance": {
+    "unit": "%",
+    "label": "Enemy Hp Skip Chance"
+  },
+  "goblin_hoarder_gold": {
+    "unit": "%",
+    "label": "Goblin Hoarder Gold"
+  },
+  "ultra_crit_chance": {
+    "unit": "%",
+    "label": "Ultra Crit Chance"
+  },
+  "training_dummy_exp": {
+    "unit": "%",
+    "label": "Training Dummy Exp"
+  },
+  "2x_rune_chance": {
+    "unit": "%",
+    "label": "2X Rune Chance"
+  },
+  "daily_gift_runes": {
+    "unit": "%",
+    "label": "Daily Gift Runes"
+  },
+  "active_play_gems": {
+    "unit": "%",
+    "label": "Active Play Gems"
+  },
+  "golden_trainer_chance": {
+    "unit": "%",
+    "label": "Golden Trainer Chance"
+  },
+  "power_mage_energy": {
+    "unit": "%",
+    "label": "Power Mage Energy"
+  },
+  "mage_bonus": {
+    "unit": "%",
+    "label": "Mage Bonus"
+  },
+  "range": {
+    "unit": "%",
+    "label": "Range"
+  },
+  "ad_ultra_crit_damage": {
+    "unit": "%",
+    "label": "Ad Ultra Crit Damage"
+  },
+  "ad_ultra_crit_chance": {
+    "unit": "%",
+    "label": "Ad Ultra Crit Chance"
+  },
+  "ap_ultra_crit_damage": {
+    "unit": "%",
+    "label": "Ap Ultra Crit Damage"
+  },
+  "ap_ultra_crit_chance": {
+    "unit": "%",
+    "label": "Ap Ultra Crit Chance"
+  },
+  "2x_tokens_chance": {
+    "unit": "%",
+    "label": "2X Tokens Chance"
+  },
+  "boss_chest_chance": {
+    "unit": "%",
+    "label": "Boss Chest Chance"
+  },
+  "unlock_wave_perks": {
+    "unit": "%",
+    "label": "Unlock Wave Perks"
+  },
+  "shadow_alien_hp_reduction": {
+    "unit": "%",
+    "label": "Shadow Alien Hp Reduction"
+  },
+  "strength": {
+    "unit": "%",
+    "label": "Strength"
+  },
+  "agility": {
+    "unit": "%",
+    "label": "Agility"
+  },
+  "hawk_eyes": {
+    "unit": "%",
+    "label": "Hawk Eyes"
+  },
+  "power": {
+    "unit": "%",
+    "label": "Power"
+  },
+  "land_mines": {
+    "unit": "%",
+    "label": "Land Mines"
+  },
+  "blizzard": {
+    "unit": "%",
+    "label": "Blizzard"
+  }
+}

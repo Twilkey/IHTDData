@@ -1,0 +1,579 @@
+{
+  "label": "Runes",
+  "costFormula": "none",
+  "formulaNote": "Runes have no gold cost — cost is paid in rune types.",
+  "canCalculateCost": false,
+  "isTree": false,
+  "groups": {
+    "Common": [
+      {
+        "id": "damage_i",
+        "name": "Damage I",
+        "statKey": "damage",
+        "statAmt": 5,
+        "maxLevel": 999999999,
+        "icon": "_dps.png",
+        "bgColor": "#BDCEFF",
+        "borderColor": "#8293D7"
+      },
+      {
+        "id": "kill_gold_i",
+        "name": "Kill Gold I",
+        "statKey": "kill_gold",
+        "statAmt": 5,
+        "maxLevel": 999999999,
+        "icon": "_coin.png",
+        "bgColor": "#BDCEFF",
+        "borderColor": "#8293D7"
+      },
+      {
+        "id": "attack_speed",
+        "name": "Attack Speed",
+        "statKey": "attack_speed",
+        "statAmt": 3,
+        "maxLevel": 15,
+        "icon": "_attSpeed.png",
+        "bgColor": "#BDCEFF",
+        "borderColor": "#8293D7"
+      },
+      {
+        "id": "crit_damage",
+        "name": "Crit Damage",
+        "statKey": "crit_damage",
+        "statAmt": 5,
+        "maxLevel": 15,
+        "icon": "_critDmg_2.png",
+        "bgColor": "#BDCEFF",
+        "borderColor": "#8293D7"
+      },
+      {
+        "id": "enemy_hp",
+        "name": "Enemy HP",
+        "statKey": "enemy_hp",
+        "statAmt": 3,
+        "maxLevel": 15,
+        "icon": "_enemyHp.png",
+        "bgColor": "#BDCEFF",
+        "borderColor": "#8293D7"
+      }
+    ],
+    "Uncommon": [
+      {
+        "id": "prestige_power_i",
+        "name": "Prestige Power I",
+        "statKey": "prestige_power",
+        "statAmt": 10,
+        "maxLevel": 999999999,
+        "icon": "_planet.png",
+        "bgColor": "#18C9FF",
+        "borderColor": "#007CFE"
+      },
+      {
+        "id": "rank_exp_i",
+        "name": "Rank Exp I",
+        "statKey": "rank_exp",
+        "statAmt": 1,
+        "maxLevel": 25,
+        "icon": "_exp.png",
+        "bgColor": "#18C9FF",
+        "borderColor": "#007CFE"
+      },
+      {
+        "id": "crit_chance",
+        "name": "Crit Chance",
+        "statKey": "crit_chance",
+        "statAmt": 1,
+        "maxLevel": 25,
+        "icon": "_critChance2.png",
+        "bgColor": "#18C9FF",
+        "borderColor": "#007CFE"
+      },
+      {
+        "id": "super_gold_amount",
+        "name": "Super Gold Amount",
+        "statKey": "super_gold_amount",
+        "statAmt": 5,
+        "maxLevel": 10,
+        "icon": "_goldSuper.png",
+        "bgColor": "#18C9FF",
+        "borderColor": "#007CFE"
+      },
+      {
+        "id": "training_dummy_cooldown",
+        "name": "Training Dummy Cooldown",
+        "statKey": "training_dummy_cooldown",
+        "statAmt": 2,
+        "maxLevel": 15,
+        "icon": "_skillCd.png",
+        "bgColor": "#18C9FF",
+        "borderColor": "#007CFE"
+      }
+    ],
+    "Rare": [
+      {
+        "id": "damage_ii",
+        "name": "Damage II",
+        "statKey": "damage",
+        "statAmt": 15,
+        "maxLevel": 999999999,
+        "icon": "_dps.png",
+        "bgColor": "#73EE05",
+        "borderColor": "#007929"
+      },
+      {
+        "id": "kill_gold_ii",
+        "name": "Kill Gold II",
+        "statKey": "kill_gold",
+        "statAmt": 15,
+        "maxLevel": 999999999,
+        "icon": "_coin.png",
+        "bgColor": "#73EE05",
+        "borderColor": "#007929"
+      },
+      {
+        "id": "range",
+        "name": "Range",
+        "statKey": "range",
+        "statAmt": 2,
+        "maxLevel": 10,
+        "icon": "_range_2.png",
+        "bgColor": "#73EE05",
+        "borderColor": "#007929"
+      },
+      {
+        "id": "skill_cooldown",
+        "name": "Skill Cooldown",
+        "statKey": "skill_cooldown",
+        "statAmt": 2,
+        "maxLevel": 15,
+        "icon": "_skillCd.png",
+        "bgColor": "#73EE05",
+        "borderColor": "#007929"
+      },
+      {
+        "id": "super_exp_amount",
+        "name": "Super Exp Amount",
+        "statKey": "super_exp_amount",
+        "statAmt": 5,
+        "maxLevel": 10,
+        "icon": "_expSuper.png",
+        "bgColor": "#73EE05",
+        "borderColor": "#007929"
+      }
+    ],
+    "Epic": [
+      {
+        "id": "prestige_power_ii",
+        "name": "Prestige Power II",
+        "statKey": "prestige_power",
+        "statAmt": 25,
+        "maxLevel": 999999999,
+        "icon": "_planet.png",
+        "bgColor": "#FF9D00",
+        "borderColor": "#EF5408"
+      },
+      {
+        "id": "rank_exp_ii",
+        "name": "Rank Exp II",
+        "statKey": "rank_exp",
+        "statAmt": 2,
+        "maxLevel": 25,
+        "icon": "_exp.png",
+        "bgColor": "#FF9D00",
+        "borderColor": "#EF5408"
+      },
+      {
+        "id": "super_crit_damage",
+        "name": "Super Crit Damage",
+        "statKey": "super_crit_damage",
+        "statAmt": 5,
+        "maxLevel": 10,
+        "icon": "_critDmgSuper.png",
+        "bgColor": "#FF9D00",
+        "borderColor": "#EF5408"
+      },
+      {
+        "id": "spell_duration",
+        "name": "Spell Duration",
+        "statKey": "spell_duration",
+        "statAmt": 1,
+        "maxLevel": 5,
+        "icon": "_skillDuration.png",
+        "bgColor": "#FF9D00",
+        "borderColor": "#EF5408"
+      },
+      {
+        "id": "goblin_hoarder_spawns",
+        "name": "Goblin Hoarder Spawns",
+        "statKey": "goblin_hoarder_spawns",
+        "statAmt": 1,
+        "maxLevel": 3,
+        "icon": "_boss.png",
+        "bgColor": "#FF9D00",
+        "borderColor": "#EF5408"
+      }
+    ],
+    "Legendary": [
+      {
+        "id": "damage_iii",
+        "name": "Damage III",
+        "statKey": "damage",
+        "statAmt": 50,
+        "maxLevel": 999999999,
+        "icon": "_dps.png",
+        "bgColor": "#FF251E",
+        "borderColor": "#BC1823"
+      },
+      {
+        "id": "kill_gold_iii",
+        "name": "Kill Gold III",
+        "statKey": "kill_gold",
+        "statAmt": 50,
+        "maxLevel": 999999999,
+        "icon": "_coin.png",
+        "bgColor": "#FF251E",
+        "borderColor": "#BC1823"
+      },
+      {
+        "id": "super_crit_chance",
+        "name": "Super Crit Chance",
+        "statKey": "super_crit_chance",
+        "statAmt": 1,
+        "maxLevel": 10,
+        "icon": "_critChanceSuper.png",
+        "bgColor": "#FF251E",
+        "borderColor": "#BC1823"
+      },
+      {
+        "id": "super_energy_amount",
+        "name": "Super Energy Amount",
+        "statKey": "super_energy_amount",
+        "statAmt": 5,
+        "maxLevel": 10,
+        "icon": "_energy_2.png",
+        "bgColor": "#FF251E",
+        "borderColor": "#BC1823"
+      },
+      {
+        "id": "power_mage_spawns",
+        "name": "Power Mage Spawns",
+        "statKey": "power_mage_spawns",
+        "statAmt": 1,
+        "maxLevel": 2,
+        "icon": "_boss.png",
+        "bgColor": "#FF251E",
+        "borderColor": "#BC1823"
+      }
+    ],
+    "Mythic": [
+      {
+        "id": "damage_iv",
+        "name": "Damage IV",
+        "statKey": "damage",
+        "statAmt": 100,
+        "maxLevel": 999999999,
+        "icon": "_dps.png",
+        "bgColor": "#BD1CFF",
+        "borderColor": "#3904D0"
+      },
+      {
+        "id": "kill_gold_iv",
+        "name": "Kill Gold IV",
+        "statKey": "kill_gold",
+        "statAmt": 100,
+        "maxLevel": 999999999,
+        "icon": "_coin.png",
+        "bgColor": "#BD1CFF",
+        "borderColor": "#3904D0"
+      },
+      {
+        "id": "energy_income_i",
+        "name": "Energy Income I",
+        "statKey": "energy_income",
+        "statAmt": 1,
+        "maxLevel": 8,
+        "icon": "_energy2.png",
+        "bgColor": "#BD1CFF",
+        "borderColor": "#3904D0"
+      },
+      {
+        "id": "battlepass_exp",
+        "name": "Battlepass Exp",
+        "statKey": "battlepass_exp",
+        "statAmt": 1,
+        "maxLevel": 5,
+        "icon": "_battlepassExp.png",
+        "bgColor": "#BD1CFF",
+        "borderColor": "#3904D0"
+      },
+      {
+        "id": "exotic_alien_tech",
+        "name": "Exotic Alien Tech",
+        "statKey": "exotic_alien_tech",
+        "statAmt": 1,
+        "maxLevel": 5,
+        "icon": "_techPts.png",
+        "bgColor": "#BD1CFF",
+        "borderColor": "#3904D0"
+      }
+    ],
+    "Supreme": [
+      {
+        "id": "damage_v",
+        "name": "Damage V",
+        "statKey": "damage",
+        "statAmt": 125,
+        "maxLevel": 999999999,
+        "icon": "_dps.png",
+        "bgColor": "#A10D26",
+        "borderColor": "#A10D26"
+      },
+      {
+        "id": "kill_gold_v",
+        "name": "Kill Gold V",
+        "statKey": "kill_gold",
+        "statAmt": 125,
+        "maxLevel": 999999999,
+        "icon": "_coin.png",
+        "bgColor": "#A10D26",
+        "borderColor": "#A10D26"
+      },
+      {
+        "id": "progressive_rank_exp_i",
+        "name": "Progressive Rank Exp I",
+        "statKey": "progressive_rank_exp",
+        "statAmt": 2,
+        "maxLevel": 999,
+        "icon": "_exp.png",
+        "bgColor": "#A10D26",
+        "borderColor": "#A10D26"
+      },
+      {
+        "id": "prestige_power_iii",
+        "name": "Prestige Power III",
+        "statKey": "prestige_power",
+        "statAmt": 50,
+        "maxLevel": 999999999,
+        "icon": "_planet.png",
+        "bgColor": "#A10D26",
+        "borderColor": "#A10D26"
+      },
+      {
+        "id": "energy_income_ii",
+        "name": "Energy Income II",
+        "statKey": "energy_income",
+        "statAmt": 2,
+        "maxLevel": 10,
+        "icon": "_energy2.png",
+        "bgColor": "#A10D26",
+        "borderColor": "#A10D26"
+      },
+      {
+        "id": "hero_level_cost",
+        "name": "Hero Level Cost",
+        "statKey": "hero_level_cost",
+        "statAmt": 5,
+        "maxLevel": 10,
+        "icon": "_star.png",
+        "bgColor": "#A10D26",
+        "borderColor": "#A10D26"
+      },
+      {
+        "id": "map_perks",
+        "name": "Map Perks",
+        "statKey": "map_perks",
+        "statAmt": 2,
+        "maxLevel": 15,
+        "icon": "_castle.png",
+        "bgColor": "#A10D26",
+        "borderColor": "#A10D26"
+      },
+      {
+        "id": "wave_perk_waves",
+        "name": "Wave Perk Waves",
+        "statKey": "wave_perk_waves",
+        "statAmt": 2,
+        "maxLevel": 10,
+        "icon": "icon_arrow_shaped_26.png",
+        "bgColor": "#A10D26",
+        "borderColor": "#A10D26"
+      },
+      {
+        "id": "wave_perk_effect",
+        "name": "Wave Perk Effect",
+        "statKey": "wave_perk_effect",
+        "statAmt": 2,
+        "maxLevel": 10,
+        "icon": "_archmage.png",
+        "bgColor": "#A10D26",
+        "borderColor": "#A10D26"
+      },
+      {
+        "id": "active_play_reward",
+        "name": "Active Play Reward",
+        "statKey": "active_play_reward",
+        "statAmt": 5,
+        "maxLevel": 10,
+        "icon": "_chest1.png",
+        "bgColor": "#A10D26",
+        "borderColor": "#A10D26"
+      }
+    ],
+    "Supreme II (Combat)": [
+      {
+        "id": "damage_vi",
+        "name": "Damage VI",
+        "statKey": "damage",
+        "statAmt": 150,
+        "maxLevel": 999999999,
+        "icon": "_dps.png",
+        "bgColor": "#A10D26",
+        "borderColor": "#A10D26"
+      },
+      {
+        "id": "ultra_crit_damage",
+        "name": "Ultra Crit Damage",
+        "statKey": "ultra_crit_damage",
+        "statAmt": 100,
+        "maxLevel": 25,
+        "icon": "_critDmgUltra.png",
+        "bgColor": "#A10D26",
+        "borderColor": "#A10D26"
+      },
+      {
+        "id": "ultra_crit_chance",
+        "name": "Ultra Crit Chance",
+        "statKey": "ultra_crit_chance",
+        "statAmt": 5,
+        "maxLevel": 25,
+        "icon": "_critChanceUltra.png",
+        "bgColor": "#A10D26",
+        "borderColor": "#A10D26"
+      },
+      {
+        "id": "progressive_rank_exp_ii",
+        "name": "Progressive Rank Exp II",
+        "statKey": "progressive_rank_exp",
+        "statAmt": 4,
+        "maxLevel": 999,
+        "icon": "_exp.png",
+        "bgColor": "#A10D26",
+        "borderColor": "#A10D26"
+      },
+      {
+        "id": "ultra_exp_chance",
+        "name": "Ultra Exp Chance",
+        "statKey": "ultra_exp_chance",
+        "statAmt": 5,
+        "maxLevel": 25,
+        "icon": "_expUltra.png",
+        "bgColor": "#A10D26",
+        "borderColor": "#A10D26"
+      }
+    ],
+    "Supreme II (Resource)": [
+      {
+        "id": "kill_gold_vi",
+        "name": "Kill Gold VI",
+        "statKey": "kill_gold",
+        "statAmt": 150,
+        "maxLevel": 999999999,
+        "icon": "_coin.png",
+        "bgColor": "#A10D26",
+        "borderColor": "#A10D26"
+      },
+      {
+        "id": "ultra_gold_amount",
+        "name": "Ultra Gold Amount",
+        "statKey": "ultra_gold_amount",
+        "statAmt": 100,
+        "maxLevel": 25,
+        "icon": "_goldUltra.png",
+        "bgColor": "#A10D26",
+        "borderColor": "#A10D26"
+      },
+      {
+        "id": "ultra_gold_chance",
+        "name": "Ultra Gold Chance",
+        "statKey": "ultra_gold_chance",
+        "statAmt": 5,
+        "maxLevel": 25,
+        "icon": "_goldUltra.png",
+        "bgColor": "#A10D26",
+        "borderColor": "#A10D26"
+      },
+      {
+        "id": "energy_income_iii",
+        "name": "Energy Income III",
+        "statKey": "energy_income",
+        "statAmt": 3,
+        "maxLevel": 25,
+        "icon": "_energy2.png",
+        "bgColor": "#A10D26",
+        "borderColor": "#A10D26"
+      },
+      {
+        "id": "ultra_energy_chance",
+        "name": "Ultra Energy Chance",
+        "statKey": "ultra_energy_chance",
+        "statAmt": 5,
+        "maxLevel": 25,
+        "icon": "_energyUltra.png",
+        "bgColor": "#A10D26",
+        "borderColor": "#A10D26"
+      }
+    ],
+    "Supreme II (Progress)": [
+      {
+        "id": "prestige_power_iv",
+        "name": "Prestige Power IV",
+        "statKey": "prestige_power",
+        "statAmt": 75,
+        "maxLevel": 999999999,
+        "icon": "_planet.png",
+        "bgColor": "#A10D26",
+        "borderColor": "#A10D26"
+      },
+      {
+        "id": "weekly_tickets",
+        "name": "Weekly Tickets",
+        "statKey": "weekly_tickets",
+        "statAmt": 2,
+        "maxLevel": 25,
+        "icon": "_mission.png",
+        "bgColor": "#A10D26",
+        "borderColor": "#A10D26"
+      },
+      {
+        "id": "free_hero_level_chance",
+        "name": "Free Hero Level Chance",
+        "statKey": "free_hero_level_chance",
+        "statAmt": 5,
+        "maxLevel": 25,
+        "icon": "_star.png",
+        "bgColor": "#A10D26",
+        "borderColor": "#A10D26"
+      },
+      {
+        "id": "enemy_hp_skip_chance",
+        "name": "Enemy HP Skip Chance",
+        "statKey": "enemy_hp_skip_chance",
+        "statAmt": 1,
+        "maxLevel": 25,
+        "icon": "_enemyHp.png",
+        "bgColor": "#A10D26",
+        "borderColor": "#A10D26"
+      },
+      {
+        "id": "auto_upgrade_times",
+        "name": "Auto Upgrade Times",
+        "statKey": "auto_upgrade_times",
+        "statAmt": 1,
+        "maxLevel": 25,
+        "icon": "_skillCd.png",
+        "bgColor": "#A10D26",
+        "borderColor": "#A10D26"
+      }
+    ]
+  }
+}

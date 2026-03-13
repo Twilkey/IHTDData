@@ -1,0 +1,158 @@
+{
+  "label": "Spells",
+  "costFormula": "exponential",
+  "formulaNote": "cost = baseCost * pow(multCost, level)",
+  "canCalculateCost": true,
+  "isTree": false,
+  "groups": {
+    "Combat": [
+      {
+        "id": "land_mines",
+        "name": "Land Mines",
+        "statKey": "land_mines",
+        "maxLevel": 25,
+        "baseCost": 10.0,
+        "multCost": 2.0,
+        "icon": "_mapDmg.png",
+        "bgColor": "#E6EDFE",
+        "borderColor": "#E6EDFE"
+      },
+      {
+        "id": "freeze",
+        "name": "Freeze",
+        "statKey": "freeze",
+        "maxLevel": 25,
+        "baseCost": 50.0,
+        "multCost": 2.0,
+        "icon": "freeze.png",
+        "bgColor": "#E6EDFE",
+        "borderColor": "#E6EDFE"
+      }
+    ],
+    "Hero Buffs": [
+      {
+        "id": "strength",
+        "name": "Strength",
+        "statKey": "strength",
+        "maxLevel": 25,
+        "baseCost": 10.0,
+        "multCost": 2.0,
+        "icon": "dps.png",
+        "bgColor": "#E6EDFE",
+        "borderColor": "#E6EDFE"
+      },
+      {
+        "id": "agility",
+        "name": "Agility",
+        "statKey": "agility",
+        "maxLevel": 25,
+        "baseCost": 10.0,
+        "multCost": 2.0,
+        "icon": "_attSpeed_2.png",
+        "bgColor": "#E6EDFE",
+        "borderColor": "#E6EDFE"
+      },
+      {
+        "id": "hawk_eyes",
+        "name": "Hawk Eyes",
+        "statKey": "hawk_eyes",
+        "maxLevel": 25,
+        "baseCost": 25.0,
+        "multCost": 2.0,
+        "icon": "_range.png",
+        "bgColor": "#E6EDFE",
+        "borderColor": "#E6EDFE"
+      },
+      {
+        "id": "power",
+        "name": "Power",
+        "statKey": "power",
+        "maxLevel": 25,
+        "baseCost": 25.0,
+        "multCost": 2.0,
+        "icon": "_critDmg.png",
+        "bgColor": "#E6EDFE",
+        "borderColor": "#E6EDFE"
+      },
+      {
+        "id": "precision",
+        "name": "Precision",
+        "statKey": "precision",
+        "maxLevel": 25,
+        "baseCost": 50.0,
+        "multCost": 2.0,
+        "icon": "critChance.png",
+        "bgColor": "#E6EDFE",
+        "borderColor": "#E6EDFE"
+      },
+      {
+        "id": "accelerate",
+        "name": "Accelerate",
+        "statKey": "accelerate",
+        "maxLevel": 25,
+        "baseCost": 50.0,
+        "multCost": 2.0,
+        "icon": "_skillCd2.png",
+        "bgColor": "#E6EDFE",
+        "borderColor": "#E6EDFE"
+      },
+      {
+        "id": "enchanted",
+        "name": "Enchanted",
+        "statKey": "enchanted",
+        "maxLevel": 25,
+        "baseCost": 250.0,
+        "multCost": 2.0,
+        "icon": "_skillPower2.png",
+        "bgColor": "#E6EDFE",
+        "borderColor": "#E6EDFE"
+      }
+    ],
+    "Resources": [
+      {
+        "id": "rags_to_riches",
+        "name": "Rags to Riches",
+        "statKey": "rags_to_riches",
+        "maxLevel": 25,
+        "baseCost": 10.0,
+        "multCost": 2.0,
+        "icon": "gold.png",
+        "bgColor": "#E6EDFE",
+        "borderColor": "#E6EDFE"
+      },
+      {
+        "id": "trainee",
+        "name": "Trainee",
+        "statKey": "trainee",
+        "maxLevel": 25,
+        "baseCost": 25.0,
+        "multCost": 2.0,
+        "icon": "exp.png",
+        "bgColor": "#E6EDFE",
+        "borderColor": "#E6EDFE"
+      },
+      {
+        "id": "time_warp",
+        "name": "Time Warp",
+        "statKey": "time_warp",
+        "maxLevel": 25,
+        "baseCost": 100.0,
+        "multCost": 2.0,
+        "icon": "gameSpeed.png",
+        "bgColor": "#E6EDFE",
+        "borderColor": "#E6EDFE"
+      },
+      {
+        "id": "power_plant",
+        "name": "Power Plant",
+        "statKey": "power_plant",
+        "maxLevel": 25,
+        "baseCost": 150.0,
+        "multCost": 2.0,
+        "icon": "energy.png",
+        "bgColor": "#E6EDFE",
+        "borderColor": "#E6EDFE"
+      }
+    ]
+  }
+}
