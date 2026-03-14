@@ -1234,7 +1234,9 @@ function Sidebar({ activeKey, onSelect, isOpen, onClose }) {
 // MAIN APP
 // ─────────────────────────────────────────────
 export default function App() {
-  const [activeKey,    setActiveKey]    = useState("research");
+  const [activeKey,    setActiveKey]    = useState(
+    () => localStorage.getItem("activeKey") ?? "research"
+  );
   const [modalItem,    setModalItem]    = useState(null);
   const [modalFormula, setModalFormula] = useState(null);
   const [drawerOpen,   setDrawerOpen]   = useState(false);
@@ -1303,7 +1305,7 @@ export default function App() {
 
         <Sidebar
           activeKey={activeKey}
-          onSelect={setActiveKey}
+          onSelect={key => { setActiveKey(key); localStorage.setItem("activeKey", key); }}
           isOpen={drawerOpen}
           onClose={() => setDrawerOpen(false)}
         />
