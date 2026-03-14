@@ -72,8 +72,10 @@ const NAV_GROUPS = [
   {
     label: "Hero Data",
     items: [
-      { key: "allHeroes", label: "All Heroes", menuIcon: "_heroHelm.png" },
-      { key: "rankExp",   label: "Rank Exp",   menuIcon: "_killExp.png" },
+      { key: "allHeroes",    label: "All Heroes",    menuIcon: "_heroHelm.png" },
+      { key: "synergies",    label: "Synergies",  menuIcon: "_synergy.png",      iconFilter: "invert(60%) sepia(100%) saturate(400%) hue-rotate(90deg) brightness(1.2)" },
+      { key: "milestones",   label: "Milestones", menuIcon: "_star 3610.png" },
+      { key: "rankExp",      label: "Rank Exp",      menuIcon: "_killExp.png" },
     ],
   },
 ];
@@ -861,6 +863,329 @@ function RankExpView() {
 // ─────────────────────────────────────────────
 // ALL HEROES VIEW
 // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// SEARCH BAR
+// ─────────────────────────────────────────────
+function SearchBar({ value, onChange, placeholder }) {
+  return (
+    <div style={{ position: "relative", marginBottom: 20 }}>
+      <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: colors.muted, fontSize: 15, pointerEvents: "none" }}>⌕</span>
+      <input
+        type="text"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder ?? "Search…"}
+        style={{
+          width: "100%", boxSizing: "border-box",
+          background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 8,
+          color: colors.text, padding: "9px 12px 9px 34px",
+          fontSize: 14, fontFamily: "inherit", outline: "none",
+        }}
+      />
+      {value && (
+        <button onClick={() => onChange("")} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: colors.muted, fontSize: 16, cursor: "pointer", lineHeight: 1, padding: 0 }}>✕</button>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// ALL SYNERGIES VIEW
+// ─────────────────────────────────────────────
+const HERO_NAMES = (heroesData.heroes ?? [])
+  .sort((a, b) => a.name.localeCompare(b.name))
+  .map(h => ({ id: h.id, name: h.name }));
+
+const ALL_TIERS = ["I", "II", "III", "IV", "V", "VI"];
+
+function ScopeFilter({ value, onChange }) {
+  return (
+    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+      <span style={{ fontSize: 11, color: colors.muted, textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Scope</span>
+      {["both", "global", "personal"].map(opt => (
+        <button key={opt} onClick={() => onChange(opt)} style={{
+          background: value === opt ? colors.accent : colors.header,
+          color: value === opt ? "#000" : colors.text,
+          border: `1px solid ${value === opt ? colors.accent : colors.border}`,
+          borderRadius: 6, padding: "5px 14px", cursor: "pointer",
+          fontFamily: "inherit", fontWeight: value === opt ? 700 : 500,
+          fontSize: 13, textTransform: "capitalize", transition: "all 0.15s",
+        }}>{opt}</button>
+      ))}
+    </div>
+  );
+}
+
+function TierFilter({ value, onChange }) {
+  // value is a Set of selected tiers, empty Set = all
+  function toggle(tier) {
+    const next = new Set(value);
+    next.has(tier) ? next.delete(tier) : next.add(tier);
+    onChange(next);
+  }
+  const allSelected = value.size === 0;
+  return (
+    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+      <span style={{ fontSize: 11, color: colors.muted, textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Tier</span>
+      <button onClick={() => onChange(new Set())} style={{
+        background: allSelected ? colors.accent : colors.header,
+        color: allSelected ? "#000" : colors.text,
+        border: `1px solid ${allSelected ? colors.accent : colors.border}`,
+        borderRadius: 6, padding: "5px 12px", cursor: "pointer",
+        fontFamily: "inherit", fontWeight: allSelected ? 700 : 500, fontSize: 13, transition: "all 0.15s",
+      }}>All</button>
+      {ALL_TIERS.map(tier => {
+        const tc = TIER_COLORS[tier] ?? TIER_COLORS.I;
+        const active = value.has(tier);
+        return (
+          <button key={tier} onClick={() => toggle(tier)} style={{
+            background: active ? tc.border : tc.bg,
+            color: active ? "#000" : tc.text,
+            border: `1px solid ${tc.border}`,
+            borderRadius: 6, padding: "5px 12px", cursor: "pointer",
+            fontFamily: "inherit", fontWeight: 700, fontSize: 13, transition: "all 0.15s",
+          }}>{tier}</button>
+        );
+      })}
+    </div>
+  );
+}
+
+function HeroDropdown({ value, onChange }) {
+  return (
+    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+      <span style={{ fontSize: 11, color: colors.muted, textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Hero</span>
+      <select value={value} onChange={e => onChange(e.target.value)} style={{
+        background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 6,
+        color: colors.text, padding: "5px 10px", fontSize: 13, fontFamily: "inherit",
+        cursor: "pointer", outline: "none", minWidth: 140,
+      }}>
+        <option value="all">All Heroes</option>
+        {HERO_NAMES.map(h => (
+          <option key={h.id} value={h.id}>{h.name}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function AllSynergiesView() {
+  const [query, setQuery] = useState("");
+  const [scope, setScope] = useState("both");
+  const [tier,  setTier]  = useState(new Set());
+  const [hero,  setHero]  = useState("all");
+
+  const allSynergies = useMemo(() => {
+    const out = [];
+    for (const hero of heroesData.heroes ?? []) {
+      for (const s of hero.synergies ?? []) {
+        out.push({ hero, synergy: s });
+      }
+    }
+    return out;
+  }, []);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return allSynergies.filter(({ hero: h, synergy }) => {
+      if (scope !== "both" && synergy.scope !== scope) return false;
+      if (tier.size > 0 && !tier.has(synergy.tier)) return false;
+      if (hero  !== "all"  && h.id          !== hero)   return false;
+      if (!q) return true;
+      return (
+        h.name.toLowerCase().includes(q) ||
+        synergy.description.toLowerCase().includes(q) ||
+        synergy.name.toLowerCase().includes(q) ||
+        synergy.type.toLowerCase().includes(q) ||
+        [synergy.hero1, synergy.hero2, synergy.hero3].filter(Boolean).some(p => p.toLowerCase().includes(q))
+      );
+    });
+  }, [query, scope, tier, hero, allSynergies]);
+
+  const thStyle = { padding: "8px 12px", color: colors.muted, fontWeight: 700, fontSize: 11, textAlign: "left", borderBottom: `1px solid ${colors.border}`, letterSpacing: "0.06em", textTransform: "uppercase" };
+
+  return (
+    <div>
+      <SearchBar value={query} onChange={setQuery} placeholder="Search by hero, bonus, or required hero…" />
+      <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 20, alignItems: "center" }}>
+        <ScopeFilter value={scope} onChange={setScope} />
+        <TierFilter  value={tier}  onChange={setTier} />
+        <HeroDropdown value={hero} onChange={setHero} />
+      </div>
+      <div style={{ fontSize: 12, color: colors.muted, marginBottom: 12 }}>{filtered.length} result{filtered.length !== 1 ? "s" : ""}</div>
+      <div style={{ background: colors.header, border: `1px solid ${colors.border}`, borderRadius: 8, overflow: "hidden" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <thead style={{ position: "sticky", top: 0, background: colors.panel, zIndex: 1 }}>
+            <tr>
+              <th style={thStyle}>Hero</th>
+              <th style={thStyle}>Tier</th>
+              <th style={thStyle}>Rank Req</th>
+              <th style={thStyle}>Required Heroes</th>
+              <th style={thStyle}>Bonus</th>
+              <th style={thStyle}>Scope</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map(({ hero, synergy }, i) => {
+              const rc = RARITY_COLORS[hero.rarity] ?? RARITY_COLORS.Common;
+              const tc = TIER_COLORS[synergy.tier] ?? TIER_COLORS.I;
+              const partners = [synergy.hero1, synergy.hero2, synergy.hero3].filter(Boolean);
+              return (
+                <tr key={`${hero.id}-${synergy.synergyLevel}`} style={{ background: i % 2 === 0 ? "transparent" : colors.panel + "60", borderBottom: `1px solid ${colors.border}22` }}>
+                  <td style={{ padding: "8px 12px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: 5, background: rc.bg, border: `1px solid ${rc.border}`, overflow: "hidden", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {hero.heroIcon && <img src={getIconUrl(hero.heroIcon)} alt="" style={{ width: 26, height: 26, objectFit: "contain" }} />}
+                      </div>
+                      <span style={{ color: colors.text, fontWeight: 600, whiteSpace: "nowrap" }}>{hero.name}</span>
+                    </div>
+                  </td>
+                  <td style={{ padding: "8px 12px" }}>
+                    <span style={{ background: tc.bg, border: `1px solid ${tc.border}`, color: tc.text, borderRadius: 4, padding: "2px 8px", fontSize: 12, fontWeight: 700 }}>{synergy.tier}</span>
+                  </td>
+                  <td style={{ padding: "8px 12px", color: colors.gold, fontWeight: 600 }}>{synergy.rankRequired > 0 ? synergy.rankRequired : "—"}</td>
+                  <td style={{ padding: "8px 12px" }}>
+                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                      {partners.map(p => (
+                        <span key={p} style={{ background: colors.header, border: `1px solid ${colors.border}`, borderRadius: 4, padding: "1px 7px", fontSize: 11, color: colors.text, textTransform: "capitalize" }}>{p}</span>
+                      ))}
+                    </div>
+                  </td>
+                  <td style={{ padding: "8px 12px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ width: 26, height: 26, borderRadius: 5, background: synergy.bgColor + "44", border: `1px solid ${synergy.borderColor}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}>
+                        <img src={getIconUrl(synergy.icon)} alt="" style={{ width: 20, height: 20, objectFit: "contain" }} />
+                      </div>
+                      <span style={{ color: colors.text }}>{synergy.description}</span>
+                    </div>
+                  </td>
+                  <td style={{ padding: "8px 12px" }}>
+                    <Badge color={synergy.scope === "global" ? colors.positive : colors.accent}>{synergy.scope}</Badge>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {filtered.length === 0 && (
+          <div style={{ padding: 32, textAlign: "center", color: colors.muted, fontSize: 14 }}>No synergies match your search.</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// ALL MILESTONES VIEW
+// ─────────────────────────────────────────────
+function AllMilestonesView() {
+  const [query,    setQuery]    = useState("");
+  const [scope,    setScope]    = useState("both");
+  const [minReq,   setMinReq]   = useState("");
+  const [maxReq,   setMaxReq]   = useState("");
+
+  const allMilestones = useMemo(() => {
+    const out = [];
+    for (const hero of heroesData.heroes ?? []) {
+      for (const m of hero.milestones ?? []) {
+        out.push({ hero, milestone: m });
+      }
+    }
+    return out;
+  }, []);
+
+  const filtered = useMemo(() => {
+    const q   = query.trim().toLowerCase();
+    const min = minReq !== "" ? parseInt(minReq) : null;
+    const max = maxReq !== "" ? parseInt(maxReq) : null;
+    return allMilestones.filter(({ hero, milestone }) => {
+      if (scope !== "both" && milestone.scope !== scope) return false;
+      if (min !== null && milestone.requirement < min) return false;
+      if (max !== null && milestone.requirement > max) return false;
+      if (!q) return true;
+      return (
+        hero.name.toLowerCase().includes(q) ||
+        milestone.description.toLowerCase().includes(q) ||
+        milestone.name.toLowerCase().includes(q) ||
+        milestone.type.toLowerCase().includes(q)
+      );
+    });
+  }, [query, scope, minReq, maxReq, allMilestones]);
+
+  const thStyle = { padding: "8px 12px", color: colors.muted, fontWeight: 700, fontSize: 11, textAlign: "left", borderBottom: `1px solid ${colors.border}`, letterSpacing: "0.06em", textTransform: "uppercase" };
+
+  const reqInputStyle = {
+    background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 6,
+    color: colors.text, padding: "5px 10px", fontSize: 13, fontFamily: "inherit",
+    width: 90, textAlign: "center", outline: "none",
+  };
+
+  return (
+    <div>
+      <SearchBar value={query} onChange={setQuery} placeholder="Search by hero or bonus…" />
+      <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 20, alignItems: "center" }}>
+        <ScopeFilter value={scope} onChange={setScope} />
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <span style={{ fontSize: 11, color: colors.muted, textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Req Level</span>
+          <input type="number" placeholder="Min" value={minReq} onChange={e => setMinReq(e.target.value)} style={reqInputStyle} />
+          <span style={{ color: colors.muted, fontSize: 13 }}>–</span>
+          <input type="number" placeholder="Max" value={maxReq} onChange={e => setMaxReq(e.target.value)} style={reqInputStyle} />
+          {(minReq || maxReq) && (
+            <button onClick={() => { setMinReq(""); setMaxReq(""); }} style={{ background: "none", border: "none", color: colors.muted, fontSize: 16, cursor: "pointer", padding: "0 4px", lineHeight: 1 }}>✕</button>
+          )}
+        </div>
+      </div>
+      <div style={{ fontSize: 12, color: colors.muted, marginBottom: 12 }}>{filtered.length} result{filtered.length !== 1 ? "s" : ""}</div>
+      <div style={{ background: colors.header, border: `1px solid ${colors.border}`, borderRadius: 8, overflow: "hidden" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <thead style={{ position: "sticky", top: 0, background: colors.panel, zIndex: 1 }}>
+            <tr>
+              <th style={thStyle}>Hero</th>
+              <th style={thStyle}>#</th>
+              <th style={thStyle}>Req Level</th>
+              <th style={thStyle}>Bonus</th>
+              <th style={thStyle}>Scope</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map(({ hero, milestone }, i) => {
+              const rc = RARITY_COLORS[hero.rarity] ?? RARITY_COLORS.Common;
+              return (
+                <tr key={`${hero.id}-${milestone.milestone}`} style={{ background: i % 2 === 0 ? "transparent" : colors.panel + "60", borderBottom: `1px solid ${colors.border}22` }}>
+                  <td style={{ padding: "8px 12px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: 5, background: rc.bg, border: `1px solid ${rc.border}`, overflow: "hidden", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {hero.heroIcon && <img src={getIconUrl(hero.heroIcon)} alt="" style={{ width: 26, height: 26, objectFit: "contain" }} />}
+                      </div>
+                      <span style={{ color: colors.text, fontWeight: 600, whiteSpace: "nowrap" }}>{hero.name}</span>
+                    </div>
+                  </td>
+                  <td style={{ padding: "8px 12px", color: colors.accent, fontWeight: 700 }}>{milestone.milestone}</td>
+                  <td style={{ padding: "8px 12px", color: colors.gold, fontWeight: 600 }}>{milestone.requirement.toLocaleString()}</td>
+                  <td style={{ padding: "8px 12px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ width: 26, height: 26, borderRadius: 5, background: milestone.bgColor + "44", border: `1px solid ${milestone.borderColor}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}>
+                        <img src={getIconUrl(milestone.icon)} alt="" style={{ width: 20, height: 20, objectFit: "contain" }} />
+                      </div>
+                      <span style={{ color: colors.text }}>{milestone.description}</span>
+                    </div>
+                  </td>
+                  <td style={{ padding: "8px 12px" }}>
+                    <Badge color={milestone.scope === "global" ? colors.positive : colors.accent}>{milestone.scope}</Badge>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {filtered.length === 0 && (
+          <div style={{ padding: 32, textAlign: "center", color: colors.muted, fontSize: 14 }}>No milestones match your search.</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 const RARITY_ORDER = ["Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic", "Supreme"];
 
 const RARITY_COLORS = {
@@ -1219,7 +1544,7 @@ function Sidebar({ activeKey, onSelect, isOpen, onClose }) {
                 style={{ width: "100%", background: isActive ? `linear-gradient(90deg, ${colors.accent}22 0%, transparent 100%)` : "none", border: "none", borderLeft: isActive ? `3px solid ${colors.accent}` : "3px solid transparent", cursor: "pointer", padding: "9px 16px 9px 20px", textAlign: "left", color: isActive ? colors.accent : colors.text, fontSize: 14, fontWeight: isActive ? 700 : 500, transition: "color 0.15s, background 0.15s", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                 <span>{label}</span>
                 {menuIcon && (
-                  <img src={getIconUrl(menuIcon)} alt="" style={{ width: 20, height: 20, objectFit: "contain", opacity: isActive ? 1 : 0.6, flexShrink: 0 }} />
+                  <img src={getIconUrl(menuIcon)} alt="" style={{ width: 20, height: 20, objectFit: "contain", opacity: isActive ? 1 : 0.6, flexShrink: 0, filter: navItem.iconFilter ?? "none" }} />
                 )}
               </button>
             );
@@ -1318,8 +1643,10 @@ export default function App() {
               onOpen={item => openModal(item, activeSection.data.costFormula)}
             />
           )}
-          {activeKey === "allHeroes" && <AllHeroesView />}
-          {activeKey === "rankExp" && <RankExpView />}
+          {activeKey === "allHeroes"  && <AllHeroesView />}
+          {activeKey === "synergies"  && <AllSynergiesView />}
+          {activeKey === "milestones" && <AllMilestonesView />}
+          {activeKey === "rankExp"    && <RankExpView />}
         </div>
 
       </div>
