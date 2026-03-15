@@ -1,0 +1,69 @@
+{
+  "Tech": {
+    "cols": 5,
+    "extraLines": [
+      { "from": "rune_rarity_chance", "to": "damage_ii" },
+      { "from": "boss_gold", "to": "kill_gold_ii" }
+    ],
+    "nodes": {
+      "damage_i":           { "row": 1, "col": 3 },
+      "enemy_hp":           { "row": 2, "col": 1, "colSpan": 2 },
+      "skill_cooldown":     { "row": 2, "col": 3 },
+      "kill_gold_i":        { "row": 2, "col": 4, "colSpan": 2 },
+      "attack_speed":       { "row": 3, "col": 1 },
+      "crit_chance":        { "row": 3, "col": 2 },
+      "spell_cooldown":     { "row": 3, "col": 3 },
+      "prestige_power_i":   { "row": 3, "col": 4 },
+      "rank_exp":           { "row": 3, "col": 5 },
+      "range":              { "row": 4, "col": 1 },
+      "crit_damage":        { "row": 4, "col": 2 },
+      "skill_duration":     { "row": 4, "col": 3 },
+      "goblin_hoarder_gold":{ "row": 4, "col": 4 },
+      "training_dummy_exp": { "row": 4, "col": 5 },
+      "rune_rarity_chance": { "row": 5, "col": 1 },
+      "boss_damage":        { "row": 5, "col": 2 },
+      "spell_duration":     { "row": 5, "col": 3 },
+      "boss_gold":          { "row": 5, "col": 4 },
+      "boss_exp":           { "row": 5, "col": 5 },
+      "damage_ii":          { "row": 6, "col": 1, "colSpan": 2 },
+      "energy_income_i":    { "row": 6, "col": 3 },
+      "kill_gold_ii":       { "row": 6, "col": 4, "colSpan": 2 },
+      "max_game_speed":     { "row": 7, "col": 3 },
+      "wave_perk_rerolls":  { "row": 8, "col": 1, "colSpan": 2 },
+      "synergy_effects":    { "row": 8, "col": 3 },
+      "supreme_shadow_chance": { "row": 8, "col": 4, "colSpan": 2 }
+    }
+  },
+  "Supreme Tech": {
+    "cols": 3,
+    "extraLines": [
+      { "from": "boss_gold_max", "to": "kill_gold_iii" }
+    ],
+    "nodes": {
+      "damage_i_bonus":       { "row": 1, "col": 1 },
+      "golden_goblin_chance": { "row": 1, "col": 2 },
+      "prestige_power_ii":    { "row": 1, "col": 3 },
+      "kill_gold_i_bonus":    { "row": 2, "col": 1 },
+      "boss_gold_max":        { "row": 2, "col": 2 },
+      "enemy_shield_reduction":{ "row": 2, "col": 3 },
+      "prestige_i_bonus":     { "row": 3, "col": 1 },
+      "golden_mage_chance":   { "row": 3, "col": 2 },
+      "enemy_weakness_bonus": { "row": 3, "col": 3 },
+      "rank_exp_bonus":       { "row": 4, "col": 1 },
+      "energy_income_ii":     { "row": 4, "col": 2 },
+      "progressive_rank_exp": { "row": 4, "col": 3 },
+      "enemy_hp_max":         { "row": 5, "col": 1 },
+      "golden_trainer_chance":{ "row": 5, "col": 2 },
+      "ultimus_tokens":       { "row": 5, "col": 3 },
+      "crit_damage_max":      { "row": 6, "col": 1 },
+      "boss_exp_max":         { "row": 6, "col": 2 },
+      "tournament_trophies":  { "row": 6, "col": 3 },
+      "damage_ii_bonus":      { "row": 7, "col": 1 },
+      "damage_iii":           { "row": 7, "col": 2 },
+      "intro_skip":           { "row": 7, "col": 3 },
+      "kill_gold_ii_bonus":   { "row": 8, "col": 1 },
+      "kill_gold_iii":        { "row": 8, "col": 2 },
+      "boss_rush_waves":      { "row": 8, "col": 3 }
+    }
+  }
+}

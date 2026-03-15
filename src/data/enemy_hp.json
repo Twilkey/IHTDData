@@ -1,0 +1,127 @@
+{
+  "note": "Calculation order: (1) Simulate per-wave: hp = round((hp + 4) * num17), where num17 = baseRate * waveRangeScale * num12 + 1. (2) Multiply by enemyMultiplier for the enemy type. (3) Apply enemy_hp post-multiplier (BKDLELOLPOC): hp *= (1 - researchLevels*0.03) * (1 - techLevels*0.03) * (1 - runeLevels*0.03) * (1 - 0.05*wavePerkEffect*wavePerkLevels) * (0.9 if lbIconGems3 IAP owned). Tech base max=15, extended to 25 by Supreme Tech enemy_hp_max upgrade (same 3% rate).",
+  "startHp": 10,
+  "moduloRates": {
+    "mod10": 0.25,
+    "mod5": 0.1,
+    "default": 0.04
+  },
+  "waveRangeScales": [
+    {
+      "maxWave": 99,
+      "scale": 0.7
+    },
+    {
+      "maxWave": 199,
+      "scale": 0.8
+    },
+    {
+      "maxWave": 299,
+      "scale": 0.9
+    },
+    {
+      "maxWave": 499,
+      "scale": 1.0
+    },
+    {
+      "maxWave": 749,
+      "scale": 0.9
+    },
+    {
+      "maxWave": 999,
+      "scale": 0.8
+    },
+    {
+      "maxWave": 1499,
+      "scale": 0.6
+    },
+    {
+      "maxWave": 1999,
+      "scale": 0.5
+    },
+    {
+      "maxWave": 2999,
+      "scale": 0.4
+    },
+    {
+      "maxWave": null,
+      "scale": 0.3
+    }
+  ],
+  "enemyMultipliers": {
+    "evo2": 1.5,
+    "evo3": 2.0,
+    "boss": 7.5
+  },
+  "playerStats": {
+    "enemy_hp_scaling": {
+      "appliesIn": "perWave",
+      "formula": "num12 = (1 - masteryLevels * 0.005) * (1 - ultimusLevels * 0.005)",
+      "sources": [
+        {
+          "file": "mastery",
+          "statKey": "enemy_hp_scaling",
+          "maxLevel": 10,
+          "amtPerLevel": 0.005
+        },
+        {
+          "file": "ultimus",
+          "statKey": "enemy_hp_scaling",
+          "maxLevel": 10,
+          "amtPerLevel": 0.005
+        }
+      ]
+    },
+    "enemy_hp": {
+      "appliesIn": "postSimulation",
+      "formula": "hp *= (1 - researchLevels * 0.03) * (1 - techLevels * 0.03) * (1 - runeLevels * 0.03)",
+      "note": "Each source is its own multiplicative factor. Tech base max = 15; Supreme Tech 'enemy_hp_max' upgrade extends it by up to 10 extra levels (same 3% rate). Combined tech cap = 25 levels.",
+      "sources": [
+        {
+          "file": "research",
+          "statKey": "enemy_hp",
+          "maxLevel": 15,
+          "amtPerLevel": 0.03
+        },
+        {
+          "file": "tech",
+          "statKey": "enemy_hp",
+          "maxLevel": 15,
+          "amtPerLevel": 0.03,
+          "maxLevelExtension": {
+            "file": "tech",
+            "statKey": "enemy_hp_max",
+            "tree": "Supreme Tech",
+            "extraLevels": 10
+          }
+        },
+        {
+          "file": "runes",
+          "statKey": "enemy_hp",
+          "maxLevel": 15,
+          "amtPerLevel": 0.03
+        }
+      ]
+    }
+  },
+  "wave_skip_chance": {
+    "note": "Chance (%) to skip the HP growth step entirely for a wave, keeping enemies at the previous wave's HP. Formula (from KGBOFBPEODO): chance = tournamentLevels * 0.5 + runeLevels * 0.1. Only triggers on new highest-wave exploration, not on replayed waves.",
+    "formula": "chance% = tournamentLevels * 0.5 + runeLevels * 0.1",
+    "sources": [
+      {
+        "file": "tournament",
+        "statKey": "enemy_hp_skip_chance",
+        "maxLevel": 10,
+        "amtPerLevel": 0.5,
+        "maxChance": 5.0
+      },
+      {
+        "file": "runes",
+        "statKey": "enemy_hp_skip_chance",
+        "maxLevel": 25,
+        "amtPerLevel": 0.1,
+        "maxChance": 2.5
+      }
+    ]
+  }
+}

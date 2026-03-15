@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, createContext, useContext } from "react";
+import { useState, useMemo, useEffect, useLayoutEffect, useRef, createContext, useContext } from "react";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768);
@@ -22,8 +22,12 @@ import ticketsData    from "./data/tickets.json";
 import tournamentData from "./data/tournament.json";
 import ultimusData    from "./data/ultimus.json";
 import runesData           from "./data/runes.json";
-import heroAttributesData  from "./data/hero_attributes.json";
+import heroAttributesData       from "./data/hero_attributes.json";
+import tournamentBracketsData   from "./data/tournament_brackets.json";
+import combatStylesData         from "./data/combat_styles.json";
+import enemyHpData              from "./data/enemy_hp.json";
 import STAT_UNITS          from "./data/stat_units.json";
+import techTreeDisplayData  from "./data/tech_tree_display.json";
 
 // ─────────────────────────────────────────────
 // NORMALIZE  — rename multCost → multiCost for
@@ -78,13 +82,28 @@ const NAV_GROUPS = [
       { key: "synergies",    label: "Synergies",     menuIcon: "_synergy.png", iconFilter: "invert(60%) sepia(100%) saturate(400%) hue-rotate(90deg) brightness(1.2)" },
       { key: "milestones",   label: "Milestones",    menuIcon: "_star 3610.png" },
       { key: "rankExp",      label: "Rank Exp",      menuIcon: "_killExp.png" },
-      { key: "attributes",   label: "Attributes",    menuIcon: "_attributePoints_0.png" },
+      { key: "attributes",    label: "Attributes",     menuIcon: "_attributePoints_0.png" },
+      { key: "combatStyles",  label: "Combat Styles",  menuIcon: "icon_scale.png" },
+    ],
+  },
+  {
+    label: "Tournament",
+    items: [
+      { key: "brackets", label: "Brackets", menuIcon: "Icon_Trophy_0.png" },
     ],
   },
   {
     label: "Maps",
     items: [
-      { key: "allMaps", label: "All Maps", menuIcon: "Icon_Map_0.png" },
+      { key: "allMaps",   label: "All Maps",   menuIcon: "Icon_Map_0.png" },
+      { key: "mapPerks",  label: "Map Perks",  menuIcon: "_starEmpty_0.png" },
+    ],
+  },
+  {
+    label: "Calculators",
+    items: [
+      { key: "rankRequired", label: "Rank Required",    menuIcon: "_attributePoints_0.png" },
+      { key: "enemyHp",      label: "Enemy HP",         menuIcon: "_bosses.png" },
     ],
   },
 ];
@@ -588,6 +607,11 @@ function CostModal({ item, sectionFormula, onClose }) {
             {item.statAmt && item.statKey && (
               <div style={{ fontSize: 13, color: colors.positive, marginTop: 2 }}>{formatStat(item.statAmt, item.statKey)} per level</div>
             )}
+            {item.waveReq > 0 && (
+              <div style={{ display: "inline-block", marginTop: 5, background: "#1a2a3a", border: "1px solid #ffaa44", borderRadius: 4, padding: "2px 8px", fontSize: 11, fontWeight: 700, color: "#ffaa44" }}>
+                Unlocks: Wave {item.waveReq.toLocaleString()}
+              </div>
+            )}
           </div>
           <button onClick={onClose} style={{ background: "none", border: "none", color: colors.muted, fontSize: 22, cursor: "pointer", lineHeight: 1, padding: "0 4px" }}>✕</button>
         </div>
@@ -830,8 +854,8 @@ function SheetView({ sectionData, onOpen }) {
 function RankExpView() {
   const fmt = useFmt();
   const [startInput, setStartInput] = useState("1");
-  const [endInput,   setEndInput]   = useState("20");
-  const [range, setRange] = useState({ start: 1, end: 20 });
+  const [endInput,   setEndInput]   = useState("5000");
+  const [range, setRange] = useState({ start: 1, end: 5000 });
 
   function applyRange() {
     const s = Math.max(1, parseInt(startInput) || 1);
@@ -845,19 +869,30 @@ function RankExpView() {
     if (evt.key === "Enter") applyRange();
   }
 
-  const rows = useMemo(() => {
+  const { rows, totalExp, totalPoints } = useMemo(() => {
     const out = [];
-    // rankExpForLevel(i) = total EXP to reach level i from level 1
-    // per-step cost = rankExpForLevel(i) - rankExpForLevel(i-1)
     const toBI = (v) => isFinite(v) ? BigInt(Math.round(v)) : null;
     let prevBI = range.start > 1 ? toBI(rankExpForLevel(range.start - 1)) : 0n;
+    let cumulativePoints = range.start > 1
+      ? Array.from({ length: range.start - 1 }, (_, i) => i + 2).reduce((s, l) => s + l, 0)
+      : 0;
+    const pointsBefore = cumulativePoints;
     for (let i = range.start; i <= range.end; i++) {
       const cumBI = toBI(rankExpForLevel(i));
       const required = (cumBI !== null && prevBI !== null) ? cumBI - prevBI : Infinity;
-      out.push({ level: i, required, cumulative: cumBI ?? Infinity });
+      const pointsGained = i === 1 ? 0 : i;
+      cumulativePoints += pointsGained;
+      out.push({ level: i, required, cumulative: cumBI ?? Infinity, pointsGained, cumulativePoints });
       if (cumBI !== null) prevBI = cumBI;
     }
-    return out;
+    let totalExp = 0n;
+    let hasInf = false;
+    for (const r of out) {
+      if (r.required === Infinity) { hasInf = true; break; }
+      totalExp += r.required;
+    }
+    const totalPoints = out.length > 0 ? out[out.length - 1].cumulativePoints - pointsBefore : 0;
+    return { rows: out, totalExp: hasInf ? null : totalExp, totalPoints };
   }, [range]);
 
   const inputStyle = {
@@ -891,11 +926,21 @@ function RankExpView() {
           Apply
         </button>
       </div>
+      <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+        <div style={{ flex: 1, minWidth: 180, background: colors.panel, border: `1px solid ${colors.border}`, borderRadius: 8, padding: "10px 16px" }}>
+          <div style={{ fontSize: 11, color: colors.muted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Total EXP (Levels {range.start}–{range.end})</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: colors.positive, fontFamily: "monospace" }}>{totalExp !== null ? fmt(totalExp) : "—"}</div>
+        </div>
+        <div style={{ flex: 1, minWidth: 180, background: colors.panel, border: `1px solid ${colors.border}`, borderRadius: 8, padding: "10px 16px" }}>
+          <div style={{ fontSize: 11, color: colors.muted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Attribute Points (Levels {range.start}–{range.end})</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: colors.gold, fontFamily: "monospace" }}>{totalPoints.toLocaleString()}</div>
+        </div>
+      </div>
       <div style={{ background: colors.header, border: `1px solid ${colors.border}`, borderRadius: 8, overflow: "hidden" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
             <tr style={{ background: colors.panel }}>
-              {["Level", "EXP Required", "Cumulative EXP"].map(h => (
+              {["Level", "EXP Required", "Cumulative EXP", "Points Gained", "Cumulative Points"].map(h => (
                 <th key={h} style={{ padding: "10px 16px", color: colors.muted, fontWeight: 600, textAlign: "left", borderBottom: `1px solid ${colors.border}`, fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase" }}>{h}</th>
               ))}
             </tr>
@@ -906,6 +951,8 @@ function RankExpView() {
                 <td style={{ padding: "8px 16px", color: colors.accent, fontWeight: 600 }}>{r.level}</td>
                 <td style={{ padding: "8px 16px", color: colors.text, fontFamily: "monospace" }}>{fmt(r.required)}</td>
                 <td style={{ padding: "8px 16px", color: colors.positive, fontFamily: "monospace" }}>{fmt(r.cumulative)}</td>
+                <td style={{ padding: "8px 16px", color: r.pointsGained === 0 ? colors.muted : colors.gold, fontWeight: r.pointsGained > 0 ? 600 : 400 }}>{r.pointsGained === 0 ? "—" : `+${r.pointsGained}`}</td>
+                <td style={{ padding: "8px 16px", color: colors.gold, fontFamily: "monospace" }}>{r.cumulativePoints.toLocaleString()}</td>
               </tr>
             ))}
           </tbody>
@@ -1264,6 +1311,10 @@ const TIER_COLORS = {
 
 function HeroModal({ hero, onClose }) {
   const [tab, setTab] = useState("milestones");
+  const [mxpStart, setMxpStart] = useState(1);
+  const [mxpEnd,   setMxpEnd]   = useState(10);
+  const [mxpStartInput, setMxpStartInput] = useState("1");
+  const [mxpEndInput,   setMxpEndInput]   = useState("10");
   const rc = RARITY_COLORS[hero.rarity] ?? RARITY_COLORS.Common;
 
   const tabStyle = (key) => ({
@@ -1374,6 +1425,9 @@ function HeroModal({ hero, onClose }) {
           <button style={tabStyle("synergies")} onClick={() => setTab("synergies")}>
             Synergies <span style={{ fontSize: 11, opacity: 0.7 }}>({hero.synergies?.length ?? 0})</span>
           </button>
+          {hero.masteryExp && (
+            <button style={tabStyle("masteryExp")} onClick={() => setTab("masteryExp")}>Mastery Exp</button>
+          )}
         </div>
 
         {/* ── Tab Content ── */}
@@ -1453,6 +1507,85 @@ function HeroModal({ hero, onClose }) {
               </tbody>
             </table>
           )}
+
+          {tab === "masteryExp" && (() => {
+            const { baseAmount } = hero.masteryExp;
+            const formula = heroesData.masteryExpFormula;
+            const bps = formula?.breakpoints ?? [];
+
+            function getMult(L) {
+              let m = 1.0;
+              for (const bp of bps) if (L >= bp.atLevel) m *= bp.multIncremental;
+              return m;
+            }
+            function expAt(L) { return Math.round(baseAmount * 24 * L * getMult(L)); }
+
+            const rows = [];
+            let running = 0;
+            for (let L = 1; L <= 10; L++) {
+              const exp = expAt(L);
+              running += exp;
+              rows.push({ L, exp, running, repeat: false });
+            }
+            const repeatExp = expAt(11);
+            rows.push({ L: 11, exp: repeatExp, running: null, repeat: true });
+
+            const thS = { padding: "8px 14px", color: colors.muted, fontWeight: 700, fontSize: 11, textAlign: "left", borderBottom: `1px solid ${colors.border}`, letterSpacing: "0.06em", textTransform: "uppercase" };
+            const total1to10 = rows.filter(r => !r.repeat).reduce((s, r) => s + r.exp, 0);
+            const clamp = (v) => Math.max(1, Math.min(10, v));
+            const s = clamp(mxpStart), e = clamp(Math.max(mxpEnd, mxpStart));
+            const rangeTotal = rows.filter(r => !r.repeat && r.L >= s && r.L <= e).reduce((acc, r) => acc + r.exp, 0);
+            const inputS = { background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 6, color: colors.text, padding: "5px 8px", fontSize: 13, fontFamily: "inherit", width: 60, textAlign: "center", outline: "none" };
+            function commitMxpStart() { const v = clamp(parseInt(mxpStartInput) || 1); setMxpStart(v); setMxpStartInput(String(v)); if (v > mxpEnd) { setMxpEnd(v); setMxpEndInput(String(v)); } }
+            function commitMxpEnd()   { const v = clamp(Math.max(parseInt(mxpEndInput) || 1, mxpStart)); setMxpEnd(v); setMxpEndInput(String(v)); }
+            return (<>
+              <div style={{ padding: "12px 20px", borderBottom: `1px solid ${colors.border}`, background: colors.panel + "88" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+                  <div>
+                    <span style={{ fontSize: 12, color: colors.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>Total (1–10): </span>
+                    <span style={{ fontSize: 15, fontWeight: 700, color: colors.gold }}>{total1to10.toLocaleString()}</span>
+                  </div>
+                  <div style={{ width: 1, height: 24, background: colors.border }} />
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 12, color: colors.muted }}>From</span>
+                    <input type="number" value={mxpStartInput} min={1} max={10} style={inputS}
+                      onChange={e => setMxpStartInput(e.target.value)}
+                      onBlur={commitMxpStart}
+                      onKeyDown={e => e.key === "Enter" && commitMxpStart()} />
+                    <span style={{ fontSize: 12, color: colors.muted }}>to</span>
+                    <input type="number" value={mxpEndInput} min={1} max={10} style={inputS}
+                      onChange={e => setMxpEndInput(e.target.value)}
+                      onBlur={commitMxpEnd}
+                      onKeyDown={e => e.key === "Enter" && commitMxpEnd()} />
+                    <span style={{ fontSize: 12, color: colors.muted }}>= </span>
+                    <span style={{ fontSize: 15, fontWeight: 700, color: colors.positive }}>{rangeTotal.toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <thead style={{ position: "sticky", top: 0, background: colors.panel }}>
+                  <tr>
+                    <th style={thS}>Level</th>
+                    <th style={{ ...thS, textAlign: "right" }}>Exp Required</th>
+                    <th style={{ ...thS, textAlign: "right" }}>Cumulative</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r, i) => (
+                    <tr key={r.L} style={{ background: r.repeat ? colors.accentDim + "33" : i % 2 === 0 ? "transparent" : colors.panel + "60", borderBottom: `1px solid ${colors.border}22` }}>
+                      <td style={{ padding: "8px 14px", color: r.repeat ? colors.accent : colors.text, fontWeight: 700 }}>
+                        {r.repeat ? "Repeat" : r.L}
+                      </td>
+                      <td style={{ padding: "8px 14px", textAlign: "right", color: colors.gold, fontWeight: 600 }}>{r.exp.toLocaleString()}</td>
+                      <td style={{ padding: "8px 14px", textAlign: "right", color: r.repeat ? colors.muted : colors.positive, fontWeight: 600 }}>
+                        {r.repeat ? "∞" : r.running.toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>);
+          })()}
 
         </div>
       </div>
@@ -2030,6 +2163,63 @@ function MapCard({ map, onClick, isMobile }) {
   );
 }
 
+// ─────────────────────────────────────────────
+// COMBAT STYLES VIEW
+// ─────────────────────────────────────────────
+function CombatStylesView() {
+  const isMobile = useIsMobile();
+  const styles = combatStylesData.styles ?? [];
+
+  function statLabel(key) {
+    return key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim();
+  }
+
+  const cols = isMobile ? 2 : 4;
+
+  return (
+    <div style={{ padding: "16px 12px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 10 }}>
+        {styles.map(style => (
+          <div key={style.id} style={{
+            background: colors.panel,
+            border: `1px solid ${colors.border}`,
+            borderRadius: 10,
+            padding: "12px 14px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, flexWrap: "wrap" }}>
+              <div style={{ fontWeight: 700, fontSize: 15, color: colors.text }}>{style.name}</div>
+              <span style={{
+                fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 10,
+                background: "#0f2640", border: "1px solid #2a5a8a", color: "#7aaacf", whiteSpace: "nowrap",
+              }}>
+                {style.rankReq > 0 ? `Rank ${style.rankReq.toLocaleString()}+` : "Available"}
+              </span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              {style.bonuses.length === 0 ? (
+                <span style={{ fontSize: 12, color: colors.muted, fontStyle: "italic" }}>No modifiers</span>
+              ) : style.bonuses.map((b, i) => (
+                <div key={i} style={{ fontSize: 13, display: "flex", alignItems: "center", gap: 5 }}>
+                  <span style={{ fontWeight: 700, color: (() => { const neg = ["skillCooldown"].includes(b.stat); return (b.amount >= 0) !== neg ? colors.positive : "#e05555"; })() }}>
+                    {b.amount >= 0 ? "+" : ""}{b.amount}{b.isPercent ? "%" : ""}
+                  </span>
+                  <span style={{ color: colors.text, flex: 1 }}>{statLabel(b.stat)}</span>
+                  {b.isGlobal && (
+                    <span style={{ fontSize: 10, color: colors.muted, background: colors.bg, border: `1px solid ${colors.border}`, borderRadius: 4, padding: "1px 5px", marginLeft: "auto" }}>Global</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function AllMapsView() {
   const [selectedMap, setSelectedMap] = useState(null);
   const isMobile = useIsMobile();
@@ -2048,10 +2238,1284 @@ function AllMapsView() {
 }
 
 // ─────────────────────────────────────────────
+// RANK REQUIRED CALCULATOR
+// ─────────────────────────────────────────────
+function attrPointsForLevels(attr, targetLevel) {
+  if (!targetLevel || targetLevel <= 0) return 0;
+  const ml  = attr.maxLevel ?? 999999;
+  const bp1 = Math.round(ml * 0.5);
+  const bp2 = Math.round(ml * 0.8);
+  const sumRange = (a, b) => b >= a ? (b - a + 1) * (a + b) / 2 : 0;
+  const e1 = Math.min(bp1 - 1, targetLevel);
+  const e2 = Math.min(bp2 - 1, targetLevel);
+  return Math.round(
+    attr.baseCost       * sumRange(1,    e1) +
+    1.25  * attr.baseCost * sumRange(bp1,  e2) +
+    1.875 * attr.baseCost * sumRange(bp2,  targetLevel)
+  );
+}
+
+function rankForPoints(points) {
+  if (points <= 0) return 1;
+  return Math.ceil((-1 + Math.sqrt(1 + 8 * (points + 1))) / 2);
+}
+
+function RankRequiredView() {
+  const fmt = useFmt();
+  const isMobile = useIsMobile();
+  const allAttrs = [
+    ...heroAttributesData.personal,
+    ...heroAttributesData.global,
+  ];
+
+  const RR_STORAGE_KEY = "rankRequiredLevels";
+
+  const [levels, setLevels] = useState(() => {
+    const defaults = Object.fromEntries(allAttrs.map(a => [a.id, ""]));
+    try {
+      const saved = JSON.parse(localStorage.getItem(RR_STORAGE_KEY));
+      if (saved && typeof saved === "object") return { ...defaults, ...saved };
+    } catch {}
+    return defaults;
+  });
+
+  function setLevel(id, val) {
+    setLevels(prev => {
+      const next = { ...prev, [id]: val };
+      localStorage.setItem(RR_STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }
+
+  const totalPoints = useMemo(() => {
+    return allAttrs.reduce((sum, attr) => {
+      const target = Math.min(parseInt(levels[attr.id]) || 0, attr.maxLevel ?? 999999);
+      return sum + attrPointsForLevels(attr, target);
+    }, 0);
+  }, [levels]);
+
+  const minRank    = rankForPoints(totalPoints);
+  const rankExp    = rankExpForLevel(minRank);
+  const hasInputs  = totalPoints > 0;
+
+  const groups = [
+    { key: "personal", label: "Personal Attributes" },
+    { key: "global",   label: "Global Attributes" },
+  ];
+
+  function isInvalid(val, maxLvl) {
+    const n = parseInt(val);
+    if (val === "" || isNaN(n)) return false;
+    return n < 0 || n > maxLvl;
+  }
+
+  function handleBlur(id, val, maxLvl) {
+    const n = parseInt(val);
+    if (val === "" || isNaN(n)) return;
+    const clamped = Math.max(0, Math.min(n, maxLvl));
+    setLevel(id, String(clamped));
+  }
+
+  return (
+    <div>
+      {/* Header */}
+      <div style={{ marginBottom: 20, display: "flex", alignItems: "center", gap: 12 }}>
+        <img src={getIconUrl("_attributePoints_0.png")} alt="" style={{ width: 32, height: 32, objectFit: "contain" }} />
+        <div>
+          <div style={{ fontSize: 22, fontWeight: 900, color: colors.accent, letterSpacing: "0.04em", textTransform: "uppercase" }}>Rank Required</div>
+          <div style={{ fontSize: 13, color: colors.muted, marginTop: 2 }}>Enter your desired attribute levels to find the minimum rank needed.</div>
+        </div>
+      </div>
+
+      {/* Result bar */}
+      <div style={{ marginBottom: 24, background: colors.panel, border: `1px solid ${hasInputs ? colors.accent : colors.border}`, borderRadius: 10, padding: "16px 20px", display: "flex", gap: 32, flexWrap: "wrap", alignItems: "center" }}>
+        <div>
+          <div style={{ fontSize: 11, color: colors.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>Total Points Needed</div>
+          <div style={{ fontSize: 22, fontWeight: 900, color: colors.gold }}>{totalPoints.toLocaleString()}</div>
+        </div>
+        <div>
+          <div style={{ fontSize: 11, color: colors.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>Minimum Rank</div>
+          <div style={{ fontSize: 22, fontWeight: 900, color: hasInputs ? colors.accent : colors.muted }}>{hasInputs ? minRank.toLocaleString() : "—"}</div>
+        </div>
+        <div>
+          <div style={{ fontSize: 11, color: colors.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>EXP to Reach Rank</div>
+          <div style={{ fontSize: 22, fontWeight: 900, color: hasInputs ? colors.positive : colors.muted }}>{hasInputs ? fmt(rankExp) : "—"}</div>
+        </div>
+        <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+          <button onClick={() => setLevels(prev => {
+            const next = { ...prev };
+            allAttrs.forEach(a => { if ((a.maxLevel ?? 999999) < 999999) next[a.id] = String(a.maxLevel); });
+            return next;
+          })} style={{ background: colors.accent + "22", border: `1px solid ${colors.accent}66`, borderRadius: 6, color: colors.accent, padding: "6px 14px", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 700 }}>
+            Max All
+          </button>
+          {hasInputs && (
+            <button onClick={() => { const empty = Object.fromEntries(allAttrs.map(a => [a.id, ""])); setLevels(empty); localStorage.removeItem(RR_STORAGE_KEY); }}
+              style={{ background: "none", border: `1px solid ${colors.border}`, borderRadius: 6, color: colors.muted, padding: "6px 14px", cursor: "pointer", fontFamily: "inherit", fontSize: 13 }}>
+              Clear All
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Attribute groups */}
+      {groups.map(group => (
+        <div key={group.key} style={{ marginBottom: 28 }}>
+          <div style={{
+            background: `linear-gradient(180deg, #3a6eb0 0%, ${colors.bannerBg} 100%)`,
+            border: `1px solid #4a7ec0`, borderRadius: 8, padding: "8px 20px", marginBottom: 14,
+            textAlign: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
+          }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: colors.bannerText, letterSpacing: "0.12em", textTransform: "uppercase", textShadow: "0 1px 4px rgba(0,0,0,0.6)" }}>{group.label}</div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, 1fr)", gap: 8 }}>
+            {(heroAttributesData[group.key] ?? []).map(attr => {
+              const iconBg     = attr.bgColor     ?? "#1a4a8a";
+              const iconBorder = attr.borderColor ?? colors.border;
+              const maxLvl     = attr.maxLevel ?? 999999;
+              const val        = levels[attr.id] ?? "";
+              const invalid    = isInvalid(val, maxLvl);
+              const target     = invalid ? 0 : Math.min(parseInt(val) || 0, maxLvl);
+              const cost       = attrPointsForLevels(attr, target);
+              const hasVal     = target > 0;
+
+              return (
+                <div key={attr.id} style={{
+                  background: `linear-gradient(180deg, #2a5c96 0%, ${colors.header} 100%)`,
+                  border: `1px solid ${hasVal ? colors.accent + "88" : colors.border}`,
+                  borderRadius: 8, padding: 12,
+                  display: "flex", gap: 12, alignItems: "center",
+                }}>
+                  <div style={{ width: 44, height: 44, flexShrink: 0, borderRadius: 8, background: iconBg, border: `2px solid ${iconBorder}`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                    {attr.icon
+                      ? <img src={getIconUrl(attr.icon)} alt="" style={{ width: 32, height: 32, objectFit: "contain" }} />
+                      : <span style={{ fontSize: 16, fontWeight: 800, color: "#ffffff99" }}>{attr.name.charAt(0)}</span>
+                    }
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: colors.text, marginBottom: 4 }}>{attr.name}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <input
+                        type="number" min={0} max={maxLvl}
+                        placeholder={maxLvl >= 999999 ? "Level" : `Max: ${maxLvl}`}
+                        value={val}
+                        onChange={e => setLevel(attr.id, e.target.value)}
+                        onBlur={e => handleBlur(attr.id, e.target.value, maxLvl)}
+                        style={{
+                          background: "#0f2640",
+                          border: `1px solid ${invalid ? "#e05555" : hasVal ? colors.accent : colors.border}`,
+                          borderRadius: 6, color: invalid ? "#e05555" : colors.text,
+                          padding: "7px 10px", fontSize: 14, fontFamily: "inherit",
+                          width: 110, textAlign: "center", outline: "none",
+                        }}
+                      />
+                      {invalid && (
+                        <span style={{ fontSize: 11, color: "#e05555" }}>Max {maxLvl}</span>
+                      )}
+                      {maxLvl < 999999 && (
+                        <button onClick={() => setLevel(attr.id, String(maxLvl))} style={{ background: colors.accent + "22", border: `1px solid ${colors.accent}66`, borderRadius: 5, color: colors.accent, padding: "4px 10px", cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap" }}>Max</button>
+                      )}
+                      {hasVal && !invalid && (
+                        <span style={{ fontSize: 12, color: colors.gold }}>{cost.toLocaleString()} pts</span>
+                      )}
+                    </div>
+                  </div>
+                  {attr.rankReq > 0 && (
+                    <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 10, background: "#0f2640", border: `1px solid #2a5a8a`, color: "#7aaacf", whiteSpace: "nowrap", flexShrink: 0 }}>
+                      Rank {attr.rankReq.toLocaleString()}+
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// HOME VIEW
+// ─────────────────────────────────────────────
+const HOME_SECTIONS = [
+  {
+    group: "Upgrades",
+    color: "#4a9eff",
+    items: [
+      { key: "research",   label: "Research",   icon: "_energy.png",          desc: "Prestige power upgrades" },
+      { key: "spells",     label: "Spells",     icon: "_energy.png",          desc: "Spell levels and energy costs" },
+      { key: "runes",      label: "Runes",      icon: "_rune_2.png",          desc: "Rune bonuses" },
+      { key: "gems",       label: "Gems",       icon: "_gem_2.png",           desc: "Gem upgrades" },
+      { key: "powerups",   label: "Power Ups",  icon: "_prestigePower.png",   desc: "Power up levels" },
+      { key: "tech",       label: "Tech",       icon: "_techPts_2.png",       desc: "Tech tree upgrades" },
+      { key: "tournament", label: "Tournament", icon: "_tournPts.png",        desc: "Tournament upgrades" },
+      { key: "tickets",    label: "Tickets",    icon: "_ticket.png",          desc: "Weekly ticket upgrades" },
+      { key: "ultimus",    label: "Ultimus",    icon: "token_red.png",        desc: "Ultimus upgrades" },
+      { key: "mastery",    label: "Mastery",    icon: "_mastery_2.png",       desc: "Mastery levels" },
+    ],
+  },
+  {
+    group: "Hero Data",
+    color: "#b47aff",
+    items: [
+      { key: "allHeroes",    label: "All Heroes",    icon: "_heroHelm.png",           desc: "Stats, skills and synergies" },
+      { key: "synergies",    label: "Synergies",     icon: "_synergy.png",            desc: "Browse all synergy bonuses" },
+      { key: "milestones",   label: "Milestones",    icon: "_star 3610.png",          desc: "Hero milestone rewards" },
+      { key: "rankExp",      label: "Rank Exp",      icon: "_killExp.png",            desc: "Experience per rank level" },
+      { key: "attributes",   label: "Attributes",    icon: "_attributePoints_0.png",  desc: "Personal and global attribute costs" },
+      { key: "combatStyles", label: "Combat Styles", icon: "icon_scale.png",          desc: "Combat style bonuses and rank requirements" },
+    ],
+  },
+  {
+    group: "Tournament",
+    color: colors.gold,
+    items: [
+      { key: "brackets", label: "Brackets", icon: "Icon_Trophy_0.png", desc: "Trophy rewards by tier and placement" },
+    ],
+  },
+  {
+    group: "Maps",
+    color: colors.positive,
+    items: [
+      { key: "allMaps",  label: "All Maps",  icon: "Icon_Map_0.png",    desc: "Map perks and unlock requirements" },
+      { key: "mapPerks", label: "Map Perks", icon: "_starEmpty_0.png",  desc: "Perk points earned per wave milestone" },
+    ],
+  },
+  {
+    group: "Calculators",
+    color: colors.accent,
+    items: [
+      { key: "rankRequired", label: "Rank Required", icon: "_attributePoints_0.png", desc: "Min rank needed for your attribute levels" },
+      { key: "enemyHp",      label: "Enemy HP",      icon: "_bosses.png",            desc: "Enemy HP by wave with player reductions" },
+    ],
+  },
+];
+
+const STORE_LINKS = [
+  { label: "Android", url: "https://play.google.com/store/apps/details?id=com.SwellGamesLLC.IdleHeroTD", color: "#78c257", icon: "icon_android.png", desc: "Get it on Google Play" },
+  { label: "iOS",     url: "https://apps.apple.com/us/app/id6479284270",                                  color: "#aaaaaa", icon: "icon_ios.png",     desc: "Download on the App Store" },
+  { label: "Steam",   url: "https://store.steampowered.com/app/2897580",                                  color: "#1b9de2", icon: "icon_steam.png",    desc: "Available on Steam" },
+  { label: "Discord", url: "https://discord.com/invite/vs3uJUsxVx",                                       color: "#5865f2", icon: "discord-mark-blue.png", desc: "Join the community" },
+];
+
+// ─────────────────────────────────────────────
+// ENEMY HP CALCULATOR
+// ─────────────────────────────────────────────
+function EnemyHpView() {
+  const fmt = useFmt();
+  const isMobile = useIsMobile();
+
+  const { enemy_hp_scaling, enemy_hp } = enemyHpData.playerStats;
+  const wave_skip = enemyHpData.wave_skip_chance;
+
+  const STORAGE_KEY = "enemyHpInputs";
+  const savedInputs = useMemo(() => {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; }
+  }, []);
+
+  const [waveInput,        setWaveInput]        = useState(savedInputs.wave        ?? "100");
+  const [masteryInput,     setMasteryInput]     = useState(savedInputs.mastery     ?? "0");
+  const [ultimusInput,     setUltimusInput]     = useState(savedInputs.ultimus     ?? "0");
+  const [researchInput,    setResearchInput]    = useState(savedInputs.research    ?? "0");
+  const [techInput,        setTechInput]        = useState(savedInputs.tech        ?? "0");
+  const [runesInput,       setRunesInput]       = useState(savedInputs.runes       ?? "0");
+  const [tournSkipInput,   setTournSkipInput]   = useState(savedInputs.tournSkip   ?? "0");
+  const [runesSkipInput,   setRunesSkipInput]   = useState(savedInputs.runesSkip   ?? "0");
+  const [params, setParams] = useState(() => {
+    const w = Math.max(1, parseInt(savedInputs.wave) || 100);
+    return { wave: w, mastery: parseInt(savedInputs.mastery) || 0, ultimus: parseInt(savedInputs.ultimus) || 0,
+             research: parseInt(savedInputs.research) || 0, tech: parseInt(savedInputs.tech) || 0,
+             runes: parseInt(savedInputs.runes) || 0, tournSkip: parseInt(savedInputs.tournSkip) || 0,
+             runesSkip: parseInt(savedInputs.runesSkip) || 0 };
+  });
+
+  function clamp(val, max) { return Math.min(Math.max(parseInt(val) || 0, 0), max); }
+
+  function apply() {
+    const wave      = Math.max(1, parseInt(waveInput) || 1);
+    const mastery   = clamp(masteryInput,   enemy_hp_scaling.sources[0].maxLevel);
+    const ultimus   = clamp(ultimusInput,   enemy_hp_scaling.sources[1].maxLevel);
+    const research  = clamp(researchInput,  enemy_hp.sources[0].maxLevel);
+    const tech      = clamp(techInput,      enemy_hp.sources[1].maxLevel);
+    const runes     = clamp(runesInput,     enemy_hp.sources[2].maxLevel);
+    const tournSkip = clamp(tournSkipInput, wave_skip.sources[0].maxLevel);
+    const runesSkip = clamp(runesSkipInput, wave_skip.sources[1].maxLevel);
+    const next = { wave, mastery, ultimus, research, tech, runes, tournSkip, runesSkip };
+    setWaveInput(String(wave));
+    setMasteryInput(String(mastery));   setUltimusInput(String(ultimus));
+    setResearchInput(String(research)); setTechInput(String(tech)); setRunesInput(String(runes));
+    setTournSkipInput(String(tournSkip)); setRunesSkipInput(String(runesSkip));
+    setParams(next);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ wave: String(wave), mastery: String(mastery), ultimus: String(ultimus),
+      research: String(research), tech: String(tech), runes: String(runes), tournSkip: String(tournSkip), runesSkip: String(runesSkip) }));
+  }
+
+  function clear() {
+    setWaveInput("100"); setMasteryInput("0"); setUltimusInput("0");
+    setResearchInput("0"); setTechInput("0"); setRunesInput("0");
+    setTournSkipInput("0"); setRunesSkipInput("0");
+    setParams({ wave: 100, mastery: 0, ultimus: 0, research: 0, tech: 0, runes: 0, tournSkip: 0, runesSkip: 0 });
+    localStorage.removeItem(STORAGE_KEY);
+  }
+
+  function handleKeyDown(e) { if (e.key === "Enter") apply(); }
+
+  const result = useMemo(() => {
+    const { startHp, moduloRates, waveRangeScales, enemyMultipliers } = enemyHpData;
+
+    function getWaveRangeScale(w) {
+      for (const entry of waveRangeScales) {
+        if (entry.maxWave === null || w <= entry.maxWave) return entry.scale;
+      }
+      return 0.3;
+    }
+    function getBaseRate(w) {
+      if (w % 10 === 0) return moduloRates.mod10;
+      if (w % 5  === 0) return moduloRates.mod5;
+      return moduloRates.default;
+    }
+    function simulate(targetWave, num12) {
+      let hp = startHp;
+      for (let w = 2; w <= targetWave; w++) {
+        hp = Math.round((hp + 4) * (getBaseRate(w) * getWaveRangeScale(w) * num12 + 1));
+      }
+      return hp;
+    }
+    function mobsForWave(w) {
+      const d = w % 10;
+      return { mobCount: d === 0 ? 19 : 9 + d, hasBoss: d === 0 };
+    }
+
+    const num12    = (1 - params.mastery * 0.005) * (1 - params.ultimus * 0.005);
+    const ehpMult  = (1 - params.research * enemy_hp.sources[0].amtPerLevel) *
+                     (1 - params.tech     * enemy_hp.sources[1].amtPerLevel) *
+                     (1 - params.runes    * enemy_hp.sources[2].amtPerLevel);
+
+    const scalingPct  = (1 - num12)   * 100;
+    const ehpPct      = (1 - ehpMult) * 100;
+    const skipChance  = params.tournSkip * wave_skip.sources[0].amtPerLevel +
+                        params.runesSkip * wave_skip.sources[1].amtPerLevel;
+    const effectiveWave = Math.max(1, Math.floor(params.wave * (1 - skipChance / 100)));
+
+    const hp     = simulate(params.wave,  num12);
+    const hpSkip = simulate(effectiveWave, num12);
+
+    const toBI = (v) => isFinite(v) && v >= 0 ? BigInt(Math.round(v)) : 0n;
+
+    function buildTypes(rawHp, wave) {
+      const { mobCount, hasBoss } = mobsForWave(wave);
+      return [
+        { key: "normal", label: "Normal", mult: 1.0,                    count: mobCount },
+        { key: "boss",   label: "Boss",   mult: enemyMultipliers.boss,  count: hasBoss ? 1 : 0 },
+      ].map(t => {
+        const perHp = toBI(rawHp * t.mult * ehpMult);
+        return { ...t, hp: perHp, totalHp: perHp * BigInt(t.count) };
+      });
+    }
+
+    const { mobCount, hasBoss } = mobsForWave(params.wave);
+    const { mobCount: mobCountSkip, hasBoss: hasBossSkip } = mobsForWave(effectiveWave);
+
+    return {
+      baseHp: toBI(hp),
+      types:     buildTypes(hp,     params.wave),
+      typesSkip: buildTypes(hpSkip, effectiveWave),
+      scalingPct, ehpPct, skipChance, effectiveWave,
+      mobCount, hasBoss, mobCountSkip, hasBossSkip,
+    };
+  }, [params]);
+
+  const smallInput = {
+    background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 6,
+    color: colors.text, padding: "5px 8px", fontSize: 13, fontFamily: "inherit",
+    width: 68, textAlign: "center", outline: "none",
+  };
+  const typeColors = { normal: "#a3e8b0", boss: "#f87171" };
+
+  const reductionCards = [
+    {
+      key: "ehp", label: "Enemy HP", badge: "Post-Sim", badgeColor: colors.accent,
+      footer: { label: "Total reduction:", value: `−${result.ehpPct.toFixed(2)}%`, color: result.ehpPct > 0 ? colors.positive : colors.muted },
+      sources: [
+        { label: "Research", icon: "_energy.png",    val: researchInput,  set: setResearchInput,  max: enemy_hp.sources[0].maxLevel, amtPer: enemy_hp.sources[0].amtPerLevel },
+        { label: "Tech",     icon: "_techPts_2.png", val: techInput,      set: setTechInput,      max: enemy_hp.sources[1].maxLevel, amtPer: enemy_hp.sources[1].amtPerLevel },
+        { label: "Runes",    icon: "_rune_2.png",    val: runesInput,     set: setRunesInput,     max: enemy_hp.sources[2].maxLevel, amtPer: enemy_hp.sources[2].amtPerLevel },
+      ],
+    },
+    {
+      key: "scaling", label: "Enemy Scaling", badge: "Per Wave", badgeColor: "#60a5fa",
+      footer: { label: "Total reduction:", value: `−${result.scalingPct.toFixed(2)}%`, color: result.scalingPct > 0 ? colors.positive : colors.muted },
+      sources: [
+        { label: "Mastery", icon: "_mastery_2.png", val: masteryInput, set: setMasteryInput, max: enemy_hp_scaling.sources[0].maxLevel, amtPer: enemy_hp_scaling.sources[0].amtPerLevel },
+        { label: "Ultimus", icon: "token_red.png",  val: ultimusInput, set: setUltimusInput, max: enemy_hp_scaling.sources[1].maxLevel, amtPer: enemy_hp_scaling.sources[1].amtPerLevel },
+      ],
+    },
+    {
+      key: "skip", label: "Enemy Skip Chance", badge: "Exploration", badgeColor: colors.gold,
+      footer: { label: "Skip chance:", value: `${result.skipChance.toFixed(2)}%`, color: result.skipChance > 0 ? colors.gold : colors.muted },
+      sources: [
+        { label: "Tournament", icon: "_tournPts.png", val: tournSkipInput, set: setTournSkipInput, max: wave_skip.sources[0].maxLevel, amtPer: wave_skip.sources[0].amtPerLevel, isChance: true },
+        { label: "Runes",      icon: "_rune_2.png",   val: runesSkipInput, set: setRunesSkipInput, max: wave_skip.sources[1].maxLevel, amtPer: wave_skip.sources[1].amtPerLevel, isChance: true },
+      ],
+    },
+  ];
+
+  return (
+    <div>
+      {/* Wave input */}
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <span style={{ fontSize: 11, color: colors.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>Wave</span>
+          <input type="number" min={1} value={waveInput} onChange={e => setWaveInput(e.target.value)} onKeyDown={handleKeyDown}
+            style={{ ...smallInput, width: 110, fontSize: 14, padding: "7px 10px" }} />
+        </div>
+      </div>
+
+      {/* Reduction + skip cards */}
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: 10, marginBottom: 16 }}>
+        {reductionCards.map(card => (
+          <div key={card.key} style={{ background: colors.panel, border: `1px solid ${colors.border}`, borderRadius: 10, padding: "12px 14px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <span style={{ fontWeight: 700, fontSize: 14, color: colors.text }}>{card.label}</span>
+              <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 10, background: card.badgeColor + "22", border: `1px solid ${card.badgeColor}55`, color: card.badgeColor }}>{card.badge}</span>
+            </div>
+            {card.sources.map(src => {
+              const over = (parseInt(src.val) || 0) > src.max;
+              return (
+                <div key={src.label} style={{ marginBottom: 7 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    {src.icon && <img src={getIconUrl(src.icon)} alt="" style={{ width: 18, height: 18, objectFit: "contain", flexShrink: 0 }} />}
+                    <span style={{ fontSize: 12, color: colors.muted, minWidth: 80 }}>{src.label}</span>
+                    <input type="number" min={0} max={src.max} value={src.val} onChange={e => src.set(e.target.value)} onKeyDown={handleKeyDown}
+                      style={{ ...smallInput, border: `1px solid ${over ? "#e05555" : colors.border}`, color: over ? "#e05555" : colors.text }} />
+                    <span style={{ fontSize: 11, color: colors.muted }}>/ {src.max}</span>
+                    <span style={{ fontSize: 11, color: src.isChance ? colors.gold : colors.positive, marginLeft: "auto" }}>
+                      {src.isChance ? "" : "−"}{((parseInt(src.val) || 0) * src.amtPer * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                  {over && <div style={{ fontSize: 11, color: "#e05555", marginTop: 3, paddingLeft: 26 }}>Max is {src.max}</div>}
+                </div>
+              );
+            })}
+            <div style={{ borderTop: `1px solid ${colors.border}44`, marginTop: 6, paddingTop: 6 }}>
+              <span style={{ fontSize: 13, color: colors.muted }}>{card.footer.label} </span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: card.footer.color }}>{card.footer.value}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Apply + Clear */}
+      <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+        <button onClick={apply} style={{
+          background: colors.accent, color: "#000", border: "none", borderRadius: 6,
+          padding: "8px 24px", cursor: "pointer", fontWeight: 700, fontSize: 13, fontFamily: "inherit",
+        }}>Apply</button>
+        <button onClick={clear} style={{
+          background: "transparent", color: colors.muted, border: `1px solid ${colors.border}`, borderRadius: 6,
+          padding: "8px 18px", cursor: "pointer", fontWeight: 600, fontSize: 13, fontFamily: "inherit",
+        }}>Clear</button>
+      </div>
+
+      {/* Info strip */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+        {[
+          { label: "Base HP",    value: fmt(result.baseHp),                                                              color: colors.text },
+          { label: "Mob Spawns", value: `${result.mobCount} normal${result.hasBoss ? " + 1 boss" : ""}`,                 color: colors.gold },
+          ...(result.skipChance > 0 ? [{ label: "Est. Wave (with skip)", value: String(result.effectiveWave), color: colors.accent }] : []),
+        ].map(({ label, value, color }) => (
+          <div key={label} style={{ background: colors.panel, border: `1px solid ${colors.border}`, borderRadius: 6, padding: "7px 14px" }}>
+            <span style={{ fontSize: 11, color: colors.muted }}>{label} </span>
+            <span style={{ fontSize: 13, fontWeight: 700, color, fontFamily: "monospace" }}>{value}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Enemy type cards */}
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, 1fr)", gap: 12 }}>
+        {result.types.map((type, i) => {
+          const isBoss   = type.key === "boss";
+          const spawns   = isBoss ? result.hasBoss : true;
+          const typeSkip = result.typesSkip[i];
+          const spawnsSkip = isBoss ? result.hasBossSkip : true;
+          return (
+            <div key={type.key} style={{
+              background: colors.panel, border: `1px solid ${spawns ? colors.border : colors.border + "55"}`,
+              borderRadius: 10, padding: "16px", textAlign: "center",
+              display: "flex", flexDirection: "column", gap: 6, opacity: spawns ? 1 : 0.45,
+            }}>
+              <div style={{ fontSize: 13, color: colors.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>{type.label}</div>
+              <div style={{ fontSize: 11, color: colors.muted }}>
+                ×{type.mult} multiplier · {isBoss ? (spawns ? "1 boss" : "×0 waves only") : `${type.count} mobs`}
+              </div>
+
+              {/* Original wave */}
+              <div style={{ borderTop: `1px solid ${colors.border}33`, paddingTop: 8 }}>
+                <div style={{ fontSize: 11, color: colors.muted, marginBottom: 4 }}>Wave {params.wave} — Per mob</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: typeColors[type.key], fontFamily: "monospace", lineHeight: 1 }}>{fmt(type.hp)}</div>
+                {spawns && <>
+                  <div style={{ fontSize: 11, color: colors.muted, marginTop: 6, marginBottom: 2 }}>Total this wave</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: typeColors[type.key], fontFamily: "monospace", lineHeight: 1 }}>{fmt(type.totalHp)}</div>
+                </>}
+              </div>
+
+              {/* Skip-adjusted wave */}
+              {result.skipChance > 0 && (
+                <div style={{ borderTop: `1px solid ${colors.gold}44`, paddingTop: 8, background: colors.gold + "08", borderRadius: 6 }}>
+                  <div style={{ fontSize: 11, color: colors.gold, marginBottom: 4 }}>Est. Wave {result.effectiveWave} — Per mob</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: typeColors[type.key], fontFamily: "monospace", lineHeight: 1, opacity: 0.85 }}>{fmt(typeSkip.hp)}</div>
+                  {spawnsSkip && <>
+                    <div style={{ fontSize: 11, color: colors.muted, marginTop: 6, marginBottom: 2 }}>Total this wave</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: typeColors[type.key], fontFamily: "monospace", lineHeight: 1, opacity: 0.85 }}>{fmt(typeSkip.totalHp)}</div>
+                  </>}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function HomeView({ onNavigate }) {
+  const isMobile = useIsMobile();
+  return (
+    <div>
+
+      {/* Hero banner */}
+      <div style={{ textAlign: "center", marginBottom: 36, padding: "32px 20px", background: `linear-gradient(180deg, ${colors.panel} 0%, transparent 100%)`, borderRadius: 12, border: `1px solid ${colors.border}` }}>
+        <div style={{ fontSize: isMobile ? 28 : 36, fontWeight: 900, color: colors.accent, letterSpacing: "0.06em", textTransform: "uppercase", textShadow: "0 0 24px rgba(245,146,30,0.5)", marginBottom: 8 }}>
+          Idle Hero TD
+        </div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: colors.text, marginBottom: 4 }}>Game Data Reference</div>
+        <div style={{ fontSize: 13, color: colors.muted, marginBottom: 20 }}>by Asingh · Game Version 15.04</div>
+        <p style={{ fontSize: 14, color: colors.muted, lineHeight: 1.7, maxWidth: 560, margin: "0 auto 12px" }}>
+          A comprehensive reference tool for Idle Hero TD — covering upgrade costs, hero stats, synergies, milestones, mastery exp, map perks, and tournament brackets. Use the sidebar to navigate between sections.
+        </p>
+        <p style={{ fontSize: 13, color: colors.muted, lineHeight: 1.6, maxWidth: 560, margin: "0 auto 24px", padding: "10px 16px", background: colors.header, borderRadius: 8, border: `1px solid ${colors.border}` }}>
+          Found an error or something looks off? Please message <span style={{ color: colors.accent, fontWeight: 700 }}>Asingh</span> or any of the mods on the Discord server.
+        </p>
+        {/* Store + Discord links */}
+        <div style={{ fontSize: 13, color: colors.muted, marginBottom: 14 }}>Find the game and join the community:</div>
+        <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+          {STORE_LINKS.map(link => (
+            <a key={link.label} href={link.url} target="_blank" rel="noreferrer" style={{
+              padding: "10px 18px", borderRadius: 10,
+              background: link.color + "22", border: `1px solid ${link.color}66`,
+              color: link.color, fontWeight: 700, fontSize: 13,
+              textDecoration: "none", display: "flex", alignItems: "center", gap: 8,
+              transition: "background 0.15s",
+            }}>
+              {link.icon && <img src={getIconUrl(link.icon)} alt="" style={{ width: 20, height: 20, objectFit: "contain", flexShrink: 0 }} />}
+              <div style={{ textAlign: "left" }}>
+                <div style={{ fontWeight: 800 }}>{link.label}</div>
+                <div style={{ fontSize: 11, opacity: 0.8, fontWeight: 400 }}>{link.desc}</div>
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
+
+      {/* Section quick-links */}
+      {HOME_SECTIONS.map(section => (
+        <div key={section.group} style={{ marginBottom: 28 }}>
+          <div style={{ fontSize: 11, fontWeight: 800, color: section.color, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 10, paddingLeft: 4 }}>
+            {section.group}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(3, 1fr)", gap: 10 }}>
+            {section.items.map(item => (
+              <button key={item.key} onClick={() => onNavigate(item.key)} style={{
+                background: colors.header, border: `1px solid ${colors.border}`,
+                borderRadius: 8, padding: "12px 14px", textAlign: "left",
+                cursor: "pointer", fontFamily: "inherit",
+                transition: "border-color 0.15s, background 0.15s",
+              }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = section.color; e.currentTarget.style.background = section.color + "11"; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.background = colors.header; }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  {item.icon && (
+                    <div style={{ width: 44, height: 44, flexShrink: 0, borderRadius: 8, background: "#0f2640", border: `1px solid ${colors.border}`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                      <img src={getIconUrl(item.icon)} alt="" style={{ width: 32, height: 32, objectFit: "contain" }} />
+                    </div>
+                  )}
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: colors.text, marginBottom: 2 }}>{item.label}</div>
+                    <div style={{ fontSize: 12, color: colors.muted, lineHeight: 1.4 }}>{item.desc}</div>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// TOURNAMENT BRACKETS VIEW
+// ─────────────────────────────────────────────
+function BracketsView() {
+  const [waveInput, setWaveInput] = useState("");
+  const wave = parseInt(waveInput) || null;
+
+  const activeBracket = wave != null
+    ? tournamentBracketsData.brackets.find(b => wave >= b.minWave && (b.maxWave == null || wave <= b.maxWave))
+    : null;
+
+  const thS = {
+    padding: "9px 12px", color: colors.muted, fontWeight: 700, fontSize: 11,
+    textAlign: "right", borderBottom: `1px solid ${colors.border}`,
+    letterSpacing: "0.06em", textTransform: "uppercase", whiteSpace: "nowrap",
+  };
+
+  return (
+    <div>
+      {/* Header */}
+      <div style={{ marginBottom: 20, display: "flex", alignItems: "center", gap: 12 }}>
+        <img src={getIconUrl("Icon_Trophy_0.png")} alt="" style={{ width: 32, height: 32, objectFit: "contain" }} />
+        <div>
+          <div style={{ fontSize: 22, fontWeight: 900, color: colors.accent, letterSpacing: "0.04em", textTransform: "uppercase" }}>Tournament Brackets</div>
+          <div style={{ fontSize: 13, color: colors.muted, marginTop: 2 }}>Base trophy rewards by tier and placement.</div>
+        </div>
+      </div>
+
+      {/* Wave finder */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 20, background: colors.panel, border: `1px solid ${colors.border}`, borderRadius: 8, padding: "12px 16px" }}>
+        <span style={{ fontSize: 13, color: colors.muted }}>Your wave:</span>
+        <input
+          type="number" placeholder="e.g. 5000"
+          value={waveInput}
+          onChange={e => setWaveInput(e.target.value)}
+          style={{ background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 6, color: colors.text, padding: "6px 10px", fontSize: 14, fontFamily: "inherit", width: 130, outline: "none" }}
+        />
+        {activeBracket && (
+          <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 14, color: colors.positive, fontWeight: 700 }}>
+              Tier {activeBracket.tier} — {activeBracket.minWave.toLocaleString()}–{activeBracket.maxWave != null ? activeBracket.maxWave.toLocaleString() : "∞"}
+            </span>
+            <span style={{ fontSize: 13, color: colors.muted }}>
+              Rank 1: <span style={{ color: colors.gold, fontWeight: 700 }}>{activeBracket.trophiesPerRank[0].toLocaleString()}</span>
+            </span>
+            <span style={{ fontSize: 13, color: colors.muted }}>
+              Rank 10: <span style={{ color: colors.gold, fontWeight: 700 }}>{activeBracket.trophiesPerRank[9].toLocaleString()}</span>
+            </span>
+            <span style={{ fontSize: 13, color: colors.muted }}>
+              Gems: <span style={{ color: "#e06aaa", fontWeight: 700 }}>{activeBracket.gems.toLocaleString()}</span>
+            </span>
+          </div>
+        )}
+        {wave != null && !activeBracket && (
+          <span style={{ fontSize: 13, color: colors.muted, fontStyle: "italic" }}>No bracket found for wave {wave.toLocaleString()}</span>
+        )}
+      </div>
+
+      {/* Table */}
+      <div style={{ border: `1px solid ${colors.border}`, borderRadius: 8, overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 700 }}>
+          <thead style={{ background: colors.panel }}>
+            <tr>
+              <th style={{ ...thS, textAlign: "left" }}>Tier</th>
+              <th style={{ ...thS, textAlign: "left" }}>Wave Range</th>
+              {[1,2,3,4,5,6,7,8,9,10].map(r => (
+                <th key={r} style={{ ...thS, color: r === 1 ? colors.gold : thS.color }}>#{r}</th>
+              ))}
+              <th style={{ ...thS, color: "#e06aaa" }}>Gems</th>
+            </tr>
+          </thead>
+          <tbody>
+            {tournamentBracketsData.brackets.map((b, i) => {
+              const isActive = activeBracket?.tier === b.tier;
+              return (
+                <tr key={b.tier} style={{
+                  background: isActive ? colors.positive + "22" : i % 2 === 0 ? "transparent" : colors.panel + "60",
+                  borderBottom: `1px solid ${colors.border}${isActive ? "" : "22"}`,
+                  outline: isActive ? `1px solid ${colors.positive}` : "none",
+                }}>
+                  <td style={{ padding: "8px 12px", fontWeight: 700, color: isActive ? colors.positive : colors.accent, whiteSpace: "nowrap" }}>
+                    {isActive ? `▶ Tier ${b.tier}` : `Tier ${b.tier}`}
+                  </td>
+                  <td style={{ padding: "8px 12px", color: colors.muted, whiteSpace: "nowrap" }}>
+                    {b.minWave.toLocaleString()}–{b.maxWave != null ? b.maxWave.toLocaleString() : "∞"}
+                  </td>
+                  {b.trophiesPerRank.map((t, ri) => (
+                    <td key={ri} style={{ padding: "8px 12px", textAlign: "right", color: ri === 0 ? colors.gold : colors.text, fontWeight: ri === 0 ? 700 : 400 }}>
+                      {t.toLocaleString()}
+                    </td>
+                  ))}
+                  <td style={{ padding: "8px 12px", textAlign: "right", color: "#e06aaa", fontWeight: 600 }}>{b.gems.toLocaleString()}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// MAP PERKS VIEW
+// ─────────────────────────────────────────────
+const MAP_PERK_START = 25000;
+const MAP_PERK_INTERVAL = 1000;
+
+function MapPerksView() {
+  const isMobile = useIsMobile();
+  const [startWave, setStartWave] = useState(MAP_PERK_START);
+  const [endWave,   setEndWave]   = useState(75000);
+  const [startInput, setStartInput] = useState(String(MAP_PERK_START));
+  const [endInput,   setEndInput]   = useState("75000");
+
+  const clampWave = (v) => Math.max(MAP_PERK_START, Math.round(v / MAP_PERK_INTERVAL) * MAP_PERK_INTERVAL);
+
+  function commitStart() {
+    const v = clampWave(parseInt(startInput) || MAP_PERK_START);
+    setStartWave(v);
+    setStartInput(v.toLocaleString().replace(/,/g, ""));
+    if (v > endWave) { setEndWave(v); setEndInput(String(v)); }
+  }
+  function commitEnd() {
+    const raw = clampWave(parseInt(endInput) || MAP_PERK_START);
+    const v = Math.max(raw, startWave);
+    setEndWave(v);
+    setEndInput(String(v));
+  }
+
+  const rows = useMemo(() => {
+    const out = [];
+    for (let w = startWave; w <= endWave; w += MAP_PERK_INTERVAL) {
+      const n = (w - MAP_PERK_START) / MAP_PERK_INTERVAL;
+      const granted    = n;
+      const cumulative = n * (n + 1) / 2;
+      out.push({ wave: w, granted, cumulative });
+    }
+    return out;
+  }, [startWave, endWave]);
+
+  const inputStyle = {
+    background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 6,
+    color: colors.text, padding: "6px 10px", fontSize: 14, fontFamily: "inherit",
+    width: 110, textAlign: "center", outline: "none",
+  };
+  const thStyle = {
+    padding: "8px 16px", color: colors.muted, fontWeight: 700, fontSize: 12,
+    textAlign: "left", borderBottom: `1px solid ${colors.border}`,
+    letterSpacing: "0.06em", textTransform: "uppercase",
+  };
+
+  return (
+    <div>
+      {/* Header */}
+      <div style={{ marginBottom: 20, display: "flex", alignItems: "center", gap: 12 }}>
+        <img src={getIconUrl("_starEmpty_0.png")} alt="" style={{ width: 32, height: 32, objectFit: "contain" }} />
+        <div>
+          <div style={{ fontSize: 22, fontWeight: 900, color: colors.accent, letterSpacing: "0.04em", textTransform: "uppercase" }}>Map Perks</div>
+          <div style={{ fontSize: 13, color: colors.muted, marginTop: 2 }}>Perk points earned per wave milestone (every 1,000 waves from {MAP_PERK_START.toLocaleString()})</div>
+        </div>
+      </div>
+
+      {/* Wave range filter */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 20, background: colors.panel, border: `1px solid ${colors.border}`, borderRadius: 8, padding: "12px 16px" }}>
+        <span style={{ color: colors.muted, fontSize: 13 }}>From wave</span>
+        <input type="number" value={startInput} min={MAP_PERK_START} step={MAP_PERK_INTERVAL}
+          onChange={e => setStartInput(e.target.value)}
+          onBlur={commitStart}
+          onKeyDown={e => e.key === "Enter" && commitStart()}
+          style={inputStyle} />
+        <span style={{ color: colors.muted, fontSize: 13 }}>to</span>
+        <input type="number" value={endInput} min={MAP_PERK_START} step={MAP_PERK_INTERVAL}
+          onChange={e => setEndInput(e.target.value)}
+          onBlur={commitEnd}
+          onKeyDown={e => e.key === "Enter" && commitEnd()}
+          style={inputStyle} />
+        <span style={{ fontSize: 13, color: colors.muted }}>
+          — <span style={{ color: colors.accent, fontWeight: 700 }}>{rows[rows.length - 1]?.cumulative.toLocaleString() ?? 0}</span> total perks at wave {endWave.toLocaleString()}
+        </span>
+      </div>
+
+      {/* Table */}
+      <div style={{ border: `1px solid ${colors.border}`, borderRadius: 8, overflow: "hidden" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <thead style={{ background: colors.panel }}>
+            <tr>
+              <th style={thStyle}>Wave</th>
+              <th style={{ ...thStyle, textAlign: "right" }}>Perks Granted</th>
+              <th style={{ ...thStyle, textAlign: "right" }}>Cumulative Perks</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={r.wave} style={{ background: i % 2 === 0 ? "transparent" : colors.panel + "60", borderBottom: `1px solid ${colors.border}22` }}>
+                <td style={{ padding: "7px 16px", color: colors.accent, fontWeight: 600 }}>{r.wave.toLocaleString()}</td>
+                <td style={{ padding: "7px 16px", textAlign: "right", color: r.granted === 0 ? colors.muted : colors.text, fontWeight: r.granted > 0 ? 600 : 400 }}>
+                  {r.granted === 0 ? "—" : `+${r.granted}`}
+                </td>
+                <td style={{ padding: "7px 16px", textAlign: "right", color: colors.gold, fontWeight: 600 }}>
+                  {r.cumulative.toLocaleString()}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// TECH TREE VIEW
+// ─────────────────────────────────────────────
+function TechTreeGroupAbs({ items, layout, onOpen, containerWidth }) {
+  const fmt  = useFmt();
+  const cols = layout.cols;
+
+  // Fixed vertical rhythm; horizontal fills the container
+  const NODE_H  = 112;
+  const ROW_GAP = 52;
+  const COL_GAP = 24;
+  const rowHeight = NODE_H + ROW_GAP;
+
+  const colWidth = Math.floor(containerWidth / cols);
+  const NODE_W   = colWidth - COL_GAP;
+
+  const posById = layout.nodes;
+  const maxRow  = Math.max(...Object.values(posById).map(n => n.row));
+  const svgW    = containerWidth;
+  const svgH    = maxRow * rowHeight - ROW_GAP;
+
+  const cx   = col => (col - 1) * colWidth + colWidth / 2;
+  const topY = row => (row - 1) * rowHeight;
+  const botY = row => (row - 1) * rowHeight + NODE_H;
+
+  function makeLine(fromId, toId, key) {
+    const pp = posById[fromId];
+    const cp = posById[toId];
+    if (!pp || !cp) return null;
+    const x1 = cx(pp.col), y1 = botY(pp.row);
+    const x2 = cx(cp.col), y2 = topY(cp.row);
+    const midY = (y1 + y2) / 2;
+    return (
+      <polyline
+        key={key}
+        points={`${x1},${y1} ${x1},${midY} ${x2},${midY} ${x2},${y2}`}
+        fill="none" stroke="#3a6a9a" strokeWidth={2} strokeLinejoin="round"
+      />
+    );
+  }
+
+  const parentLines = items
+    .filter(item => item.parent && posById[item.parent] && posById[item.id])
+    .map(item => makeLine(item.parent, item.id, `${item.parent}-${item.id}`));
+
+  const extraLines = (layout.extraLines ?? [])
+    .map(el => makeLine(el.from, el.to, `extra-${el.from}-${el.to}`));
+
+  return (
+    <div style={{ position: "relative", width: svgW, height: svgH }}>
+      <svg width={svgW} height={svgH}
+        style={{ position: "absolute", top: 0, left: 0, pointerEvents: "none" }}>
+        {parentLines}
+        {extraLines}
+      </svg>
+
+      {items.map(item => {
+        const pos = posById[item.id];
+        if (!pos) return null;
+        const left       = (pos.col - 1) * colWidth + COL_GAP / 2;
+        const top        = (pos.row  - 1) * rowHeight;
+        const iconBg     = item.bgColor     ?? "#1a4a8a";
+        const iconBorder = item.borderColor ?? colors.border;
+        const unlimited  = item.maxLevel >= 999999;
+        const maxLvlTxt  = item.maxLevel.toLocaleString();
+        const statLine   = item.statAmt !== undefined && item.statKey
+          ? formatStat(item.statAmt, item.statKey) : null;
+        const maxBonus   = !unlimited && item.statAmt !== undefined && item.statKey
+          ? formatStatTotal(item.statAmt * item.maxLevel, item.statKey, fmt) : null;
+
+        return (
+          <div key={item.id} onClick={() => onOpen(item)}
+            style={{
+              position: "absolute", left, top,
+              width: NODE_W, minHeight: NODE_H,
+              background: `linear-gradient(180deg, #2a5c96 0%, ${colors.header} 100%)`,
+              border: `1px solid ${colors.border}`,
+              borderRadius: 10, padding: "10px 12px",
+              display: "flex", gap: 10, alignItems: "flex-start",
+              cursor: "pointer", transition: "border-color 0.15s", boxSizing: "border-box",
+            }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = colors.accent}
+            onMouseLeave={e => e.currentTarget.style.borderColor = colors.border}>
+
+            {/* Icon */}
+            <div style={{ width: 52, height: 52, flexShrink: 0, borderRadius: 8, background: iconBg, border: `2px solid ${iconBorder}`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", marginTop: 2 }}>
+              {item.icon && <img src={getIconUrl(item.icon)} alt="" style={{ width: 36, height: 36, objectFit: "contain" }} />}
+            </div>
+
+            {/* Text */}
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: colors.text, lineHeight: 1.3, marginBottom: 3, wordBreak: "break-word" }}>{item.name}</div>
+              {statLine && (
+                <div style={{ fontSize: 12, color: colors.positive, lineHeight: 1.2, marginBottom: 2 }}>
+                  {statLine} / lvl{maxBonus && <span style={{ color: colors.gold, marginLeft: 6 }}>({maxBonus} max)</span>}
+                </div>
+              )}
+              <div style={{ fontSize: 12, color: colors.muted, marginBottom: item.waveReq > 0 ? 4 : 0 }}>
+                Max lvl: {maxLvlTxt}
+              </div>
+              {item.waveReq > 0 && (
+                <div style={{ display: "inline-block", background: "#1a2a3a", border: "1px solid #ffaa44", borderRadius: 4, padding: "2px 7px", fontSize: 11, fontWeight: 700, color: "#ffaa44" }}>
+                  Unlocks: Wave {item.waveReq.toLocaleString()}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function TechTreeViewAbs({ onOpen }) {
+  const [activeTab, setActiveTab] = useState("Tech");
+  const isMobile = useIsMobile();
+  const containerRef = useRef(null);
+  const [containerWidth, setContainerWidth] = useState(800);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    setContainerWidth(el.clientWidth);
+    const ro = new ResizeObserver(([entry]) => setContainerWidth(entry.contentRect.width));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Mobile: use the standard card list
+  if (isMobile) {
+    return (
+      <div>
+        <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+          {["Tech", "Supreme Tech"].map(tab => (
+            <button key={tab} onClick={() => setActiveTab(tab)}
+              style={{
+                background: activeTab === tab ? colors.accent : colors.panel,
+                color: activeTab === tab ? "#000" : colors.text,
+                border: `1px solid ${activeTab === tab ? colors.accent : colors.border}`,
+                borderRadius: 6, padding: "7px 16px", cursor: "pointer",
+                fontFamily: "inherit", fontWeight: 700, fontSize: 14,
+              }}>
+              {tab}
+            </button>
+          ))}
+        </div>
+        <SheetView
+          sectionData={{ ...SECTION_MAP["tech"].data, groups: { [activeTab]: techData.groups[activeTab] } }}
+          onOpen={onOpen}
+        />
+      </div>
+    );
+  }
+
+  const layout = techTreeDisplayData[activeTab];
+  const items  = techData.groups[activeTab];
+
+  return (
+    <div>
+      {/* Tab bar */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
+        {["Tech", "Supreme Tech"].map(tab => (
+          <button key={tab} onClick={() => setActiveTab(tab)}
+            style={{
+              background: activeTab === tab ? colors.accent : colors.panel,
+              color: activeTab === tab ? "#000" : colors.text,
+              border: `1px solid ${activeTab === tab ? colors.accent : colors.border}`,
+              borderRadius: 6, padding: "8px 26px", cursor: "pointer",
+              fontFamily: "inherit", fontWeight: 700, fontSize: 14,
+            }}>
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {/* Tree — fills full content width, measured via ref */}
+      <div ref={containerRef} style={{ width: "100%" }}>
+        {containerWidth > 0 && (
+          <TechTreeGroupAbs
+            key={activeTab}
+            items={items}
+            layout={layout}
+            onOpen={onOpen}
+            containerWidth={containerWidth}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// TECH TREE — FLEX VERSION
+// ─────────────────────────────────────────────
+function TechNodeCard({ item, onOpen, nodeRef, compact }) {
+  const fmt        = useFmt();
+  const iconBg     = item.bgColor     ?? "#1a4a8a";
+  const iconBorder = item.borderColor ?? colors.border;
+  const unlimited  = item.maxLevel >= 999999;
+  const maxLvlTxt  = item.maxLevel.toLocaleString();
+  const statLine   = item.statAmt !== undefined && item.statKey
+    ? formatStat(item.statAmt, item.statKey) : null;
+  const maxBonus   = !unlimited && item.statAmt !== undefined && item.statKey
+    ? formatStatTotal(item.statAmt * item.maxLevel, item.statKey, fmt) : null;
+
+  if (compact) {
+    return (
+      <div ref={nodeRef} onClick={() => onOpen(item)}
+        style={{
+          background: `linear-gradient(180deg, #2a5c96 0%, ${colors.header} 100%)`,
+          border: `1px solid ${colors.border}`,
+          borderRadius: 10, padding: "8px 6px",
+          display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+          cursor: "pointer", transition: "border-color 0.15s", textAlign: "center",
+        }}
+        onMouseEnter={e => e.currentTarget.style.borderColor = colors.accent}
+        onMouseLeave={e => e.currentTarget.style.borderColor = colors.border}>
+        <div style={{ width: 36, height: 36, borderRadius: 6, background: iconBg, border: `2px solid ${iconBorder}`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+          {item.icon && <img src={getIconUrl(item.icon)} alt="" style={{ width: 24, height: 24, objectFit: "contain" }} />}
+        </div>
+        <div style={{ fontSize: 11, fontWeight: 700, color: colors.text, lineHeight: 1.3, wordBreak: "break-word" }}>{item.name}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div ref={nodeRef} onClick={() => onOpen(item)}
+      style={{
+        background: `linear-gradient(180deg, #2a5c96 0%, ${colors.header} 100%)`,
+        border: `1px solid ${colors.border}`,
+        borderRadius: 10, padding: "10px 12px",
+        display: "flex", gap: 10, alignItems: "flex-start",
+        cursor: "pointer", transition: "border-color 0.15s",
+      }}
+      onMouseEnter={e => e.currentTarget.style.borderColor = colors.accent}
+      onMouseLeave={e => e.currentTarget.style.borderColor = colors.border}>
+
+      <div style={{ width: 52, height: 52, flexShrink: 0, borderRadius: 8, background: iconBg, border: `2px solid ${iconBorder}`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", marginTop: 2 }}>
+        {item.icon && <img src={getIconUrl(item.icon)} alt="" style={{ width: 36, height: 36, objectFit: "contain" }} />}
+      </div>
+
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ fontWeight: 700, fontSize: 14, color: colors.text, lineHeight: 1.3, marginBottom: 3, wordBreak: "break-word" }}>{item.name}</div>
+        {statLine && (
+          <div style={{ fontSize: 12, color: colors.positive, lineHeight: 1.2, marginBottom: 2 }}>
+            {statLine} / lvl{maxBonus && <span style={{ color: colors.gold, marginLeft: 6 }}>({maxBonus} max)</span>}
+          </div>
+        )}
+        <div style={{ fontSize: 12, color: colors.muted, marginBottom: item.waveReq > 0 ? 4 : 0 }}>
+          Max lvl: {maxLvlTxt}
+        </div>
+        {item.waveReq > 0 && (
+          <div style={{ display: "inline-block", background: "#1a2a3a", border: "1px solid #ffaa44", borderRadius: 4, padding: "2px 7px", fontSize: 11, fontWeight: 700, color: "#ffaa44" }}>
+            Unlocks: Wave {item.waveReq.toLocaleString()}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TechTreeGroup({ items, layout, onOpen }) {
+  const cols    = layout.cols;
+  const posById = layout.nodes;
+  const ROW_GAP = 52;
+
+  // Build rows: array of (cols) slots per row, null = empty, "spanned" = consumed by colSpan
+  const maxRow = Math.max(...Object.values(posById).map(n => n.row));
+  const rows   = Array.from({ length: maxRow }, (_, ri) => {
+    const row = Array(cols).fill(null);
+    for (const item of items) {
+      const pos = posById[item.id];
+      if (pos && pos.row === ri + 1) {
+        const span = pos.colSpan ?? 1;
+        row[pos.col - 1] = { item, colSpan: span };
+        for (let s = 1; s < span; s++) row[pos.col - 1 + s] = "spanned";
+      }
+    }
+    return row;
+  });
+
+  // Refs to each rendered node card, keyed by item id
+  const nodeRefs     = useRef({});
+  const containerRef = useRef(null);
+  const [pts, setPts]                   = useState({});
+  const [containerWidth, setContainerWidth] = useState(9999);
+
+  // Remeasure lines on resize
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => setContainerWidth(entry.contentRect.width));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const compact = containerWidth / cols < 160;
+
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const cr = container.getBoundingClientRect();
+    const next = {};
+    for (const [id, el] of Object.entries(nodeRefs.current)) {
+      if (!el) continue;
+      const r = el.getBoundingClientRect();
+      next[id] = { cx: r.left - cr.left + r.width / 2, top: r.top - cr.top, bottom: r.bottom - cr.top };
+    }
+    // Only update state if positions actually changed — prevents infinite loop
+    setPts(prev => {
+      const ids = Object.keys(next);
+      if (ids.length !== Object.keys(prev).length) return next;
+      for (const id of ids) {
+        const p = prev[id];
+        const n = next[id];
+        if (!p || p.cx !== n.cx || p.top !== n.top || p.bottom !== n.bottom) return next;
+      }
+      return prev;
+    });
+  });
+
+  function makeLine(fromId, toId, key) {
+    const p = pts[fromId], c = pts[toId];
+    if (!p || !c) return null;
+    const midY = (p.bottom + c.top) / 2;
+    return (
+      <polyline key={key}
+        points={`${p.cx},${p.bottom} ${p.cx},${midY} ${c.cx},${midY} ${c.cx},${c.top}`}
+        fill="none" stroke="#3a6a9a" strokeWidth={2} strokeLinejoin="round" />
+    );
+  }
+
+  const svgHeight = Object.values(pts).reduce((m, p) => Math.max(m, p.bottom), 0);
+
+  return (
+    <div ref={containerRef} style={{ position: "relative" }}>
+      {/* SVG lines — rendered behind the rows */}
+      <svg style={{ position: "absolute", top: 0, left: 0, width: "100%", height: svgHeight, pointerEvents: "none", zIndex: 0 }}>
+        {items.filter(i => i.parent).map(i => makeLine(i.parent, i.id, `${i.parent}-${i.id}`))}
+        {(layout.extraLines ?? []).map(el => makeLine(el.from, el.to, `extra-${el.from}-${el.to}`))}
+      </svg>
+
+      {/* Rows */}
+      <div style={{ position: "relative", zIndex: 1 }}>
+        {rows.map((row, ri) => (
+          <div key={ri} style={{ display: "flex", marginBottom: ri < rows.length - 1 ? ROW_GAP : 0 }}>
+            {row.map((slot, ci) => {
+              if (slot === "spanned") return null;
+              const colSpan = slot?.colSpan ?? 1;
+              return (
+                <div key={ci} style={{ flex: colSpan, minWidth: 0, padding: "0 8px", display: "flex", justifyContent: "center" }}>
+                  {slot?.item && (
+                    <div style={{ width: colSpan > 1 ? `${100 / colSpan}%` : "100%" }}>
+                      <TechNodeCard
+                        item={slot.item}
+                        onOpen={onOpen}
+                        nodeRef={el => nodeRefs.current[slot.item.id] = el}
+                        compact={compact}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TechTreeView({ onOpen }) {
+  const [activeTab, setActiveTab] = useState("Tech");
+  const isMobile = useIsMobile();
+
+  const TAB_COLORS = {
+    "Tech":         { bg: "#3a6eb0", border: "#4a7ec0", activeBg: colors.accent, activeText: "#000" },
+    "Supreme Tech": { bg: "#8b0000", border: "#cc2222", activeBg: "#cc2222",     activeText: "#fff" },
+  };
+
+  const sectionTitle = (() => {
+    const tc = TAB_COLORS[activeTab];
+    return (
+      <div style={{ background: `linear-gradient(180deg, ${tc.bg}dd 0%, ${tc.bg}99 100%)`, border: `1px solid ${tc.border}`, borderRadius: 8, padding: "8px 20px", marginBottom: 16, textAlign: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}>
+        <span style={{ fontSize: 14, fontWeight: 800, color: "#fff", letterSpacing: "0.12em", textTransform: "uppercase", textShadow: "0 1px 4px rgba(0,0,0,0.6)" }}>
+          {activeTab}
+        </span>
+      </div>
+    );
+  })();
+
+  const tabBar = (
+    <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+      {["Tech", "Supreme Tech"].map(tab => {
+        const tc = TAB_COLORS[tab];
+        const isActive = activeTab === tab;
+        return (
+          <button key={tab} onClick={() => setActiveTab(tab)}
+            style={{
+              background: isActive ? tc.activeBg : colors.panel,
+              color: isActive ? tc.activeText : colors.text,
+              border: `1px solid ${isActive ? tc.border : colors.border}`,
+              borderRadius: 6, padding: "8px 26px", cursor: "pointer",
+              fontFamily: "inherit", fontWeight: 700, fontSize: 14,
+            }}>
+            {tab}
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  if (isMobile) {
+    return (
+      <div>
+        {tabBar}
+        {sectionTitle}
+        <SheetView
+          sectionData={{ ...SECTION_MAP["tech"].data, groups: { [activeTab]: techData.groups[activeTab] } }}
+          onOpen={onOpen}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {tabBar}
+      {sectionTitle}
+      <TechTreeGroup
+        key={activeTab}
+        items={techData.groups[activeTab]}
+        layout={techTreeDisplayData[activeTab]}
+        onOpen={onOpen}
+      />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
 // SIDEBAR
 // ─────────────────────────────────────────────
 function Sidebar({ activeKey, onSelect, isOpen, onClose }) {
-  const [open, setOpen] = useState({ Upgrades: true, "Hero Data": true, Maps: true });
+  const [open, setOpen] = useState(() => {
+    const initial = {};
+    for (const group of NAV_GROUPS) {
+      initial[group.label] = group.items.some(item => item.key === activeKey);
+    }
+    return initial;
+  });
 
   function toggleGroup(label) {
     setOpen(prev => ({ ...prev, [label]: !prev[label] }));
@@ -2065,6 +3529,17 @@ function Sidebar({ activeKey, onSelect, isOpen, onClose }) {
   return (
     <div className={`sidebar${isOpen ? " open" : ""}`}
       style={{ background: colors.panel, borderRight: `1px solid ${colors.border}`, minHeight: "100%", paddingTop: 8 }}>
+      {/* Standalone Home button */}
+      {(() => {
+        const isActive = activeKey === "home";
+        return (
+          <button onClick={() => handleSelect("home")}
+            style={{ width: "100%", background: isActive ? `linear-gradient(90deg, ${colors.accent}22 0%, transparent 100%)` : "none", border: "none", borderLeft: isActive ? `3px solid ${colors.accent}` : "3px solid transparent", cursor: "pointer", padding: "9px 16px 9px 20px", textAlign: "left", color: isActive ? colors.accent : colors.text, fontSize: 14, fontWeight: isActive ? 700 : 500, transition: "color 0.15s, background 0.15s", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 4 }}>
+            <span>Home</span>
+            <img src={getIconUrl("tower2.png")} alt="" style={{ width: 20, height: 20, objectFit: "contain", opacity: isActive ? 1 : 0.6, flexShrink: 0 }} />
+          </button>
+        );
+      })()}
       {NAV_GROUPS.map(group => (
         <div key={group.label} style={{ marginBottom: 4 }}>
           <button onClick={() => toggleGroup(group.label)} style={{ width: "100%", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 16px", color: colors.muted, fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase" }}>
@@ -2097,11 +3572,15 @@ function Sidebar({ activeKey, onSelect, isOpen, onClose }) {
 // ─────────────────────────────────────────────
 export default function App() {
   const [activeKey,    setActiveKey]    = useState(
-    () => localStorage.getItem("activeKey") ?? "research"
+    () => localStorage.getItem("activeKey") ?? "home"
   );
   const [modalItem,    setModalItem]    = useState(null);
   const [modalFormula, setModalFormula] = useState(null);
   const [drawerOpen,   setDrawerOpen]   = useState(false);
+  useEffect(() => {
+    document.body.style.overflow = drawerOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [drawerOpen]);
   const [notation,     setNotation]     = useState(
     () => localStorage.getItem("notation") ?? "scientific"
   );
@@ -2131,9 +3610,10 @@ export default function App() {
             ☰
           </button>
         )}
-        <div style={{ padding: "14px 0" }}>
+        <div style={{ padding: "14px 0", cursor: "pointer" }} onClick={() => { setActiveKey("home"); localStorage.setItem("activeKey", "home"); }}>
           <div style={{ fontSize: 17, fontWeight: 900, color: colors.accent, letterSpacing: "0.06em", textTransform: "uppercase", textShadow: "0 0 12px rgba(245,146,30,0.4)" }}>Idle Hero TD</div>
-          <div style={{ fontSize: 11, color: colors.muted, marginTop: 2, letterSpacing: "0.04em" }}>Game Data Reference</div>
+          <div style={{ fontSize: 11, color: colors.muted, marginTop: 1, letterSpacing: "0.04em" }}>Game Data Reference</div>
+          <div style={{ fontSize: 10, color: colors.muted, opacity: 0.7, marginTop: 1 }}>by Asingh · v15.04</div>
         </div>
         {/* Notation toggle */}
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
@@ -2174,18 +3654,27 @@ export default function App() {
 
         {/* Main content */}
         <div style={{ flex: 1, padding: isMobile ? "16px" : "28px", overflowY: "auto", minWidth: 0 }}>
-          {activeSection && (
+          {activeSection && activeKey !== "tech" && (
             <SheetView
               sectionData={activeSection.data}
               onOpen={item => openModal(item, activeSection.data.costFormula)}
             />
           )}
+          {activeKey === "tech" && (
+            <TechTreeView onOpen={item => openModal(item, SECTION_MAP["tech"].data.costFormula)} />
+          )}
           {activeKey === "allHeroes"  && <AllHeroesView />}
           {activeKey === "synergies"  && <AllSynergiesView />}
           {activeKey === "milestones" && <AllMilestonesView />}
           {activeKey === "rankExp"    && <RankExpView />}
-          {activeKey === "attributes" && <AttributesView />}
+          {activeKey === "attributes"   && <AttributesView />}
+          {activeKey === "combatStyles" && <CombatStylesView />}
+          {activeKey === "rankRequired" && <RankRequiredView />}
+          {activeKey === "enemyHp"      && <EnemyHpView />}
+          {activeKey === "home"       && <HomeView onNavigate={key => { setActiveKey(key); localStorage.setItem("activeKey", key); }} />}
+          {activeKey === "brackets"   && <BracketsView />}
           {activeKey === "allMaps"    && <AllMapsView />}
+          {activeKey === "mapPerks"   && <MapPerksView />}
         </div>
 
       </div>

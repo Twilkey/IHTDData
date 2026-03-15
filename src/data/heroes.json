@@ -1,4 +1,21 @@
 {
+  "masteryExpFormula": {
+    "formulaNote": "exp(L) = baseAmount * 24 * L * mult. Multipliers (cumulative): x1.1 at L>=6, x1.1 at L>=9 (x1.21 total), x1.2 at L>=11 (x1.452 total). maxLevel=10 per hero. After maxing, L is set to 11 and repeats indefinitely.",
+    "breakpoints": [
+      {
+        "atLevel": 6,
+        "multIncremental": 1.1
+      },
+      {
+        "atLevel": 9,
+        "multIncremental": 1.1
+      },
+      {
+        "atLevel": 11,
+        "multIncremental": 1.2
+      }
+    ]
+  },
   "heroes": [
     {
       "id": "militia",
@@ -488,7 +505,11 @@
           "bgColor": "#038003",
           "borderColor": "#09D109"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 35000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "apprentice",
@@ -978,7 +999,11 @@
           "bgColor": "#009F9F",
           "borderColor": "#00DEE0"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 25000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "scout",
@@ -1468,7 +1493,11 @@
           "bgColor": "#007700",
           "borderColor": "#00C800"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 35000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "viking",
@@ -1958,7 +1987,11 @@
           "bgColor": "#009F9F",
           "borderColor": "#00DEE0"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 25000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "druid",
@@ -2448,7 +2481,11 @@
           "bgColor": "#038003",
           "borderColor": "#09D109"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 25000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "hunter",
@@ -2938,7 +2975,11 @@
           "bgColor": "#848305",
           "borderColor": "#DDDD10"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 35000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "ninja",
@@ -3428,7 +3469,11 @@
           "bgColor": "#00A300",
           "borderColor": "#00FF00"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 35000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "sorcerer",
@@ -3918,7 +3963,11 @@
           "bgColor": "#009F9F",
           "borderColor": "#00DEE0"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 25000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "forester",
@@ -4408,7 +4457,11 @@
           "bgColor": "#770000",
           "borderColor": "#C80000"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 25000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "assassin",
@@ -4898,7 +4951,11 @@
           "bgColor": "#009B00",
           "borderColor": "#00FF00"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 25000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "witch",
@@ -5388,7 +5445,11 @@
           "bgColor": "#770000",
           "borderColor": "#C80000"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 35000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "archer",
@@ -5878,7 +5939,11 @@
           "bgColor": "#009F9F",
           "borderColor": "#00DEE0"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 35000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "peacekeeper",
@@ -6368,7 +6433,11 @@
           "bgColor": "#4A3B79",
           "borderColor": "#7D64C8"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 25000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "wizard",
@@ -6858,7 +6927,11 @@
           "bgColor": "#009F9F",
           "borderColor": "#00DEE0"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 25000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "ranger",
@@ -7348,7 +7421,11 @@
           "bgColor": "#009B00",
           "borderColor": "#00FF00"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 25000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "samurai",
@@ -7838,7 +7915,11 @@
           "bgColor": "#770000",
           "borderColor": "#C80000"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 35000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "elementalist",
@@ -8328,7 +8409,11 @@
           "bgColor": "#038003",
           "borderColor": "#09D109"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 25000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "arbalest",
@@ -8818,7 +8903,11 @@
           "bgColor": "#009F9F",
           "borderColor": "#00DEE0"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 35000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "paladin",
@@ -9308,7 +9397,11 @@
           "bgColor": "#770000",
           "borderColor": "#C80000"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 25000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "battlemage",
@@ -9798,7 +9891,11 @@
           "bgColor": "#009F9F",
           "borderColor": "#00DEE0"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 25000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "sniper",
@@ -10288,7 +10385,11 @@
           "bgColor": "#770000",
           "borderColor": "#C80000"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 35000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "gladiator",
@@ -10778,7 +10879,11 @@
           "bgColor": "#009B00",
           "borderColor": "#00FF00"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 25000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "spelldancer",
@@ -11268,7 +11373,11 @@
           "bgColor": "#770000",
           "borderColor": "#C80000"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 25000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "rogue",
@@ -11758,7 +11867,11 @@
           "bgColor": "#848305",
           "borderColor": "#DDDD10"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 35000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "berserker",
@@ -12248,7 +12361,11 @@
           "bgColor": "#770000",
           "borderColor": "#C80000"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 25000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "skymage",
@@ -12738,7 +12855,11 @@
           "bgColor": "#009B00",
           "borderColor": "#00FF00"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 35000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "ballista",
@@ -13228,7 +13349,11 @@
           "bgColor": "#00517F",
           "borderColor": "#008DD9"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 35000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "chieftan",
@@ -13718,7 +13843,11 @@
           "bgColor": "#009F9F",
           "borderColor": "#00FFFF"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 35000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "warlock",
@@ -14208,7 +14337,11 @@
           "bgColor": "#00A300",
           "borderColor": "#00FF00"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 25000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "crusader",
@@ -14698,7 +14831,11 @@
           "bgColor": "#009B00",
           "borderColor": "#00FF00"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 550000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "champion",
@@ -15188,7 +15325,11 @@
           "bgColor": "#009B00",
           "borderColor": "#00FF00"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 35000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "templar",
@@ -15678,7 +15819,11 @@
           "bgColor": "#00A300",
           "borderColor": "#00FF00"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 25000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "captain",
@@ -16168,7 +16313,11 @@
           "bgColor": "#009B00",
           "borderColor": "#00FF00"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 35000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "warlord",
@@ -16658,7 +16807,11 @@
           "bgColor": "#038003",
           "borderColor": "#09D109"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 25000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "necromancer",
@@ -17148,7 +17301,11 @@
           "bgColor": "#770000",
           "borderColor": "#C80000"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 25000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "warden",
@@ -17638,7 +17795,11 @@
           "bgColor": "#770000",
           "borderColor": "#C80000"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 25000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "praetorian",
@@ -18128,7 +18289,11 @@
           "bgColor": "#770000",
           "borderColor": "#C80000"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 25000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "sovereign",
@@ -18618,7 +18783,11 @@
           "bgColor": "#009F9F",
           "borderColor": "#00DEE0"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 35000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "deadeye",
@@ -19108,7 +19277,11 @@
           "bgColor": "#009B00",
           "borderColor": "#00FF00"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 25000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "titan",
@@ -19598,7 +19771,11 @@
           "bgColor": "#770000",
           "borderColor": "#C80000"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 25000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "dicemaster",
@@ -20088,7 +20265,11 @@
           "bgColor": "#770000",
           "borderColor": "#C80000"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 25000,
+        "maxLevel": 10
+      }
     },
     {
       "id": "veteran",
@@ -20578,7 +20759,11 @@
           "bgColor": "#00517F",
           "borderColor": "#008DD9"
         }
-      ]
+      ],
+      "masteryExp": {
+        "baseAmount": 35000,
+        "maxLevel": 10
+      }
     }
   ]
 }

@@ -1,0 +1,877 @@
+{
+  "styles": [
+    {
+      "id": "balanced",
+      "name": "Balanced",
+      "rankReq": 0,
+      "bonuses": []
+    },
+    {
+      "id": "attacker",
+      "name": "Attacker",
+      "rankReq": 0,
+      "bonuses": [
+        {
+          "stat": "damage",
+          "amount": 50,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "range",
+          "amount": -25,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "killGold",
+          "amount": -25,
+          "isPercent": true,
+          "isGlobal": false
+        }
+      ]
+    },
+    {
+      "id": "longshot",
+      "name": "Longshot",
+      "rankReq": 0,
+      "bonuses": [
+        {
+          "stat": "range",
+          "amount": 25,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "attackSpeed",
+          "amount": -25,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "skillCooldown",
+          "amount": 25,
+          "isPercent": true,
+          "isGlobal": false
+        }
+      ]
+    },
+    {
+      "id": "skiller",
+      "name": "Skiller",
+      "rankReq": 5,
+      "bonuses": [
+        {
+          "stat": "skillCooldown",
+          "amount": -25,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "damage",
+          "amount": -25,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "range",
+          "amount": -25,
+          "isPercent": true,
+          "isGlobal": false
+        }
+      ]
+    },
+    {
+      "id": "goldFarmer",
+      "name": "Gold Farmer",
+      "rankReq": 10,
+      "bonuses": [
+        {
+          "stat": "killGold",
+          "amount": 50,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "damage",
+          "amount": -50,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "rankExp",
+          "amount": -25,
+          "isPercent": true,
+          "isGlobal": false
+        }
+      ]
+    },
+    {
+      "id": "crowdControl",
+      "name": "Crowd Control",
+      "rankReq": 15,
+      "bonuses": [
+        {
+          "stat": "splashDamage",
+          "amount": 10,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "damage",
+          "amount": -50,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "attackSpeed",
+          "amount": -25,
+          "isPercent": true,
+          "isGlobal": false
+        }
+      ]
+    },
+    {
+      "id": "expFarmer",
+      "name": "Exp Farmer",
+      "rankReq": 20,
+      "bonuses": [
+        {
+          "stat": "rankExp",
+          "amount": 25,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "damage",
+          "amount": -50,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "killGold",
+          "amount": -25,
+          "isPercent": true,
+          "isGlobal": false
+        }
+      ]
+    },
+    {
+      "id": "heavyHitter",
+      "name": "Heavy Hitter",
+      "rankReq": 25,
+      "bonuses": [
+        {
+          "stat": "critDamage",
+          "amount": 50,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "critChance",
+          "amount": 10,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "range",
+          "amount": -25,
+          "isPercent": true,
+          "isGlobal": false
+        }
+      ]
+    },
+    {
+      "id": "kingSlayer",
+      "name": "Kingslayer",
+      "rankReq": 35,
+      "bonuses": [
+        {
+          "stat": "damage",
+          "amount": 75,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "bossDamage",
+          "amount": 25,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "killGold",
+          "amount": -35,
+          "isPercent": true,
+          "isGlobal": false
+        }
+      ]
+    },
+    {
+      "id": "magus",
+      "name": "Magus",
+      "rankReq": 50,
+      "bonuses": [
+        {
+          "stat": "skillPower",
+          "amount": 3,
+          "isPercent": false,
+          "isGlobal": false
+        },
+        {
+          "stat": "skillCooldown",
+          "amount": -25,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "attackSpeed",
+          "amount": -35,
+          "isPercent": true,
+          "isGlobal": false
+        }
+      ]
+    },
+    {
+      "id": "synergizer",
+      "name": "Synergizer",
+      "rankReq": 75,
+      "bonuses": [
+        {
+          "stat": "range",
+          "amount": 35,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "synergyBonus",
+          "amount": 10,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "skillCooldown",
+          "amount": 40,
+          "isPercent": true,
+          "isGlobal": false
+        }
+      ]
+    },
+    {
+      "id": "goldProducer",
+      "name": "Gold Producer",
+      "rankReq": 100,
+      "bonuses": [
+        {
+          "stat": "killGold",
+          "amount": 100,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "superGoldChance",
+          "amount": 5,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "damage",
+          "amount": -60,
+          "isPercent": true,
+          "isGlobal": false
+        }
+      ]
+    },
+    {
+      "id": "expProducer",
+      "name": "Exp Producer",
+      "rankReq": 125,
+      "bonuses": [
+        {
+          "stat": "rankExp",
+          "amount": 40,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "superExpChance",
+          "amount": 5,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "skillPower",
+          "amount": -5,
+          "isPercent": false,
+          "isGlobal": false
+        }
+      ]
+    },
+    {
+      "id": "economist",
+      "name": "Economist",
+      "rankReq": 150,
+      "bonuses": [
+        {
+          "stat": "killGold",
+          "amount": 10,
+          "isPercent": true,
+          "isGlobal": true
+        },
+        {
+          "stat": "energyIncome",
+          "amount": 1,
+          "isPercent": false,
+          "isGlobal": true
+        },
+        {
+          "stat": "range",
+          "amount": -35,
+          "isPercent": true,
+          "isGlobal": false
+        }
+      ]
+    },
+    {
+      "id": "legionnaire",
+      "name": "Legionnaire",
+      "rankReq": 175,
+      "bonuses": [
+        {
+          "stat": "damage",
+          "amount": 200,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "superCritChance",
+          "amount": 10,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "superCritDmg",
+          "amount": 50,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "rankExp",
+          "amount": -50,
+          "isPercent": true,
+          "isGlobal": false
+        }
+      ]
+    },
+    {
+      "id": "archmage",
+      "name": "Archmage",
+      "rankReq": 200,
+      "bonuses": [
+        {
+          "stat": "skillPower",
+          "amount": 5,
+          "isPercent": false,
+          "isGlobal": false
+        },
+        {
+          "stat": "skillDuration",
+          "amount": 3,
+          "isPercent": false,
+          "isGlobal": false
+        },
+        {
+          "stat": "skillCooldown",
+          "amount": -35,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "killGold",
+          "amount": -75,
+          "isPercent": true,
+          "isGlobal": false
+        }
+      ]
+    },
+    {
+      "id": "goldFactory",
+      "name": "Gold Factory",
+      "rankReq": 225,
+      "bonuses": [
+        {
+          "stat": "killGold",
+          "amount": 200,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "superGoldChance",
+          "amount": 10,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "superGoldAmt",
+          "amount": 25,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "skillCooldown",
+          "amount": 50,
+          "isPercent": true,
+          "isGlobal": false
+        }
+      ]
+    },
+    {
+      "id": "capitalist",
+      "name": "Capitalist",
+      "rankReq": 250,
+      "bonuses": [
+        {
+          "stat": "killGold",
+          "amount": 25,
+          "isPercent": true,
+          "isGlobal": true
+        },
+        {
+          "stat": "energyIncome",
+          "amount": 3,
+          "isPercent": false,
+          "isGlobal": true
+        },
+        {
+          "stat": "rankExp",
+          "amount": 50,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "damage",
+          "amount": -75,
+          "isPercent": true,
+          "isGlobal": false
+        }
+      ]
+    },
+    {
+      "id": "commander",
+      "name": "Commander",
+      "rankReq": 300,
+      "bonuses": [
+        {
+          "stat": "damage",
+          "amount": 25,
+          "isPercent": true,
+          "isGlobal": true
+        },
+        {
+          "stat": "killGold",
+          "amount": 25,
+          "isPercent": true,
+          "isGlobal": true
+        },
+        {
+          "stat": "synergyBonus",
+          "amount": 4,
+          "isPercent": true,
+          "isGlobal": true
+        },
+        {
+          "stat": "skillPower",
+          "amount": 2,
+          "isPercent": false,
+          "isGlobal": true
+        },
+        {
+          "stat": "attackSpeed",
+          "amount": -50,
+          "isPercent": true,
+          "isGlobal": false
+        }
+      ]
+    },
+    {
+      "id": "expFactory",
+      "name": "Exp Factory",
+      "rankReq": 500,
+      "bonuses": [
+        {
+          "stat": "attackSpeed",
+          "amount": 15,
+          "isPercent": true,
+          "isGlobal": true
+        },
+        {
+          "stat": "bossExp",
+          "amount": 100,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "superExpChance",
+          "amount": 10,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "ultraExpChance",
+          "amount": 3,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "skillDuration",
+          "amount": -50,
+          "isPercent": true,
+          "isGlobal": false
+        }
+      ]
+    },
+    {
+      "id": "terminator",
+      "name": "Terminator",
+      "rankReq": 750,
+      "bonuses": [
+        {
+          "stat": "damage",
+          "amount": 400,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "ultraCritDmg",
+          "amount": 200,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "synergyBonus",
+          "amount": 15,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "skillPower",
+          "amount": 10,
+          "isPercent": false,
+          "isGlobal": false
+        },
+        {
+          "stat": "rankExp",
+          "amount": -75,
+          "isPercent": true,
+          "isGlobal": false
+        }
+      ]
+    },
+    {
+      "id": "tycoon",
+      "name": "Tycoon",
+      "rankReq": 1250,
+      "bonuses": [
+        {
+          "stat": "killGold",
+          "amount": 35,
+          "isPercent": true,
+          "isGlobal": true
+        },
+        {
+          "stat": "rankExp",
+          "amount": 5,
+          "isPercent": true,
+          "isGlobal": true
+        },
+        {
+          "stat": "synergyBonus",
+          "amount": 5,
+          "isPercent": true,
+          "isGlobal": true
+        },
+        {
+          "stat": "energyIncome",
+          "amount": 5,
+          "isPercent": false,
+          "isGlobal": true
+        },
+        {
+          "stat": "range",
+          "amount": 3,
+          "isPercent": true,
+          "isGlobal": true
+        },
+        {
+          "stat": "damage",
+          "amount": -95,
+          "isPercent": true,
+          "isGlobal": false
+        }
+      ]
+    },
+    {
+      "id": "grandArcanist",
+      "name": "Arcanist",
+      "rankReq": 2000,
+      "bonuses": [
+        {
+          "stat": "skillPower",
+          "amount": 8,
+          "isPercent": false,
+          "isGlobal": true
+        },
+        {
+          "stat": "skillDuration",
+          "amount": 10,
+          "isPercent": false,
+          "isGlobal": false
+        },
+        {
+          "stat": "skillCooldown",
+          "amount": -10,
+          "isPercent": true,
+          "isGlobal": true
+        },
+        {
+          "stat": "instantSkillChance",
+          "amount": 10,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "instantSpell",
+          "amount": 1,
+          "isPercent": true,
+          "isGlobal": true
+        },
+        {
+          "stat": "killGold",
+          "amount": -95,
+          "isPercent": true,
+          "isGlobal": false
+        }
+      ]
+    },
+    {
+      "id": "industrialist",
+      "name": "Industrialist",
+      "rankReq": 2500,
+      "bonuses": [
+        {
+          "stat": "rankExp",
+          "amount": 40,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "bossExp",
+          "amount": 100,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "superExpChance",
+          "amount": 15,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "superExpAmt",
+          "amount": 75,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "ultraExpChance",
+          "amount": 5,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "killGold",
+          "amount": -99,
+          "isPercent": true,
+          "isGlobal": false
+        }
+      ]
+    },
+    {
+      "id": "commerceBaron",
+      "name": "Baron",
+      "rankReq": 3000,
+      "bonuses": [
+        {
+          "stat": "killGold",
+          "amount": 500,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "bossGold",
+          "amount": 250,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "superGoldChance",
+          "amount": 25,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "superGoldAmt",
+          "amount": 100,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "ultraGoldChance",
+          "amount": 10,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "damage",
+          "amount": -99,
+          "isPercent": true,
+          "isGlobal": false
+        }
+      ]
+    },
+    {
+      "id": "annihilator",
+      "name": "Annihilator",
+      "rankReq": 3500,
+      "bonuses": [
+        {
+          "stat": "damage",
+          "amount": 750,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "superCritChance",
+          "amount": 35,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "superCritDmg",
+          "amount": 250,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "ultraCritChance",
+          "amount": 10,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "milestoneBonus",
+          "amount": 25,
+          "isPercent": true,
+          "isGlobal": false
+        },
+        {
+          "stat": "rankExp",
+          "amount": -90,
+          "isPercent": true,
+          "isGlobal": false
+        }
+      ]
+    },
+    {
+      "id": "businessMagnate",
+      "name": "Magnate",
+      "rankReq": 4000,
+      "bonuses": [
+        {
+          "stat": "killGold",
+          "amount": 75,
+          "isPercent": true,
+          "isGlobal": true
+        },
+        {
+          "stat": "rankExp",
+          "amount": 12,
+          "isPercent": true,
+          "isGlobal": true
+        },
+        {
+          "stat": "energyIncome",
+          "amount": 5,
+          "isPercent": true,
+          "isGlobal": true
+        },
+        {
+          "stat": "instantSpell",
+          "amount": 2,
+          "isPercent": true,
+          "isGlobal": true
+        },
+        {
+          "stat": "synergyBonus",
+          "amount": 8,
+          "isPercent": true,
+          "isGlobal": true
+        },
+        {
+          "stat": "damage",
+          "amount": -99,
+          "isPercent": true,
+          "isGlobal": false
+        }
+      ]
+    },
+    {
+      "id": "grandMaster",
+      "name": "Grand Master",
+      "rankReq": 4500,
+      "bonuses": [
+        {
+          "stat": "damage",
+          "amount": 150,
+          "isPercent": true,
+          "isGlobal": true
+        },
+        {
+          "stat": "killGold",
+          "amount": 150,
+          "isPercent": true,
+          "isGlobal": true
+        },
+        {
+          "stat": "skillPower",
+          "amount": 5,
+          "isPercent": true,
+          "isGlobal": true
+        },
+        {
+          "stat": "masteryPower",
+          "amount": 5,
+          "isPercent": true,
+          "isGlobal": true
+        },
+        {
+          "stat": "milestoneBonus",
+          "amount": 10,
+          "isPercent": true,
+          "isGlobal": true
+        },
+        {
+          "stat": "synergyBonus",
+          "amount": 10,
+          "isPercent": true,
+          "isGlobal": true
+        },
+        {
+          "stat": "attackSpeed",
+          "amount": -90,
+          "isPercent": true,
+          "isGlobal": false
+        }
+      ]
+    }
+  ]
+}
