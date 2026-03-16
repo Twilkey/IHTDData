@@ -101,16 +101,16 @@ const NAV_GROUPS = [
     ],
   },
   {
+    label: "Battlepass",
+    items: [
+      { key: "battpassExp", label: "Battlepass Exp", menuIcon: "_battlepass.png" },
+    ],
+  },
+  {
     label: "Calculators",
     items: [
       { key: "rankRequired", label: "Rank Required",    menuIcon: "_attributePoints_0.png" },
       { key: "enemyHp",      label: "Enemy HP",         menuIcon: "_bosses.png" },
-    ],
-  },
-  {
-    label: "Battlepass",
-    items: [
-      { key: "battpassExp", label: "Battlepass Exp", menuIcon: "_battlepass.png" },
     ],
   },
 ];
@@ -1124,7 +1124,7 @@ const HERO_NAMES = (heroesData.heroes ?? [])
   .sort((a, b) => a.name.localeCompare(b.name))
   .map(h => ({ id: h.id, name: h.name }));
 
-const ALL_TIERS = ["I", "II", "III", "IV", "V", "VI"];
+const ALL_TIERS = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"];
 
 function ScopeFilter({ value, onChange }) {
   return (
@@ -2609,18 +2609,18 @@ const HOME_SECTIONS = [
     ],
   },
   {
+    group: "Battlepass",
+    color: "#f5c842",
+    items: [
+      { key: "battpassExp", label: "Battlepass Exp", icon: "_battlepass.png", desc: "EXP required per battlepass level" },
+    ],
+  },
+  {
     group: "Calculators",
     color: colors.accent,
     items: [
       { key: "rankRequired", label: "Rank Required", icon: "_attributePoints_0.png", desc: "Min rank needed for your attribute levels" },
       { key: "enemyHp",      label: "Enemy HP",      icon: "_bosses.png",            desc: "Enemy HP by wave with player reductions" },
-    ],
-  },
-  {
-    group: "Battlepass",
-    color: "#f5c842",
-    items: [
-      { key: "battpassExp", label: "Battlepass Exp", icon: "_battlepass.png", desc: "EXP required per battlepass level" },
     ],
   },
 ];
