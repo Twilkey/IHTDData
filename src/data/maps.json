@@ -1133,33 +1133,33 @@
           "displayName": "Boss Day",
           "effects": [
             {
-              "statKey": "bossGold",
-              "statLabel": "Boss Gold",
-              "amount": 50,
+              "statKey": "ancientShadowRunes",
+              "statLabel": "Ancient Shadow Runes",
+              "amount": 20,
               "unit": "pct"
             },
             {
-              "statKey": "bossExp",
-              "statLabel": "Boss Exp",
-              "amount": 25,
+              "statKey": "exoticAlienTech",
+              "statLabel": "Exotic Alien Tech",
+              "amount": 15,
               "unit": "pct"
             },
             {
-              "statKey": "extraBossChance",
-              "statLabel": "Extra Boss Chance",
+              "statKey": "shadowAlienHpSkipChance",
+              "statLabel": "Shadow/Alien HP Skip Chance",
+              "amount": 5,
+              "unit": "pct"
+            },
+            {
+              "statKey": "ultimusTokens",
+              "statLabel": "Ultimus Tokens",
               "amount": 10,
               "unit": "pct"
             },
             {
               "statKey": "mimicBossChance",
               "statLabel": "Mimic Chest Boss Chance",
-              "amount": 3,
-              "unit": "pct"
-            },
-            {
-              "statKey": "ultraBossCdSpeed",
-              "statLabel": "Ultra Boss Cooldown Speed",
-              "amount": 10,
+              "amount": 5,
               "unit": "pct"
             },
             {
