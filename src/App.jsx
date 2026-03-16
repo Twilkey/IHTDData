@@ -132,6 +132,20 @@ const BIG_SUFFIXES = (() => {
 
 // notation: "scientific" | "letters"
 function formatBigNum(n, notation = "scientific") {
+  // Log-space result from simulate — {logValue: number} represents ~10^logValue
+  if (n !== null && typeof n === "object" && "logValue" in n) {
+    const lv = n.logValue;
+    if (!isFinite(lv)) return lv > 0 ? "∞" : "0";
+    const exp = Math.floor(lv);
+    const mantissa = Math.pow(10, lv - exp);
+    if (notation === "letters") {
+      const tier = Math.floor(exp / 3);
+      if (tier > 0 && tier < BIG_SUFFIXES.length) {
+        return (mantissa * Math.pow(10, exp - tier * 3)).toFixed(2) + BIG_SUFFIXES[tier];
+      }
+    }
+    return `${mantissa.toFixed(2)}e${exp}`;
+  }
   if (typeof n === "bigint") n = Number(n);
   if (!isFinite(n)) return "∞";
   if (n === 0) return "0";
@@ -2694,12 +2708,24 @@ function EnemyHpView() {
       if (w % 5  === 0) return moduloRates.mod5;
       return moduloRates.default;
     }
+    // simulate returns BigInt for manageable waves, or {logValue: number} when hp
+    // exceeds Number.MAX_SAFE_INTEGER (at which point +4 is negligible vs hp,
+    // so log-space accumulation is accurate and runs in microseconds).
     function simulate(targetWave, num12) {
+      const SAFE = Number.MAX_SAFE_INTEGER;
       let hp = startHp;
       for (let w = 2; w <= targetWave; w++) {
         hp = Math.round((hp + 4) * (getBaseRate(w) * getWaveRangeScale(w) * num12 + 1));
+        if (hp >= SAFE) {
+          // Switch to log-space; +4/hp < 4.5e-16 relative error per step hereafter
+          let logHp = Math.log10(hp);
+          for (let i = w + 1; i <= targetWave; i++) {
+            logHp += Math.log10(getBaseRate(i) * getWaveRangeScale(i) * num12 + 1);
+          }
+          return { logValue: logHp };
+        }
       }
-      return hp;
+      return BigInt(Math.round(hp));
     }
     function mobsForWave(w) {
       const d = w % 10;
@@ -2720,16 +2746,27 @@ function EnemyHpView() {
     const hp     = simulate(params.wave,  num12);
     const hpSkip = simulate(effectiveWave, num12);
 
-    const toBI = (v) => isFinite(v) && v >= 0 ? BigInt(Math.round(v)) : 0n;
+    const logEhpMult = Math.log10(ehpMult);
 
     function buildTypes(rawHp, wave) {
       const { mobCount, hasBoss } = mobsForWave(wave);
       return [
-        { key: "normal", label: "Normal", mult: 1.0,                    count: mobCount },
+        { key: "normal", label: "Normal", mult: 1.0,                   count: mobCount },
         { key: "boss",   label: "Boss",   mult: enemyMultipliers.boss,  count: hasBoss ? 1 : 0 },
       ].map(t => {
-        const perHp = toBI(rawHp * t.mult * ehpMult);
-        return { ...t, hp: perHp, totalHp: perHp * BigInt(t.count) };
+        let perHp, totalHp;
+        if (typeof rawHp === "bigint") {
+          const PREC = 1_000_000_000_000n;
+          const multBig = BigInt(Math.round(t.mult * ehpMult * 1e12));
+          perHp   = (rawHp * multBig + PREC / 2n) / PREC;
+          totalHp = perHp * BigInt(t.count);
+        } else {
+          // rawHp is {logValue}
+          const logPerHp = rawHp.logValue + Math.log10(t.mult) + logEhpMult;
+          perHp   = { logValue: logPerHp };
+          totalHp = { logValue: t.count > 0 ? logPerHp + Math.log10(t.count) : -Infinity };
+        }
+        return { ...t, hp: perHp, totalHp };
       });
     }
 
@@ -2737,7 +2774,7 @@ function EnemyHpView() {
     const { mobCount: mobCountSkip, hasBoss: hasBossSkip } = mobsForWave(effectiveWave);
 
     return {
-      baseHp: toBI(hp),
+      baseHp: hp,
       types:     buildTypes(hp,     params.wave),
       typesSkip: buildTypes(hpSkip, effectiveWave),
       scalingPct, ehpPct, skipChance, effectiveWave,
