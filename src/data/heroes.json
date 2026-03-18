@@ -6357,7 +6357,7 @@
           "synergyLevel": 12,
           "tier": "VI",
           "rankRequired": 250, 
-          "type": "energyUltraChance",
+          "type": "energyUltraChance",  
           "name": "Ultra Energy Chance",
           "scope": "global",
           "hero1": "sovereign",
