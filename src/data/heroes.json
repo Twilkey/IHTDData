@@ -6356,7 +6356,7 @@
         {
           "synergyLevel": 12,
           "tier": "VI",
-          "rankRequired": 250,
+          "rankRequired": 250, 
           "type": "energyUltraChance",
           "name": "Ultra Energy Chance",
           "scope": "global",
