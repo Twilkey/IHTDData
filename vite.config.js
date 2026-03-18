@@ -84,6 +84,10 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
+          if (id.includes('/src/App.jsx')) {
+            return 'app-shell'
+          }
+
           if (id.includes('node_modules/@dnd-kit')) {
             return 'loadout-vendor'
           }

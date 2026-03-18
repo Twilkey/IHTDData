@@ -23,9 +23,6 @@ import ultimusData    from "./data/ultimus.json";
 import runesData           from "./data/runes.json";
 import heroAttributesData       from "./data/hero_attributes.json";
 import tournamentBracketsData   from "./data/tournament_brackets.json";
-import combatStylesData         from "./data/combat_styles.json";
-import enemyHpData              from "./data/enemy_hp.json";
-import battpassExpData          from "./data/battlepass_exp.json";
 import STAT_UNITS          from "./data/stat_units.json";
 import techTreeDisplayData  from "./data/tech_tree_display.json";
 import { applyAppSavePayload, buildAppSavePayload } from "./lib/loadoutBuilderSave";
@@ -35,9 +32,13 @@ const HomeView = lazy(() => loadSecondaryViews().then((module) => ({ default: mo
 const BracketsView = lazy(() => loadSecondaryViews().then((module) => ({ default: module.BracketsView })));
 const BattlepassExpView = lazy(() => loadSecondaryViews().then((module) => ({ default: module.BattlepassExpView })));
 const MapPerksView = lazy(() => loadSecondaryViews().then((module) => ({ default: module.MapPerksView })));
+const loadCalculatorViews = () => import("./views/calculatorViews.jsx");
+const CombatStylesView = lazy(() => loadCalculatorViews().then((module) => ({ default: module.CombatStylesView })));
+const EnemyHpView = lazy(() => loadCalculatorViews().then((module) => ({ default: module.EnemyHpView })));
 const loadBuilderViews = () => import("./views/loadoutBuilderViews.jsx");
 const LoadoutBuilderView = lazy(() => loadBuilderViews().then((module) => ({ default: module.LoadoutBuilderView })));
 const StatsLoadoutView = lazy(() => loadBuilderViews().then((module) => ({ default: module.StatsLoadoutView })));
+const HeroLoadoutView = lazy(() => loadBuilderViews().then((module) => ({ default: module.HeroLoadoutView })));
 const CoordFinderView = lazy(() => loadBuilderViews().then((module) => ({ default: module.CoordFinderView })));
 
 // ─────────────────────────────────────────────
@@ -115,6 +116,7 @@ const NAV_GROUPS = [
     label: "Loadout",
     items: [
       { key: "loadoutBuilder", label: "Map Loadouts", menuIcon: "tower2.png" },
+      { key: "heroLoadout", label: "Hero Loadout", menuIcon: "_heroHelm.png" },
       { key: "statsLoadout", label: "Stats Loadout", menuIcon: "_attributePoints_0.png" },
     ],
   },
@@ -2335,62 +2337,6 @@ function MapCard({ map, onClick, isMobile, mapPerkMult = 1 }) {
 }
 
 // ─────────────────────────────────────────────
-// COMBAT STYLES VIEW
-// ─────────────────────────────────────────────
-function CombatStylesView() {
-  const isMobile = useIsMobile();
-  const styles = combatStylesData.styles ?? [];
-
-  function statLabel(key) {
-    return key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim();
-  }
-
-  const cols = isMobile ? 2 : 4;
-
-  return (
-    <div style={{ padding: "16px 12px" }}>
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 10 }}>
-        {styles.map(style => (
-          <div key={style.id} style={{
-            background: colors.panel,
-            border: `1px solid ${colors.border}`,
-            borderRadius: 10,
-            padding: "12px 14px",
-            display: "flex",
-            flexDirection: "column",
-            gap: 8,
-          }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, flexWrap: "wrap" }}>
-              <div style={{ fontWeight: 700, fontSize: 15, color: colors.text }}>{style.name}</div>
-              <span style={{
-                fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 10,
-                background: "#0f2640", border: "1px solid #2a5a8a", color: "#7aaacf", whiteSpace: "nowrap",
-              }}>
-                {style.rankReq > 0 ? `Rank ${style.rankReq.toLocaleString()}+` : "Available"}
-              </span>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              {style.bonuses.length === 0 ? (
-                <span style={{ fontSize: 12, color: colors.muted, fontStyle: "italic" }}>No modifiers</span>
-              ) : style.bonuses.map((b, i) => (
-                <div key={i} style={{ fontSize: 13, display: "flex", alignItems: "center", gap: 5 }}>
-                  <span style={{ fontWeight: 700, color: (() => { const neg = ["skillCooldown"].includes(b.stat); return (b.amount >= 0) !== neg ? colors.positive : "#e05555"; })() }}>
-                    {b.amount >= 0 ? "+" : ""}{b.amount}{b.isPercent ? "%" : ""}
-                  </span>
-                  <span style={{ color: colors.text, flex: 1 }}>{statLabel(b.stat)}</span>
-                  {b.isGlobal && (
-                    <span style={{ fontSize: 10, color: colors.muted, background: colors.bg, border: `1px solid ${colors.border}`, borderRadius: 4, padding: "1px 5px", marginLeft: "auto" }}>Global</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 const MAP_PERK_UPGRADE_SOURCES = [
   { id: "runes",   label: "Runes",   statAmt: 2,  maxLevel: 15  },
   { id: "mastery", label: "Mastery", statAmt: 5,  maxLevel: 5   },
@@ -2723,308 +2669,6 @@ function RankRequiredView() {
 }
 
 // ─────────────────────────────────────────────
-// ENEMY HP CALCULATOR
-// ─────────────────────────────────────────────
-function EnemyHpView() {
-  const fmt = useFmt();
-  const isMobile = useIsMobile();
-
-  const { enemy_hp_scaling, enemy_hp } = enemyHpData.playerStats;
-  const wave_skip = enemyHpData.wave_skip_chance;
-
-  const STORAGE_KEY = "enemyHpInputs";
-  const savedInputs = useMemo(() => {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; }
-  }, []);
-
-  const [waveInput,        setWaveInput]        = useState(savedInputs.wave        ?? "100");
-  const [masteryInput,     setMasteryInput]     = useState(savedInputs.mastery     ?? "0");
-  const [ultimusInput,     setUltimusInput]     = useState(savedInputs.ultimus     ?? "0");
-  const [researchInput,    setResearchInput]    = useState(savedInputs.research    ?? "0");
-  const [techInput,        setTechInput]        = useState(savedInputs.tech        ?? "0");
-  const [runesInput,       setRunesInput]       = useState(savedInputs.runes       ?? "0");
-  const [tournSkipInput,   setTournSkipInput]   = useState(savedInputs.tournSkip   ?? "0");
-  const [runesSkipInput,   setRunesSkipInput]   = useState(savedInputs.runesSkip   ?? "0");
-  const [params, setParams] = useState(() => {
-    const w = Math.max(1, parseInt(savedInputs.wave) || 100);
-    return { wave: w, mastery: parseInt(savedInputs.mastery) || 0, ultimus: parseInt(savedInputs.ultimus) || 0,
-             research: parseInt(savedInputs.research) || 0, tech: parseInt(savedInputs.tech) || 0,
-             runes: parseInt(savedInputs.runes) || 0, tournSkip: parseInt(savedInputs.tournSkip) || 0,
-             runesSkip: parseInt(savedInputs.runesSkip) || 0 };
-  });
-
-  function clamp(val, max) { return Math.min(Math.max(parseInt(val) || 0, 0), max); }
-
-  function apply() {
-    const wave      = Math.max(1, parseInt(waveInput) || 1);
-    const mastery   = clamp(masteryInput,   enemy_hp_scaling.sources[0].maxLevel);
-    const ultimus   = clamp(ultimusInput,   enemy_hp_scaling.sources[1].maxLevel);
-    const research  = clamp(researchInput,  enemy_hp.sources[0].maxLevel);
-    const tech      = clamp(techInput,      enemy_hp.sources[1].maxLevel);
-    const runes     = clamp(runesInput,     enemy_hp.sources[2].maxLevel);
-    const tournSkip = clamp(tournSkipInput, wave_skip.sources[0].maxLevel);
-    const runesSkip = clamp(runesSkipInput, wave_skip.sources[1].maxLevel);
-    const next = { wave, mastery, ultimus, research, tech, runes, tournSkip, runesSkip };
-    setWaveInput(String(wave));
-    setMasteryInput(String(mastery));   setUltimusInput(String(ultimus));
-    setResearchInput(String(research)); setTechInput(String(tech)); setRunesInput(String(runes));
-    setTournSkipInput(String(tournSkip)); setRunesSkipInput(String(runesSkip));
-    setParams(next);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ wave: String(wave), mastery: String(mastery), ultimus: String(ultimus),
-      research: String(research), tech: String(tech), runes: String(runes), tournSkip: String(tournSkip), runesSkip: String(runesSkip) }));
-  }
-
-  function clear() {
-    setWaveInput("100"); setMasteryInput("0"); setUltimusInput("0");
-    setResearchInput("0"); setTechInput("0"); setRunesInput("0");
-    setTournSkipInput("0"); setRunesSkipInput("0");
-    setParams({ wave: 100, mastery: 0, ultimus: 0, research: 0, tech: 0, runes: 0, tournSkip: 0, runesSkip: 0 });
-    localStorage.removeItem(STORAGE_KEY);
-  }
-
-  function handleKeyDown(e) { if (e.key === "Enter") apply(); }
-
-  const result = useMemo(() => {
-    const { startHp, moduloRates, waveRangeScales, enemyMultipliers } = enemyHpData;
-
-    function getWaveRangeScale(w) {
-      for (const entry of waveRangeScales) {
-        if (entry.maxWave === null || w <= entry.maxWave) return entry.scale;
-      }
-      return 0.3;
-    }
-    function getBaseRate(w) {
-      if (w % 10 === 0) return moduloRates.mod10;
-      if (w % 5  === 0) return moduloRates.mod5;
-      return moduloRates.default;
-    }
-    // simulate returns BigInt for manageable waves, or {logValue: number} when hp
-    // exceeds Number.MAX_SAFE_INTEGER (at which point +4 is negligible vs hp,
-    // so log-space accumulation is accurate and runs in microseconds).
-    function simulate(targetWave, num12) {
-      const SAFE = Number.MAX_SAFE_INTEGER;
-      let hp = startHp;
-      for (let w = 2; w <= targetWave; w++) {
-        hp = Math.round((hp + 4) * (getBaseRate(w) * getWaveRangeScale(w) * num12 + 1));
-        if (hp >= SAFE) {
-          // Switch to log-space; +4/hp < 4.5e-16 relative error per step hereafter
-          let logHp = Math.log10(hp);
-          for (let i = w + 1; i <= targetWave; i++) {
-            logHp += Math.log10(getBaseRate(i) * getWaveRangeScale(i) * num12 + 1);
-          }
-          return { logValue: logHp };
-        }
-      }
-      return BigInt(Math.round(hp));
-    }
-    function mobsForWave(w) {
-      const d = w % 10;
-      return { mobCount: d === 0 ? 19 : 9 + d, hasBoss: d === 0 };
-    }
-
-    const num12    = (1 - params.mastery * 0.005) * (1 - params.ultimus * 0.005);
-    const ehpMult  = (1 - params.research * enemy_hp.sources[0].amtPerLevel) *
-                     (1 - params.tech     * enemy_hp.sources[1].amtPerLevel) *
-                     (1 - params.runes    * enemy_hp.sources[2].amtPerLevel);
-
-    const scalingPct  = (1 - num12)   * 100;
-    const ehpPct      = (1 - ehpMult) * 100;
-    const skipChance  = params.tournSkip * wave_skip.sources[0].amtPerLevel +
-                        params.runesSkip * wave_skip.sources[1].amtPerLevel;
-    const effectiveWave = Math.max(1, Math.floor(params.wave * (1 - skipChance / 100)));
-
-    const hp     = simulate(params.wave,  num12);
-    const hpSkip = simulate(effectiveWave, num12);
-
-    const logEhpMult = Math.log10(ehpMult);
-
-    function buildTypes(rawHp, wave) {
-      const { mobCount, hasBoss } = mobsForWave(wave);
-      return [
-        { key: "normal", label: "Normal", mult: 1.0,                   count: mobCount },
-        { key: "boss",   label: "Boss",   mult: enemyMultipliers.boss,  count: hasBoss ? 1 : 0 },
-      ].map(t => {
-        let perHp, totalHp;
-        if (typeof rawHp === "bigint") {
-          const PREC = 1_000_000_000_000n;
-          const multBig = BigInt(Math.round(t.mult * ehpMult * 1e12));
-          perHp   = (rawHp * multBig + PREC / 2n) / PREC;
-          totalHp = perHp * BigInt(t.count);
-        } else {
-          // rawHp is {logValue}
-          const logPerHp = rawHp.logValue + Math.log10(t.mult) + logEhpMult;
-          perHp   = { logValue: logPerHp };
-          totalHp = { logValue: t.count > 0 ? logPerHp + Math.log10(t.count) : -Infinity };
-        }
-        return { ...t, hp: perHp, totalHp };
-      });
-    }
-
-    const { mobCount, hasBoss } = mobsForWave(params.wave);
-    const { mobCount: mobCountSkip, hasBoss: hasBossSkip } = mobsForWave(effectiveWave);
-
-    return {
-      baseHp: hp,
-      types:     buildTypes(hp,     params.wave),
-      typesSkip: buildTypes(hpSkip, effectiveWave),
-      scalingPct, ehpPct, skipChance, effectiveWave,
-      mobCount, hasBoss, mobCountSkip, hasBossSkip,
-    };
-  }, [params]);
-
-  const smallInput = {
-    background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 6,
-    color: colors.text, padding: "5px 8px", fontSize: 13, fontFamily: "inherit",
-    width: 68, textAlign: "center", outline: "none",
-  };
-  const typeColors = { normal: "#a3e8b0", boss: "#f87171" };
-
-  const reductionCards = [
-    {
-      key: "ehp", label: "Enemy HP", badge: "Post-Sim", badgeColor: colors.accent,
-      footer: { label: "Total reduction:", value: `−${result.ehpPct.toFixed(2)}%`, color: result.ehpPct > 0 ? colors.positive : colors.muted },
-      sources: [
-        { label: "Research", icon: "_energy.png",    val: researchInput,  set: setResearchInput,  max: enemy_hp.sources[0].maxLevel, amtPer: enemy_hp.sources[0].amtPerLevel },
-        { label: "Tech",     icon: "_techPts_2.png", val: techInput,      set: setTechInput,      max: enemy_hp.sources[1].maxLevel, amtPer: enemy_hp.sources[1].amtPerLevel },
-        { label: "Runes",    icon: "_rune_2.png",    val: runesInput,     set: setRunesInput,     max: enemy_hp.sources[2].maxLevel, amtPer: enemy_hp.sources[2].amtPerLevel },
-      ],
-    },
-    {
-      key: "scaling", label: "Enemy Scaling", badge: "Per Wave", badgeColor: "#60a5fa",
-      footer: { label: "Total reduction:", value: `−${result.scalingPct.toFixed(2)}%`, color: result.scalingPct > 0 ? colors.positive : colors.muted },
-      sources: [
-        { label: "Mastery", icon: "_mastery_2.png", val: masteryInput, set: setMasteryInput, max: enemy_hp_scaling.sources[0].maxLevel, amtPer: enemy_hp_scaling.sources[0].amtPerLevel },
-        { label: "Ultimus", icon: "token_red.png",  val: ultimusInput, set: setUltimusInput, max: enemy_hp_scaling.sources[1].maxLevel, amtPer: enemy_hp_scaling.sources[1].amtPerLevel },
-      ],
-    },
-    {
-      key: "skip", label: "Enemy Skip Chance", badge: "Exploration", badgeColor: colors.gold,
-      footer: { label: "Skip chance:", value: `${result.skipChance.toFixed(2)}%`, color: result.skipChance > 0 ? colors.gold : colors.muted },
-      sources: [
-        { label: "Tournament", icon: "_tournPts.png", val: tournSkipInput, set: setTournSkipInput, max: wave_skip.sources[0].maxLevel, amtPer: wave_skip.sources[0].amtPerLevel, isChance: true },
-        { label: "Runes",      icon: "_rune_2.png",   val: runesSkipInput, set: setRunesSkipInput, max: wave_skip.sources[1].maxLevel, amtPer: wave_skip.sources[1].amtPerLevel, isChance: true },
-      ],
-    },
-  ];
-
-  return (
-    <div>
-      {/* Wave input */}
-      <div style={{ display: "flex", alignItems: "flex-end", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <span style={{ fontSize: 11, color: colors.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>Wave</span>
-          <input type="number" min={1} value={waveInput} onChange={e => setWaveInput(e.target.value)} onKeyDown={handleKeyDown}
-            style={{ ...smallInput, width: 110, fontSize: 14, padding: "7px 10px" }} />
-        </div>
-      </div>
-
-      {/* Reduction + skip cards */}
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: 10, marginBottom: 16 }}>
-        {reductionCards.map(card => (
-          <div key={card.key} style={{ background: colors.panel, border: `1px solid ${colors.border}`, borderRadius: 10, padding: "12px 14px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-              <span style={{ fontWeight: 700, fontSize: 14, color: colors.text }}>{card.label}</span>
-              <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 10, background: card.badgeColor + "22", border: `1px solid ${card.badgeColor}55`, color: card.badgeColor }}>{card.badge}</span>
-            </div>
-            {card.sources.map(src => {
-              const over = (parseInt(src.val) || 0) > src.max;
-              return (
-                <div key={src.label} style={{ marginBottom: 7 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    {src.icon && <img src={getIconUrl(src.icon)} alt="" style={{ width: 18, height: 18, objectFit: "contain", flexShrink: 0 }} />}
-                    <span style={{ fontSize: 12, color: colors.muted, minWidth: 80 }}>{src.label}</span>
-                    <input type="number" min={0} max={src.max} value={src.val} onChange={e => src.set(e.target.value)} onKeyDown={handleKeyDown}
-                      style={{ ...smallInput, border: `1px solid ${over ? "#e05555" : colors.border}`, color: over ? "#e05555" : colors.text }} />
-                    <span style={{ fontSize: 11, color: colors.muted }}>/ {src.max}</span>
-                    <span style={{ fontSize: 11, color: src.isChance ? colors.gold : colors.positive, marginLeft: "auto" }}>
-                      {src.isChance ? "" : "−"}{((parseInt(src.val) || 0) * src.amtPer * 100).toFixed(1)}%
-                    </span>
-                  </div>
-                  {over && <div style={{ fontSize: 11, color: "#e05555", marginTop: 3, paddingLeft: 26 }}>Max is {src.max}</div>}
-                </div>
-              );
-            })}
-            <div style={{ borderTop: `1px solid ${colors.border}44`, marginTop: 6, paddingTop: 6 }}>
-              <span style={{ fontSize: 13, color: colors.muted }}>{card.footer.label} </span>
-              <span style={{ fontSize: 14, fontWeight: 700, color: card.footer.color }}>{card.footer.value}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Apply + Clear */}
-      <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-        <button onClick={apply} style={{
-          background: colors.accent, color: "#000", border: "none", borderRadius: 6,
-          padding: "8px 24px", cursor: "pointer", fontWeight: 700, fontSize: 13, fontFamily: "inherit",
-        }}>Apply</button>
-        <button onClick={clear} style={{
-          background: "transparent", color: colors.muted, border: `1px solid ${colors.border}`, borderRadius: 6,
-          padding: "8px 18px", cursor: "pointer", fontWeight: 600, fontSize: 13, fontFamily: "inherit",
-        }}>Clear</button>
-      </div>
-
-      {/* Info strip */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-        {[
-          { label: "Base HP",    value: fmt(result.baseHp),                                                              color: colors.text },
-          { label: "Mob Spawns", value: `${result.mobCount} normal${result.hasBoss ? " + 1 boss" : ""}`,                 color: colors.gold },
-          ...(result.skipChance > 0 ? [{ label: "Est. Wave (with skip)", value: String(result.effectiveWave), color: colors.accent }] : []),
-        ].map(({ label, value, color }) => (
-          <div key={label} style={{ background: colors.panel, border: `1px solid ${colors.border}`, borderRadius: 6, padding: "7px 14px" }}>
-            <span style={{ fontSize: 11, color: colors.muted }}>{label} </span>
-            <span style={{ fontSize: 13, fontWeight: 700, color, fontFamily: "monospace" }}>{value}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Enemy type cards */}
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, 1fr)", gap: 12 }}>
-        {result.types.map((type, i) => {
-          const isBoss   = type.key === "boss";
-          const spawns   = isBoss ? result.hasBoss : true;
-          const typeSkip = result.typesSkip[i];
-          const spawnsSkip = isBoss ? result.hasBossSkip : true;
-          return (
-            <div key={type.key} style={{
-              background: colors.panel, border: `1px solid ${spawns ? colors.border : colors.border + "55"}`,
-              borderRadius: 10, padding: "16px", textAlign: "center",
-              display: "flex", flexDirection: "column", gap: 6, opacity: spawns ? 1 : 0.45,
-            }}>
-              <div style={{ fontSize: 13, color: colors.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>{type.label}</div>
-              <div style={{ fontSize: 11, color: colors.muted }}>
-                ×{type.mult} multiplier · {isBoss ? (spawns ? "1 boss" : "×0 waves only") : `${type.count} mobs`}
-              </div>
-
-              {/* Original wave */}
-              <div style={{ borderTop: `1px solid ${colors.border}33`, paddingTop: 8 }}>
-                <div style={{ fontSize: 11, color: colors.muted, marginBottom: 4 }}>Wave {params.wave} — Per mob</div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: typeColors[type.key], fontFamily: "monospace", lineHeight: 1 }}>{fmt(type.hp)}</div>
-                {spawns && <>
-                  <div style={{ fontSize: 11, color: colors.muted, marginTop: 6, marginBottom: 2 }}>Total this wave</div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: typeColors[type.key], fontFamily: "monospace", lineHeight: 1 }}>{fmt(type.totalHp)}</div>
-                </>}
-              </div>
-
-              {/* Skip-adjusted wave */}
-              {result.skipChance > 0 && (
-                <div style={{ borderTop: `1px solid ${colors.gold}44`, paddingTop: 8, background: colors.gold + "08", borderRadius: 6 }}>
-                  <div style={{ fontSize: 11, color: colors.gold, marginBottom: 4 }}>Est. Wave {result.effectiveWave} — Per mob</div>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: typeColors[type.key], fontFamily: "monospace", lineHeight: 1, opacity: 0.85 }}>{fmt(typeSkip.hp)}</div>
-                  {spawnsSkip && <>
-                    <div style={{ fontSize: 11, color: colors.muted, marginTop: 6, marginBottom: 2 }}>Total this wave</div>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: typeColors[type.key], fontFamily: "monospace", lineHeight: 1, opacity: 0.85 }}>{fmt(typeSkip.totalHp)}</div>
-                  </>}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 // ─────────────────────────────────────────────
 // MAP PERKS VIEW
 // ─────────────────────────────────────────────
@@ -3732,9 +3376,17 @@ export default function App() {
           {activeKey === "milestones" && <AllMilestonesView />}
           {activeKey === "rankExp"    && <RankExpView />}
           {activeKey === "attributes"   && <AttributesView />}
-          {activeKey === "combatStyles" && <CombatStylesView />}
+          {activeKey === "combatStyles" && (
+            <Suspense fallback={lazyFallback}>
+              <CombatStylesView colors={colors} isMobile={isMobile} />
+            </Suspense>
+          )}
           {activeKey === "rankRequired" && <RankRequiredView />}
-          {activeKey === "enemyHp"      && <EnemyHpView />}
+          {activeKey === "enemyHp"      && (
+            <Suspense fallback={lazyFallback}>
+              <EnemyHpView colors={colors} fmt={fmt} getIconUrl={getIconUrl} isMobile={isMobile} />
+            </Suspense>
+          )}
           {activeKey === "home"       && (
             <Suspense fallback={lazyFallback}>
               <HomeView
@@ -3769,6 +3421,17 @@ export default function App() {
                 maps={editableMaps}
                 heroes={heroesData.heroes}
                 onNavigate={key => { setActiveKey(key); localStorage.setItem("activeKey", key); }}
+              />
+            </Suspense>
+          )}
+          {activeKey === "heroLoadout" && (
+            <Suspense fallback={lazyFallback}>
+              <HeroLoadoutView
+                key={`hero-loadout-${loadoutImportVersion}`}
+                colors={colors}
+                getIconUrl={getIconUrl}
+                fmt={fmt}
+                heroes={heroesData.heroes}
               />
             </Suspense>
           )}

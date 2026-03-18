@@ -2,7 +2,8 @@ import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
 import { MapStage, OverlayAnchor, HeroToken } from "../map/MapStage";
 import { mapsData } from "../../lib/gameData";
-import { LOADOUT_BUILDER_PLACEMENTS_STORAGE_KEY, LOADOUT_BUILDER_SELECTED_MAP_STORAGE_KEY } from "../../lib/loadoutBuilderSave";
+import { HERO_ATTRIBUTE_DEFINITIONS, getHeroAttributeTotalValue, readHeroLoadoutState } from "../../lib/heroLoadout";
+import { LOADOUT_BUILDER_PLACEMENTS_STORAGE_KEY, LOADOUT_BUILDER_RANKS_STORAGE_KEY, LOADOUT_BUILDER_SELECTED_MAP_STORAGE_KEY } from "../../lib/loadoutBuilderSave";
 import { getPerkCurrentBonus, getPlacementBonusValue, readMapLoadoutBuilderMode, readMapLoadoutState, writeMapLoadoutBuilderMode } from "../../lib/mapLoadout";
 import { getStatsLoadoutBonusTotals, readStatsLoadoutState } from "../../lib/statsLoadout";
 import { MapPerksLoadoutBuilder } from "./MapPerksLoadoutBuilder";
@@ -51,19 +52,23 @@ const FOCUSED_HERO_INFO_TABS = [
   { id: "milestones", label: "Milestones" },
   { id: "synergies", label: "Synergies" },
 ];
+const FOCUSED_PROGRESS_TABS = [
+  { id: "active", label: "Active" },
+  { id: "inactive", label: "Inactive" },
+];
 const RARITY_SORT_ORDER = ["Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic", "Ascended"];
 const HERO_STAT_BONUS_ALIASES = Object.freeze({
   damage: ["damage", "strength"],
-  attackSpeed: ["attack_speed", "agility"],
+  attackSpeed: ["attackSpeed", "attack_speed", "agility"],
   range: ["range", "hawk_eyes"],
-  critChance: ["crit_chance", "precision"],
-  critDamage: ["crit_damage", "power"],
-  skillPower: ["skill_power", "enchanted"],
-  skillCooldown: ["skill_cooldown", "accelerate"],
-  superCritChance: ["super_crit_chance"],
-  superCritDamage: ["super_crit_damage"],
-  ultraCritChance: ["ultra_crit_chance"],
-  ultraCritDamage: ["ultra_crit_damage"],
+  critChance: ["critChance", "crit_chance", "precision"],
+  critDamage: ["critDamage", "crit_damage", "power"],
+  skillPower: ["skillPower", "skill_power", "enchanted"],
+  skillCooldown: ["skillCooldown", "skill_cooldown", "accelerate"],
+  superCritChance: ["superCritChance", "super_crit_chance"],
+  superCritDamage: ["superCritDamage", "super_crit_damage"],
+  ultraCritChance: ["ultraCritChance", "ultra_crit_chance"],
+  ultraCritDamage: ["ultraCritDamage", "ultra_crit_damage"],
 });
 
 const HERO_STAT_LABELS = Object.freeze({
@@ -74,11 +79,21 @@ const HERO_STAT_LABELS = Object.freeze({
   superCritDamage: "Super Crit Damage",
   ultraCritChance: "Ultra Crit Chance",
   ultraCritDamage: "Ultra Crit Damage",
+  ultraGoldChance: "Ultra Gold Chance",
+  ultraGoldAmount: "Ultra Gold Amount",
+  ultraExpChance: "Ultra Exp Chance",
+  ultraExpAmount: "Ultra Exp Amount",
+  ultraEnergyChance: "Ultra Energy Chance",
+  ultraEnergyAmount: "Ultra Energy Amount",
   skillPower: "Skill Power",
   skillCooldown: "Skill Cooldown",
+  skillDuration: "Skill Duration",
   splashDamage: "Splash Damage",
   instantSkillChance: "Instant Skill Chance",
   instantSpellChance: "Instant Spell Chance",
+  instantSpellPowerPlant: "Instant Power Plant Spell",
+  instantSpellTimeWarp: "Instant Time Warp Spell",
+  instantRagsToRiches: "Instant Rags To Riches",
   synergyBonus: "Synergy Effects",
   milestoneBonus: "Milestone Effects",
   mastery2xExpChance: "2x Mastery Exp Chance",
@@ -97,6 +112,16 @@ const HERO_STAT_LABELS = Object.freeze({
   enemySpawnSpeed: "Enemy Spawn Speed",
   prestigePower: "Prestige Power",
   battlepassExp: "Battlepass Exp",
+  energyIncome: "Energy Income",
+  bossExp: "Boss Exp",
+  bossGold: "Boss Gold",
+  bossDamage: "Boss Damage",
+  ultraBossDamage: "Ultra Boss Damage",
+  goblinHoarderGold: "Goblin Hoarder Gold",
+  powerMageEnergy: "Power Mage Energy",
+  trainingDummyExp: "Training Dummy Exp",
+  alienTech: "Alien Tech",
+  shadowRunes: "Shadow Runes",
   extraBossChance: "Extra Boss Chance",
   mimicBossChance: "Mimic Boss Chance",
   trainerSpawns: "Trainer Spawns",
@@ -162,6 +187,91 @@ const MAP_PERK_KEY_RULES = Object.freeze([
   ["power_mage_golden_chance", "powerMageGoldenChance"],
 ]);
 
+const HERO_EFFECT_KEY_MAP = Object.freeze({
+  damage: "damage",
+  damage2: "damage",
+  attSpeed: "attackSpeed",
+  attackSpeed: "attackSpeed",
+  range: "range",
+  critChance: "critChance",
+  critDmg: "critDamage",
+  critDamage: "critDamage",
+  skillCd: "skillCooldown",
+  skillCooldown: "skillCooldown",
+  skillDuration: "skillDuration",
+  skillPower: "skillPower",
+  skillPower2: "skillPower",
+  killGold: "killGold",
+  killGold2: "killGold",
+  killExp: "rankExpBonus",
+  rankExp: "rankExpBonus",
+  progressiveRankExp: "rankExpBonus",
+  superCritChance: "superCritChance",
+  superCritDmg: "superCritDamage",
+  ultraCritChance: "ultraCritChance",
+  ultraCritDmg: "ultraCritDamage",
+  goldSuperAmount: "superGoldAmount",
+  superGoldAmt: "superGoldAmount",
+  goldSuperChance: "superGoldChance",
+  superGoldChance: "superGoldChance",
+  expSuperChance: "superExpChance",
+  superExpChance: "superExpChance",
+  expSuperAmount: "superExpAmount",
+  superExpAmt: "superExpAmount",
+  energySuperChance: "superEnergyChance",
+  superEnergyChance: "superEnergyChance",
+  energySuperAmount: "superEnergyAmount",
+  superEnergyAmt: "superEnergyAmount",
+  goldUltraChance: "ultraGoldChance",
+  ultraGoldChance: "ultraGoldChance",
+  goldUltraAmount: "ultraGoldAmount",
+  ultraGoldAmt: "ultraGoldAmount",
+  expUltraChance: "ultraExpChance",
+  expUltraAmount: "ultraExpAmount",
+  energyUltraChance: "ultraEnergyChance",
+  energyUltraAmount: "ultraEnergyAmount",
+  energyIncome: "energyIncome",
+  battlepassExp: "battlepassExp",
+  bossExp: "bossExp",
+  bossGold: "bossGold",
+  bossDmg: "bossDamage",
+  ultraBossDmg: "ultraBossDamage",
+  instantSkillChance: "instantSkillChance",
+  instantSpell_powerPlant: "instantSpellPowerPlant",
+  instantSpell_timeWarp: "instantSpellTimeWarp",
+  instantRagsToRiches: "instantRagsToRiches",
+  goblinHoarderGold: "goblinHoarderGold",
+  powerMageEnergy: "powerMageEnergy",
+  trainingDummyExp: "trainingDummyExp",
+  alienTech: "alienTech",
+  shadowRunes: "shadowRunes",
+});
+
+const FLAT_HERO_STAT_KEYS = new Set([
+  "skillPower",
+  "rankExpBonus",
+  "skillDuration",
+  "superExpAmount",
+  "superGoldAmount",
+  "superEnergyAmount",
+  "ultraGoldAmount",
+  "ultraExpAmount",
+  "ultraEnergyAmount",
+  "energyIncome",
+  "battlepassExp",
+  "bossExp",
+  "bossGold",
+  "bossDamage",
+  "ultraBossDamage",
+  "goblinHoarderGold",
+  "powerMageEnergy",
+  "trainingDummyExp",
+  "alienTech",
+  "shadowRunes",
+]);
+
+const TOP_LEVEL_STAT_KEYS = new Set(["damage", "attackSpeed", "range", "dps"]);
+
 function sumBonusTotals(totals, aliases = []) {
   return aliases.reduce((sum, key) => sum + (totals[key] ?? 0), 0);
 }
@@ -183,6 +293,116 @@ function mergeBonusTotals(...sources) {
       addBonusTotal(totals, key, amount);
     });
   });
+
+  return totals;
+}
+
+function normalizeHeroEffectBonusKey(statKey) {
+  return HERO_EFFECT_KEY_MAP[statKey] ?? statKey ?? null;
+}
+
+function addNormalizedBonusTotal(target, statKey, amount) {
+  return addBonusTotal(target, normalizeHeroEffectBonusKey(statKey), amount);
+}
+
+function normalizeBonusTotals(source) {
+  const totals = {};
+
+  Object.entries(source ?? {}).forEach(([key, amount]) => {
+    addNormalizedBonusTotal(totals, key, amount);
+  });
+
+  return totals;
+}
+
+function formatSignedHeroBonus(key, amount) {
+  const numeric = Number(amount);
+  if (!Number.isFinite(numeric)) {
+    return String(amount ?? "-");
+  }
+
+  const prefix = numeric > 0 ? "+" : "";
+  if (FLAT_HERO_STAT_KEYS.has(key)) {
+    return `${prefix}${formatHeroStatValue(numeric)}`;
+  }
+
+  return `${prefix}${formatHeroStatValue(numeric)}%`;
+}
+
+function getHeroAttributeBonusTotals(levelsByAttributeId, scope) {
+  const totals = {};
+
+  HERO_ATTRIBUTE_DEFINITIONS
+    .filter((attribute) => attribute.scope === scope)
+    .forEach((attribute) => {
+      const level = levelsByAttributeId?.[attribute.id] ?? 0;
+      if (level <= 0) {
+        return;
+      }
+
+      addNormalizedBonusTotal(totals, attribute.statKey, getHeroAttributeTotalValue(attribute, level));
+    });
+
+  return totals;
+}
+
+function buildPlacementRanksState(spots, existingRanks = {}) {
+  const nextRanks = {};
+  spots.forEach((spot) => {
+    nextRanks[spot.id] = Math.max(0, Number.parseInt(existingRanks?.[spot.id], 10) || 0);
+  });
+  return nextRanks;
+}
+
+function normalizePlacementRanksByMap(maps, storedRanks) {
+  return Object.fromEntries(
+    maps.map((map) => [map.id, buildPlacementRanksState(map.spots, storedRanks?.[map.id])])
+  );
+}
+
+function getNormalizedRangeRadius(rangeValue) {
+  const numericRange = Number(rangeValue);
+  if (!Number.isFinite(numericRange) || numericRange <= 0) {
+    return 0;
+  }
+
+  return numericRange * RANGE_RADIUS_SCALE;
+}
+
+function getProgressionKey(kind, heroId, effect) {
+  return `${kind}:${heroId}:${effect.milestone ?? effect.synergyLevel ?? effect.tier ?? effect.name}:${effect.hero1 ?? ""}:${effect.hero2 ?? ""}:${effect.hero3 ?? ""}`;
+}
+
+function getEffectAmountWithModifier(effect, effectModifierPct) {
+  const numericAmount = Number(effect?.amount ?? 0);
+  if (!Number.isFinite(numericAmount)) {
+    return 0;
+  }
+
+  return numericAmount * (1 + (Number(effectModifierPct) || 0) / 100);
+}
+
+function enrichProgressionEffect(effect, kind, effectModifierPct) {
+  const bonusKey = normalizeHeroEffectBonusKey(effect.type);
+  const effectiveAmount = getEffectAmountWithModifier(effect, effectModifierPct);
+
+  return {
+    ...effect,
+    kind,
+    bonusKey,
+    effectiveAmount,
+    amountLabel: formatSignedHeroBonus(bonusKey, effectiveAmount),
+    scopeLabel: formatFilterLabel(effect.scope),
+    statLabel: HERO_STAT_LABELS[bonusKey] ?? formatFilterLabel(effect.type),
+  };
+}
+
+function buildProgressionBonusTotals(effects, scope) {
+  const totals = {};
+
+  effects
+    .filter((effect) => effect.scope === scope)
+    .forEach((effect) => addNormalizedBonusTotal(totals, effect.bonusKey, effect.effectiveAmount));
 
   return totals;
 }
@@ -290,51 +510,56 @@ function buildHeroUpgradeStats(hero, bonusTotals) {
     })(),
   }));
 
-  const derivedStats = [
-    { key: "critChance", bonus: critChanceBonus },
-    { key: "critDamage", bonus: critDamageBonus },
-    { key: "superCritChance", bonus: superCritChanceBonus },
-    { key: "superCritDamage", bonus: superCritDamageBonus },
-    { key: "ultraCritChance", bonus: ultraCritChanceBonus },
-    { key: "ultraCritDamage", bonus: ultraCritDamageBonus },
-    { key: "skillPower", bonus: skillPowerBonus },
-    { key: "skillCooldown", bonus: skillCooldownBonus, value: adjustedSkillCooldown != null ? `${formatHeroStatValue(adjustedSkillCooldown)}s` : `+${formatHeroStatValue(skillCooldownBonus)}%` },
-    { key: "splashDamage", bonus: splashDamageBonus },
-    { key: "instantSkillChance", bonus: instantSkillChanceBonus },
-    { key: "instantSpellChance", bonus: instantSpellChanceBonus },
-    { key: "synergyBonus", bonus: synergyBonus },
-    { key: "milestoneBonus", bonus: milestoneBonus },
-    { key: "mastery2xExpChance", bonus: mastery2xExpChanceBonus },
-    { key: "killGold", bonus: killGoldBonus },
-    { key: "rankExpBonus", bonus: rankExpBonus },
-    { key: "spellCooldown", bonus: spellCooldownBonus },
-    { key: "superExpChance", bonus: superExpChanceBonus },
-    { key: "superExpAmount", bonus: superExpAmountBonus },
-    { key: "superGoldChance", bonus: superGoldChanceBonus },
-    { key: "superGoldAmount", bonus: superGoldAmountBonus },
-    { key: "superEnergyChance", bonus: superEnergyChanceBonus },
-    { key: "superEnergyAmount", bonus: superEnergyAmountBonus },
-    { key: "activePlayBonus", bonus: activePlayBonus },
-    { key: "wavePerkBonus", bonus: wavePerkBonus },
-    { key: "enemyMoveSpeed", bonus: enemyMoveSpeed },
-    { key: "enemySpawnSpeed", bonus: enemySpawnSpeed },
-    { key: "prestigePower", bonus: prestigePowerBonus },
-    { key: "battlepassExp", bonus: battlepassExpBonus },
-    { key: "extraBossChance", bonus: extraBossChanceBonus },
-    { key: "mimicBossChance", bonus: mimicBossChanceBonus },
-    { key: "trainerSpawns", bonus: trainerSpawnsBonus },
-    { key: "bossRushSkip", bonus: bossRushSkipBonus },
-    { key: "powerMageSpawns", bonus: powerMageSpawnsBonus },
-    { key: "powerMageCooldown", bonus: powerMageCooldownBonus },
-    { key: "powerMageGoldenChance", bonus: powerMageGoldenChanceBonus },
-  ]
-    .filter((entry) => entry.bonus)
-    .map((entry) => ({
-      key: entry.key,
-      label: HERO_STAT_LABELS[entry.key] ?? formatFilterLabel(entry.key),
-      value: entry.value ?? `+${formatHeroStatValue(entry.bonus)}%`,
-      bonusLabel: adjustedSkillCooldown != null && entry.key === "skillCooldown"
-        ? `${formatHeroStatValue(entry.bonus)}% reduction from active bonuses`
+  const normalizedDerivedBonuses = normalizeBonusTotals({
+    critChance: critChanceBonus,
+    critDamage: critDamageBonus,
+    superCritChance: superCritChanceBonus,
+    superCritDamage: superCritDamageBonus,
+    ultraCritChance: ultraCritChanceBonus,
+    ultraCritDamage: ultraCritDamageBonus,
+    skillPower: skillPowerBonus,
+    skillCooldown: skillCooldownBonus,
+    splashDamage: splashDamageBonus,
+    instantSkillChance: instantSkillChanceBonus,
+    instantSpellChance: instantSpellChanceBonus,
+    synergyBonus,
+    milestoneBonus,
+    mastery2xExpChance: mastery2xExpChanceBonus,
+    killGold: killGoldBonus,
+    rankExpBonus,
+    spellCooldown: spellCooldownBonus,
+    superExpChance: superExpChanceBonus,
+    superExpAmount: superExpAmountBonus,
+    superGoldChance: superGoldChanceBonus,
+    superGoldAmount: superGoldAmountBonus,
+    superEnergyChance: superEnergyChanceBonus,
+    superEnergyAmount: superEnergyAmountBonus,
+    activePlayBonus,
+    wavePerkBonus,
+    enemyMoveSpeed,
+    enemySpawnSpeed,
+    prestigePower: prestigePowerBonus,
+    battlepassExp: battlepassExpBonus,
+    extraBossChance: extraBossChanceBonus,
+    mimicBossChance: mimicBossChanceBonus,
+    trainerSpawns: trainerSpawnsBonus,
+    bossRushSkip: bossRushSkipBonus,
+    powerMageSpawns: powerMageSpawnsBonus,
+    powerMageCooldown: powerMageCooldownBonus,
+    powerMageGoldenChance: powerMageGoldenChanceBonus,
+    ...bonusTotals,
+  });
+
+  const derivedStats = Object.entries(normalizedDerivedBonuses)
+    .filter(([key, bonus]) => bonus && !TOP_LEVEL_STAT_KEYS.has(key))
+    .map(([key, bonus]) => ({
+      key,
+      label: HERO_STAT_LABELS[key] ?? formatFilterLabel(key),
+      value: key === "skillCooldown" && adjustedSkillCooldown != null
+        ? `${formatHeroStatValue(adjustedSkillCooldown)}s`
+        : formatSignedHeroBonus(key, bonus),
+      bonusLabel: key === "skillCooldown" && adjustedSkillCooldown != null
+        ? `${formatHeroStatValue(bonus)}% reduction from active bonuses`
         : "Active bonus",
     }));
 
@@ -884,9 +1109,12 @@ function FocusedHeroMilestoneCard({ milestone, colors }) {
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "start" }}>
         <div>
           <div style={{ fontSize: 12, fontWeight: 800, color: colors.text }}>Milestone {milestone.milestone}: {milestone.name}</div>
-          <div style={{ fontSize: 11, color: colors.muted }}>Requirement {milestone.requirement} · {formatFilterLabel(milestone.scope)}</div>
+          <div style={{ fontSize: 11, color: colors.muted }}>Requirement {milestone.requirement} · {milestone.scopeLabel}</div>
         </div>
-        <div style={{ fontSize: 11, color: colors.accent, fontWeight: 800 }}>{formatFilterLabel(milestone.type)}</div>
+        <div style={{ textAlign: "right", display: "grid", gap: 3 }}>
+          <div style={{ fontSize: 11, color: colors.accent, fontWeight: 800 }}>{milestone.statLabel}</div>
+          <div style={{ fontSize: 11, color: colors.text, fontWeight: 800 }}>{milestone.amountLabel}</div>
+        </div>
       </div>
       <div style={{ fontSize: 12, color: colors.text, lineHeight: 1.5 }}>{milestone.description}</div>
     </div>
@@ -899,13 +1127,16 @@ function FocusedHeroSynergyCard({ synergy, colors }) {
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "start" }}>
         <div>
           <div style={{ fontSize: 12, fontWeight: 800, color: colors.text }}>{synergy.name} · Tier {synergy.tier}</div>
-          <div style={{ fontSize: 11, color: colors.muted }}>Level {synergy.synergyLevel} · Rank {synergy.rankRequired} · {formatFilterLabel(synergy.scope)}</div>
+          <div style={{ fontSize: 11, color: colors.muted }}>Level {synergy.synergyLevel} · Rank {synergy.rankRequired} · {synergy.scopeLabel}</div>
         </div>
-        <div style={{ fontSize: 11, color: colors.accent, fontWeight: 800 }}>{formatFilterLabel(synergy.type)}</div>
+        <div style={{ textAlign: "right", display: "grid", gap: 3 }}>
+          <div style={{ fontSize: 11, color: colors.accent, fontWeight: 800 }}>{synergy.statLabel}</div>
+          <div style={{ fontSize: 11, color: colors.text, fontWeight: 800 }}>{synergy.amountLabel}</div>
+        </div>
       </div>
       <div style={{ fontSize: 12, color: colors.text, lineHeight: 1.5 }}>{synergy.description}</div>
       <div style={{ fontSize: 11, color: colors.muted }}>
-        Partners: {[synergy.hero1, synergy.hero2].filter(Boolean).map(formatFilterLabel).join(" + ") || "Solo"}
+        Partners: {synergy.partnerNames?.length ? synergy.partnerNames.join(" + ") : [synergy.hero1, synergy.hero2, synergy.hero3].filter(Boolean).map(formatFilterLabel).join(" + ") || "Solo"}
       </div>
     </div>
   );
@@ -913,6 +1144,7 @@ function FocusedHeroSynergyCard({ synergy, colors }) {
 
 export function LoadoutBuilderPage({ colors, getIconUrl, maps, heroes, onNavigate }) {
   const statsLoadoutState = useMemo(() => readStatsLoadoutState(localStorage), []);
+  const heroLoadoutState = useMemo(() => readHeroLoadoutState(localStorage), []);
   const [builderMode, setBuilderMode] = useState(() => readMapLoadoutBuilderMode(localStorage));
   const [selectedMapId, setSelectedMapId] = useState(() => localStorage.getItem(LOADOUT_BUILDER_SELECTED_MAP_STORAGE_KEY) ?? maps[0]?.id ?? "");
   const mapLoadoutState = useMemo(() => readMapLoadoutState(localStorage), [builderMode, selectedMapId]);
@@ -922,6 +1154,14 @@ export function LoadoutBuilderPage({ colors, getIconUrl, maps, heroes, onNavigat
       return normalizePlacementsByMap(maps, parsed);
     } catch {
       return normalizePlacementsByMap(maps, {});
+    }
+  });
+  const [placementRanksByMap, setPlacementRanksByMap] = useState(() => {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(LOADOUT_BUILDER_RANKS_STORAGE_KEY) ?? "null");
+      return normalizePlacementRanksByMap(maps, parsed);
+    } catch {
+      return normalizePlacementRanksByMap(maps, {});
     }
   });
   const [searchValue, setSearchValue] = useState("");
@@ -949,6 +1189,8 @@ export function LoadoutBuilderPage({ colors, getIconUrl, maps, heroes, onNavigat
   const [activeFilterSubtabs, setActiveFilterSubtabs] = useState(DEFAULT_FILTER_SUBTABS);
   const [isFocusedHeroExpanded, setIsFocusedHeroExpanded] = useState(false);
   const [activeFocusedHeroInfoTab, setActiveFocusedHeroInfoTab] = useState("skill");
+  const [activeFocusedMilestoneTab, setActiveFocusedMilestoneTab] = useState("active");
+  const [activeFocusedSynergyTab, setActiveFocusedSynergyTab] = useState("active");
   const [hoveredMapHeroSpotId, setHoveredMapHeroSpotId] = useState(null);
 
   const deferredSearch = useDeferredValue(searchValue);
@@ -959,7 +1201,7 @@ export function LoadoutBuilderPage({ colors, getIconUrl, maps, heroes, onNavigat
     [maps, selectedMapId]
   );
   const statsLoadoutBonuses = useMemo(
-    () => getStatsLoadoutBonusTotals(statsLoadoutState.levelsByTab),
+    () => normalizeBonusTotals(getStatsLoadoutBonusTotals(statsLoadoutState.levelsByTab)),
     [statsLoadoutState.levelsByTab]
   );
   const selectedMapPerkState = selectedMap ? (mapLoadoutState.perksByMap[selectedMap.id] ?? {}) : {};
@@ -984,12 +1226,15 @@ export function LoadoutBuilderPage({ colors, getIconUrl, maps, heroes, onNavigat
       );
     }
 
-    return totals;
+    return normalizeBonusTotals(totals);
   }, [selectedMap, selectedMapPerkState]);
 
   const upgradedHeroes = useMemo(
     () => heroes.map((hero) => {
-      const upgradeStats = buildHeroUpgradeStats(hero, mergeBonusTotals(statsLoadoutBonuses, selectedMapGlobalBonuses));
+      const heroAttributeLevels = heroLoadoutState.attributeLevelsByHero?.[hero.id] ?? {};
+      const personalAttributeBonuses = getHeroAttributeBonusTotals(heroAttributeLevels, "personal");
+      const globalAttributeBonuses = getHeroAttributeBonusTotals(heroAttributeLevels, "global");
+      const upgradeStats = buildHeroUpgradeStats(hero, mergeBonusTotals(statsLoadoutBonuses, selectedMapGlobalBonuses, personalAttributeBonuses, globalAttributeBonuses));
       return {
         ...hero,
         baseStats: upgradeStats.adjustedBaseStats,
@@ -997,7 +1242,7 @@ export function LoadoutBuilderPage({ colors, getIconUrl, maps, heroes, onNavigat
         skill: upgradeStats.adjustedSkill,
       };
     }),
-    [heroes, selectedMapGlobalBonuses, statsLoadoutBonuses]
+    [heroLoadoutState.attributeLevelsByHero, heroes, selectedMapGlobalBonuses, statsLoadoutBonuses]
   );
 
   useEffect(() => {
@@ -1005,6 +1250,7 @@ export function LoadoutBuilderPage({ colors, getIconUrl, maps, heroes, onNavigat
       return;
     }
     setPlacementsByMap((current) => normalizePlacementsByMap(maps, current));
+    setPlacementRanksByMap((current) => normalizePlacementRanksByMap(maps, current));
   }, [maps, selectedMap]);
 
   useEffect(() => {
@@ -1020,6 +1266,10 @@ export function LoadoutBuilderPage({ colors, getIconUrl, maps, heroes, onNavigat
   useEffect(() => {
     localStorage.setItem(LOADOUT_BUILDER_PLACEMENTS_STORAGE_KEY, JSON.stringify(placementsByMap));
   }, [placementsByMap]);
+
+  useEffect(() => {
+    localStorage.setItem(LOADOUT_BUILDER_RANKS_STORAGE_KEY, JSON.stringify(placementRanksByMap));
+  }, [placementRanksByMap]);
 
   useEffect(() => {
     if (builderMode !== "hero") {
@@ -1047,6 +1297,7 @@ export function LoadoutBuilderPage({ colors, getIconUrl, maps, heroes, onNavigat
     []
   );
   const placements = selectedMap ? placementsByMap[selectedMap.id] ?? buildPlacementState(selectedMap.spots) : {};
+  const placementRanks = selectedMap ? placementRanksByMap[selectedMap.id] ?? buildPlacementRanksState(selectedMap.spots) : {};
   const heroSearchIndex = useMemo(
     () => Object.fromEntries(upgradedHeroes.map((hero) => [hero.id, buildHeroSearchIndex(hero)])),
     [upgradedHeroes]
@@ -1127,47 +1378,248 @@ export function LoadoutBuilderPage({ colors, getIconUrl, maps, heroes, onNavigat
     return sortHeroes(nextHeroes, sortMode);
   }, [upgradedHeroes, deferredSearch, heroSearchIndex, heroPlacementCounts, placementFilter, classFilters, rarityFilters, typeFilters, subtypeFilters, milestoneTypeFilters, synergyTypeFilters, sortMode, searchScopes]);
 
-  const placedEntries = useMemo(
-    () => Object.entries(placements)
+  const placedEntries = useMemo(() => {
+    if (!selectedMap) {
+      return [];
+    }
+
+    const heroById = Object.fromEntries(heroes.map((hero) => [hero.id, hero]));
+    const rawEntries = Object.entries(placements)
       .filter(([, heroId]) => heroId)
-      .map(([spotId, heroId]) => ({
-        spotId,
-        heroId,
-        hero: (() => {
-          const baseHero = heroes.find((item) => item.id === heroId);
-          if (!baseHero) {
-            return null;
+      .map(([spotId, heroId]) => {
+        const baseHero = heroById[heroId];
+        const spot = selectedMap.spots.find((item) => item.id === spotId) ?? null;
+        if (!baseHero || !spot) {
+          return null;
+        }
+
+        const placedBonusId = selectedMapPlacementBonuses[spotId];
+        const placedBonus = placementBonusDefinitionsById[placedBonusId] ?? null;
+        const placementTotals = {};
+
+        if (placedBonus) {
+          addNormalizedBonusTotal(
+            placementTotals,
+            normalizeMapPlacementBonusKey(placedBonus.statKey),
+            getPlacementBonusValue(placedBonus, mapLoadoutState.placementBonusLevels[placedBonus.id] ?? 0)
+          );
+        }
+
+        const heroAttributeLevels = heroLoadoutState.attributeLevelsByHero?.[heroId] ?? {};
+        const personalAttributeBonuses = getHeroAttributeBonusTotals(heroAttributeLevels, "personal");
+        const globalAttributeBonuses = getHeroAttributeBonusTotals(heroAttributeLevels, "global");
+        const milestoneEffectBonusPct = (selectedMapGlobalBonuses.milestoneBonus ?? 0) + (placementTotals.milestoneBonus ?? 0);
+        const synergyEffectBonusPct = (selectedMapGlobalBonuses.synergyBonus ?? 0) + (placementTotals.synergyBonus ?? 0);
+        const currentRank = Math.max(0, Number.parseInt(placementRanks[spotId], 10) || 0);
+        const currentLevel = Math.max(0, Number.parseInt(heroLoadoutState.levelByHero?.[heroId], 10) || 0);
+
+        return {
+          spotId,
+          spot,
+          heroId,
+          currentRank,
+          currentLevel,
+          baseHero,
+          placedBonus,
+          placementTotals,
+          heroAttributeLevels,
+          personalAttributeBonuses,
+          globalAttributeBonuses,
+          milestoneEffectBonusPct,
+          synergyEffectBonusPct,
+        };
+      })
+      .filter(Boolean);
+
+    const uniqueGlobalAttributeBonuses = new Map();
+    const uniqueGlobalMilestones = new Map();
+
+    rawEntries.forEach((entry) => {
+      uniqueGlobalAttributeBonuses.set(entry.heroId, entry.globalAttributeBonuses);
+
+      entry.activeMilestones = (entry.baseHero.milestones ?? [])
+        .filter((milestone) => (milestone.requirement ?? 0) <= entry.currentLevel)
+        .map((milestone) => enrichProgressionEffect(milestone, "milestone", entry.milestoneEffectBonusPct));
+      entry.inactiveMilestones = (entry.baseHero.milestones ?? [])
+        .filter((milestone) => (milestone.requirement ?? 0) > entry.currentLevel)
+        .map((milestone) => enrichProgressionEffect(milestone, "milestone", entry.milestoneEffectBonusPct));
+
+      entry.activeMilestones
+        .filter((milestone) => milestone.scope === "global")
+        .forEach((milestone) => {
+          const key = getProgressionKey("milestone", entry.heroId, milestone);
+          if (!uniqueGlobalMilestones.has(key)) {
+            uniqueGlobalMilestones.set(key, milestone);
+          }
+        });
+    });
+
+    const globalBonusesWithoutSynergies = mergeBonusTotals(
+      statsLoadoutBonuses,
+      selectedMapGlobalBonuses,
+      ...Array.from(uniqueGlobalAttributeBonuses.values()),
+      buildProgressionBonusTotals(Array.from(uniqueGlobalMilestones.values()), "global")
+    );
+
+    rawEntries.forEach((entry) => {
+      const preSynergyBonuses = mergeBonusTotals(
+        globalBonusesWithoutSynergies,
+        entry.personalAttributeBonuses,
+        buildProgressionBonusTotals(entry.activeMilestones, "personal"),
+        entry.placementTotals
+      );
+      const preSynergyStats = buildHeroUpgradeStats(entry.baseHero, preSynergyBonuses);
+      entry.preSynergyRange = preSynergyStats.adjustedBaseStats.range ?? entry.baseHero.baseStats?.range ?? 0;
+    });
+
+    function isMutuallyInRange(group) {
+      for (let leftIndex = 0; leftIndex < group.length; leftIndex += 1) {
+        for (let rightIndex = leftIndex + 1; rightIndex < group.length; rightIndex += 1) {
+          const left = group[leftIndex];
+          const right = group[rightIndex];
+          const distance = getDistanceBetweenPoints(left.spot, right.spot);
+          if (distance > getNormalizedRangeRadius(left.preSynergyRange) || distance > getNormalizedRangeRadius(right.preSynergyRange)) {
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+
+    function findSynergyActivationGroup(sourceEntry, synergy) {
+      const partnerIds = [synergy.hero1, synergy.hero2, synergy.hero3].filter(Boolean);
+      const groups = partnerIds.map((partnerId) => rawEntries.filter((entry) => entry.heroId === partnerId));
+
+      if (groups.some((group) => group.length === 0)) {
+        return null;
+      }
+
+      const selectedEntries = [sourceEntry];
+      function backtrack(groupIndex) {
+        if (groupIndex >= groups.length) {
+          return isMutuallyInRange(selectedEntries) ? [...selectedEntries] : null;
+        }
+
+        for (const candidate of groups[groupIndex]) {
+          if (selectedEntries.some((entry) => entry.spotId === candidate.spotId)) {
+            continue;
           }
 
-          const placedBonusId = selectedMapPlacementBonuses[spotId];
-          const placedBonus = placementBonusDefinitionsById[placedBonusId] ?? null;
-          const placementTotals = {};
-
-          if (placedBonus) {
-            addBonusTotal(
-              placementTotals,
-              normalizeMapPlacementBonusKey(placedBonus.statKey),
-              getPlacementBonusValue(placedBonus, mapLoadoutState.placementBonusLevels[placedBonus.id] ?? 0)
-            );
+          selectedEntries.push(candidate);
+          const result = backtrack(groupIndex + 1);
+          selectedEntries.pop();
+          if (result) {
+            return result;
           }
+        }
 
-          const bonusTotals = mergeBonusTotals(statsLoadoutBonuses, selectedMapGlobalBonuses, placementTotals);
-          const upgradeStats = buildHeroUpgradeStats(baseHero, bonusTotals);
+        return null;
+      }
 
-          return {
-            ...baseHero,
-            baseStats: upgradeStats.adjustedBaseStats,
-            upgradeDisplayStats: upgradeStats.displayStats,
-            skill: upgradeStats.adjustedSkill,
+      return backtrack(0);
+    }
+
+    const uniqueGlobalSynergies = new Map();
+
+    rawEntries.forEach((entry) => {
+      entry.activeSynergies = [];
+      entry.inactiveSynergies = [];
+
+      (entry.baseHero.synergies ?? []).forEach((synergy) => {
+        const enriched = enrichProgressionEffect(synergy, "synergy", entry.synergyEffectBonusPct);
+        const matchedGroup = (synergy.rankRequired ?? 0) <= entry.currentRank
+          ? findSynergyActivationGroup(entry, synergy)
+          : null;
+
+        if (matchedGroup) {
+          const activeSynergy = {
+            ...enriched,
+            partnerNames: matchedGroup.filter((candidate) => candidate.spotId !== entry.spotId).map((candidate) => candidate.baseHero.name),
+            activeSpotIds: matchedGroup.map((candidate) => candidate.spotId),
           };
-        })(),
-        spot: selectedMap?.spots.find((item) => item.id === spotId),
-      }))
-      .filter((entry) => entry.hero && entry.spot),
-    [heroes, mapLoadoutState.placementBonusLevels, placementBonusDefinitionsById, placements, selectedMap, selectedMapGlobalBonuses, selectedMapPlacementBonuses, statsLoadoutBonuses]
-  );
+          entry.activeSynergies.push(activeSynergy);
+
+          if (activeSynergy.scope === "global") {
+            const key = getProgressionKey("synergy", entry.heroId, activeSynergy);
+            if (!uniqueGlobalSynergies.has(key)) {
+              uniqueGlobalSynergies.set(key, activeSynergy);
+            }
+          }
+        } else {
+          entry.inactiveSynergies.push({
+            ...enriched,
+            partnerNames: [synergy.hero1, synergy.hero2, synergy.hero3].filter(Boolean).map(formatFilterLabel),
+          });
+        }
+      });
+    });
+
+    const finalGlobalBonuses = mergeBonusTotals(
+      globalBonusesWithoutSynergies,
+      buildProgressionBonusTotals(Array.from(uniqueGlobalSynergies.values()), "global")
+    );
+
+    return rawEntries.map((entry) => {
+      const bonusTotals = mergeBonusTotals(
+        finalGlobalBonuses,
+        entry.personalAttributeBonuses,
+        buildProgressionBonusTotals(entry.activeMilestones, "personal"),
+        buildProgressionBonusTotals(entry.activeSynergies, "personal"),
+        entry.placementTotals
+      );
+      const upgradeStats = buildHeroUpgradeStats(entry.baseHero, bonusTotals);
+
+      return {
+        ...entry,
+        hero: {
+          ...entry.baseHero,
+          baseStats: upgradeStats.adjustedBaseStats,
+          upgradeDisplayStats: upgradeStats.displayStats,
+          skill: upgradeStats.adjustedSkill,
+          currentRank: entry.currentRank,
+          currentLevel: entry.currentLevel,
+          placementBonus: entry.placedBonus,
+          activeMilestones: entry.activeMilestones,
+          inactiveMilestones: entry.inactiveMilestones,
+          activeSynergies: entry.activeSynergies,
+          inactiveSynergies: entry.inactiveSynergies,
+        },
+      };
+    });
+  }, [heroLoadoutState.attributeLevelsByHero, heroLoadoutState.levelByHero, heroes, mapLoadoutState.placementBonusLevels, placementBonusDefinitionsById, placementRanks, placements, selectedMap, selectedMapGlobalBonuses, selectedMapPlacementBonuses, statsLoadoutBonuses]);
+
+  const previewFocusedHero = useMemo(() => {
+    const baseHero = heroes.find((hero) => hero.id === inspectedHeroId) ?? null;
+    if (!baseHero) {
+      return null;
+    }
+
+    const heroAttributeLevels = heroLoadoutState.attributeLevelsByHero?.[baseHero.id] ?? {};
+    const personalAttributeBonuses = getHeroAttributeBonusTotals(heroAttributeLevels, "personal");
+    const globalAttributeBonuses = getHeroAttributeBonusTotals(heroAttributeLevels, "global");
+    const upgradeStats = buildHeroUpgradeStats(baseHero, mergeBonusTotals(statsLoadoutBonuses, selectedMapGlobalBonuses, personalAttributeBonuses, globalAttributeBonuses));
+
+    return {
+      ...baseHero,
+      baseStats: upgradeStats.adjustedBaseStats,
+      upgradeDisplayStats: upgradeStats.displayStats,
+      skill: upgradeStats.adjustedSkill,
+      currentRank: Math.max(0, Number.parseInt(heroLoadoutState.rankByHero?.[baseHero.id], 10) || 0),
+      currentLevel: Math.max(0, Number.parseInt(heroLoadoutState.levelByHero?.[baseHero.id], 10) || 0),
+      placementBonus: null,
+      activeMilestones: (baseHero.milestones ?? [])
+        .filter((milestone) => (milestone.requirement ?? 0) <= (Math.max(0, Number.parseInt(heroLoadoutState.levelByHero?.[baseHero.id], 10) || 0)))
+        .map((milestone) => enrichProgressionEffect(milestone, "milestone", selectedMapGlobalBonuses.milestoneBonus ?? 0)),
+      inactiveMilestones: (baseHero.milestones ?? [])
+        .filter((milestone) => (milestone.requirement ?? 0) > (Math.max(0, Number.parseInt(heroLoadoutState.levelByHero?.[baseHero.id], 10) || 0)))
+        .map((milestone) => enrichProgressionEffect(milestone, "milestone", selectedMapGlobalBonuses.milestoneBonus ?? 0)),
+      activeSynergies: [],
+      inactiveSynergies: (baseHero.synergies ?? []).map((synergy) => enrichProgressionEffect(synergy, "synergy", selectedMapGlobalBonuses.synergyBonus ?? 0)),
+    };
+  }, [heroLoadoutState.attributeLevelsByHero, heroLoadoutState.levelByHero, heroLoadoutState.rankByHero, heroes, inspectedHeroId, selectedMapGlobalBonuses, statsLoadoutBonuses]);
+
   const focusedHero = placedEntries.find((entry) => entry.spotId === inspectedHeroSpotId)?.hero
-    ?? upgradedHeroes.find((hero) => hero.id === inspectedHeroId)
+    ?? previewFocusedHero
     ?? null;
 
   const filterContext = {
@@ -1197,6 +1649,17 @@ export function LoadoutBuilderPage({ colors, getIconUrl, maps, heroes, onNavigat
     }));
   }
 
+  function updatePlacementRanks(updater) {
+    if (!selectedMap) {
+      return;
+    }
+
+    setPlacementRanksByMap((current) => ({
+      ...current,
+      [selectedMap.id]: updater(buildPlacementRanksState(selectedMap.spots, current[selectedMap.id])),
+    }));
+  }
+
   function canAddAnotherHeroCopy(heroId, targetSpotId) {
     const placementCount = heroPlacementCounts[heroId] ?? 0;
     if (placementCount < MAX_DUPLICATE_HEROES) {
@@ -1215,6 +1678,8 @@ export function LoadoutBuilderPage({ colors, getIconUrl, maps, heroes, onNavigat
       return;
     }
 
+    const displacedHeroId = placements[targetSpotId] ?? null;
+
     updatePlacements((current) => {
       const next = { ...current };
       const targetHeroId = next[targetSpotId];
@@ -1232,6 +1697,25 @@ export function LoadoutBuilderPage({ colors, getIconUrl, maps, heroes, onNavigat
       next[targetSpotId] = heroId;
       return next;
     });
+
+    updatePlacementRanks((current) => {
+      const next = { ...current };
+      const targetRank = next[targetSpotId] ?? 0;
+
+      if (sourceSpotId) {
+        if (sourceSpotId === targetSpotId) {
+          return next;
+        }
+
+        const sourceRank = next[sourceSpotId] ?? 0;
+        next[sourceSpotId] = displacedHeroId ? targetRank : 0;
+        next[targetSpotId] = sourceRank;
+        return next;
+      }
+
+      next[targetSpotId] = 0;
+      return next;
+    });
   }
 
   function clearSpot(spotId) {
@@ -1239,13 +1723,24 @@ export function LoadoutBuilderPage({ colors, getIconUrl, maps, heroes, onNavigat
       setInspectedHeroSpotId(null);
     }
     updatePlacements((current) => ({ ...current, [spotId]: null }));
+    updatePlacementRanks((current) => ({ ...current, [spotId]: 0 }));
   }
 
   function clearSelectedMap() {
     updatePlacements((current) => Object.fromEntries(Object.keys(current).map((spotId) => [spotId, null])));
+    updatePlacementRanks((current) => Object.fromEntries(Object.keys(current).map((spotId) => [spotId, 0])));
     setSelectedHeroAction(null);
     setHoveredMapHeroSpotId(null);
     setInspectedHeroSpotId(null);
+  }
+
+  function setSpotRank(spotId, rawValue) {
+    const parsed = rawValue === "" ? 0 : Number.parseInt(rawValue, 10);
+    const nextRank = Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+    updatePlacementRanks((current) => ({
+      ...current,
+      [spotId]: nextRank,
+    }));
   }
 
   function resetFilters() {
@@ -1272,7 +1767,9 @@ export function LoadoutBuilderPage({ colors, getIconUrl, maps, heroes, onNavigat
     if (!data) {
       return;
     }
-    const hero = upgradedHeroes.find((item) => item.id === data.heroId) ?? null;
+    const hero = data.sourceSpotId
+      ? (placedEntries.find((entry) => entry.spotId === data.sourceSpotId)?.hero ?? null)
+      : (upgradedHeroes.find((item) => item.id === data.heroId) ?? null);
     setDragState({ ...data, hero });
     setInspectedHeroId(data.heroId);
     setInspectedHeroSpotId(data.sourceSpotId ?? null);
@@ -1373,7 +1870,7 @@ export function LoadoutBuilderPage({ colors, getIconUrl, maps, heroes, onNavigat
                 Builder
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   {[
-                    { id: "hero", label: "Hero Loadout" },
+                    { id: "hero", label: "Placement Loadout" },
                     { id: "perks", label: "Map Perks Loadout" },
                   ].map((mode) => (
                     <button
@@ -1561,8 +2058,8 @@ export function LoadoutBuilderPage({ colors, getIconUrl, maps, heroes, onNavigat
                       )}
 
                       {selectedMap.spots.map((spot) => {
-                        const heroId = placements[spot.id];
-                        const hero = upgradedHeroes.find((item) => item.id === heroId) ?? null;
+                        const entry = placedEntries.find((item) => item.spotId === spot.id) ?? null;
+                        const hero = entry?.hero ?? null;
 
                         return hero ? (
                           <div key={`token-group:${spot.id}`}>
@@ -1646,8 +2143,32 @@ export function LoadoutBuilderPage({ colors, getIconUrl, maps, heroes, onNavigat
                           <div style={{ minWidth: 0, flex: 1 }}>
                             <div style={{ fontWeight: 800, color: colors.text, fontSize: 13 }}>{entry.hero.name}</div>
                             <div style={{ fontSize: 11, color: colors.muted }}>{entry.spot.label} · {entry.spot.id}</div>
+                            <div style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>Hero Level {entry.hero.currentLevel ?? 0}</div>
+                            <div style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>
+                              {entry.placedBonus ? `${entry.placedBonus.name} ${formatSignedHeroBonus(normalizeMapPlacementBonusKey(entry.placedBonus.statKey), getPlacementBonusValue(entry.placedBonus, mapLoadoutState.placementBonusLevels[entry.placedBonus.id] ?? 0))}` : "No placement bonus"}
+                            </div>
                           </div>
                         </div>
+                        <label style={{ display: "grid", gap: 4 }}>
+                          <span style={{ fontSize: 10, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase" }}>Current Rank</span>
+                          <input
+                            type="number"
+                            min={0}
+                            value={entry.currentRank}
+                            onChange={(event) => setSpotRank(entry.spotId, event.target.value)}
+                            style={{
+                              width: "100%",
+                              background: "#0f2640",
+                              border: `1px solid ${colors.border}`,
+                              borderRadius: 8,
+                              color: colors.text,
+                              fontSize: 13,
+                              fontWeight: 700,
+                              padding: "8px 10px",
+                              fontFamily: "inherit",
+                            }}
+                          />
+                        </label>
                         <button type="button" onClick={() => clearSpot(entry.spotId)} style={{ background: "transparent", color: colors.accent, border: `1px solid ${colors.border}`, borderRadius: 8, padding: "8px 10px", fontWeight: 700, cursor: "pointer" }}>Remove</button>
                       </div>
                     ))}
@@ -1724,6 +2245,9 @@ export function LoadoutBuilderPage({ colors, getIconUrl, maps, heroes, onNavigat
                       <div style={{ display: "grid", gap: 4 }}>
                         <div style={{ fontSize: 12, color: colors.muted }}>{focusedHero.class ?? "Unknown class"} · {focusedHero.rarity ?? "Unknown rarity"}</div>
                         <div style={{ fontSize: 12, color: colors.muted }}>{formatFilterLabel(focusedHero.type)}{focusedHero.typeSubtype?.length ? ` · ${focusedHero.typeSubtype.map(formatFilterLabel).join(", ")}` : ""}</div>
+                        <div style={{ fontSize: 12, color: colors.muted }}>Current Rank {focusedHero.currentRank ?? 0}</div>
+                        <div style={{ fontSize: 12, color: colors.muted }}>Current Level {focusedHero.currentLevel ?? 0}</div>
+                        <div style={{ fontSize: 12, color: colors.muted }}>{focusedHero.placementBonus ? `Placement Bonus: ${focusedHero.placementBonus.name}` : "Placement Bonus: None"}</div>
                         <div style={{ fontSize: 13, color: colors.text, lineHeight: 1.6 }}>{focusedHero.skill?.description ?? "No skill description available."}</div>
                       </div>
                     </div>
@@ -1768,13 +2292,22 @@ export function LoadoutBuilderPage({ colors, getIconUrl, maps, heroes, onNavigat
                         {activeFocusedHeroInfoTab === "milestones" && (
                           <FocusedHeroDetailSection
                             title="Milestones"
-                            subtitle={`${focusedHero.milestones?.length ?? 0} progression nodes`}
+                            subtitle={`${focusedHero.activeMilestones?.length ?? 0} active · ${focusedHero.inactiveMilestones?.length ?? 0} inactive`}
                             colors={colors}
                           >
-                            <div style={{ display: "grid", gap: 8, maxHeight: 280, overflowY: "auto", paddingRight: 4 }}>
-                              {(focusedHero.milestones ?? []).map((milestone) => (
-                                <FocusedHeroMilestoneCard key={`${focusedHero.id}-milestone-${milestone.milestone}`} milestone={milestone} colors={colors} />
+                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                              {FOCUSED_PROGRESS_TABS.map((tab) => (
+                                <FilterSubTabButton key={tab.id} active={activeFocusedMilestoneTab === tab.id} label={tab.label} onClick={() => setActiveFocusedMilestoneTab(tab.id)} colors={colors} />
                               ))}
+                            </div>
+                            <div style={{ display: "grid", gap: 8, maxHeight: 280, overflowY: "auto", paddingRight: 4 }}>
+                              {(activeFocusedMilestoneTab === "active" ? focusedHero.activeMilestones : focusedHero.inactiveMilestones).length ? (
+                                (activeFocusedMilestoneTab === "active" ? focusedHero.activeMilestones : focusedHero.inactiveMilestones).map((milestone) => (
+                                  <FocusedHeroMilestoneCard key={`${focusedHero.id}-milestone-${activeFocusedMilestoneTab}-${milestone.milestone}`} milestone={milestone} colors={colors} />
+                                ))
+                              ) : (
+                                <div style={{ fontSize: 12, color: colors.muted }}>No {activeFocusedMilestoneTab} milestones for this placement.</div>
+                              )}
                             </div>
                           </FocusedHeroDetailSection>
                         )}
@@ -1782,18 +2315,23 @@ export function LoadoutBuilderPage({ colors, getIconUrl, maps, heroes, onNavigat
                         {activeFocusedHeroInfoTab === "synergies" && (
                           <FocusedHeroDetailSection
                             title="Synergies"
-                            subtitle={`${focusedHero.synergies?.length ?? 0} synergy bonuses`}
+                            subtitle={`${focusedHero.activeSynergies?.length ?? 0} active · ${focusedHero.inactiveSynergies?.length ?? 0} inactive`}
                             colors={colors}
                           >
-                            {(focusedHero.synergies ?? []).length ? (
-                              <div style={{ display: "grid", gap: 8, maxHeight: 280, overflowY: "auto", paddingRight: 4 }}>
-                                {focusedHero.synergies.map((synergy) => (
-                                  <FocusedHeroSynergyCard key={`${focusedHero.id}-synergy-${synergy.synergyLevel}-${synergy.tier}`} synergy={synergy} colors={colors} />
-                                ))}
-                              </div>
-                            ) : (
-                              <div style={{ fontSize: 12, color: colors.muted }}>No synergy data is available for this hero.</div>
-                            )}
+                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                              {FOCUSED_PROGRESS_TABS.map((tab) => (
+                                <FilterSubTabButton key={tab.id} active={activeFocusedSynergyTab === tab.id} label={tab.label} onClick={() => setActiveFocusedSynergyTab(tab.id)} colors={colors} />
+                              ))}
+                            </div>
+                            <div style={{ display: "grid", gap: 8, maxHeight: 280, overflowY: "auto", paddingRight: 4 }}>
+                              {(activeFocusedSynergyTab === "active" ? focusedHero.activeSynergies : focusedHero.inactiveSynergies).length ? (
+                                (activeFocusedSynergyTab === "active" ? focusedHero.activeSynergies : focusedHero.inactiveSynergies).map((synergy) => (
+                                  <FocusedHeroSynergyCard key={`${focusedHero.id}-synergy-${activeFocusedSynergyTab}-${synergy.synergyLevel}-${synergy.tier}`} synergy={synergy} colors={colors} />
+                                ))
+                              ) : (
+                                <div style={{ fontSize: 12, color: colors.muted }}>No {activeFocusedSynergyTab} synergies for this placement.</div>
+                              )}
+                            </div>
                           </FocusedHeroDetailSection>
                         )}
                       </div>
