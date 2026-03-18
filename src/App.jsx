@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useLayoutEffect, useRef, createContext, useContext } from "react";
+import { useState, useMemo, useEffect, useLayoutEffect, useRef, createContext, useContext, useTransition } from "react";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768);
@@ -27,6 +27,9 @@ import tournamentBracketsData   from "./data/tournament_brackets.json";
 import combatStylesData         from "./data/combat_styles.json";
 import enemyHpData              from "./data/enemy_hp.json";
 import battpassExpData          from "./data/battlepass_exp.json";
+import challengesData          from "./data/challenges.json";
+import playerIconsData         from "./data/player_icons.json";
+import playerBgData            from "./data/player_backgrounds.json";
 import STAT_UNITS          from "./data/stat_units.json";
 import techTreeDisplayData  from "./data/tech_tree_display.json";
 
@@ -105,6 +108,14 @@ const NAV_GROUPS = [
     label: "Battlepass",
     items: [
       { key: "battpassExp", label: "Battlepass Exp", menuIcon: "_battlepass.png" },
+    ],
+  },
+  {
+    label: "Challenges",
+    items: [
+      { key: "challenges",        label: "Challenges",         menuIcon: "_starBlue.png" },
+      { key: "playerIcons",       label: "Player Icons",       menuIcon: "icon_inforound.png" },
+      { key: "playerBackgrounds", label: "Player Backgrounds", menuIcon: "_prestigeBg.png" },
     ],
   },
   {
@@ -449,6 +460,13 @@ function formatStatTotal(totalAmt, statKey, fmt) {
   return `+${formatted}`;
 }
 
+// Reverse lookup: rewardUnit label (case-insensitive) → unit symbol ("%" / "s" / etc.)
+const REWARD_UNIT_SYMBOL = Object.fromEntries(
+  Object.values(STAT_UNITS).map(v => [v.label.toLowerCase(), v.unit])
+);
+function rewardUnitSym(rewardUnit) {
+  return REWARD_UNIT_SYMBOL[rewardUnit?.toLowerCase()] ?? "";
+}
 
 // ─────────────────────────────────────────────
 // COLORS  — based on in-game UI palette
@@ -955,6 +973,8 @@ function RankExpView() {
   const [startInput, setStartInput] = useState("1");
   const [endInput,   setEndInput]   = useState("5000");
   const [range, setRange] = useState({ start: 1, end: 5000 });
+  const [sortDir, setSortDir] = useState("asc");
+  const [isPending, startTransition] = useTransition();
 
   function applyRange() {
     const s = Math.max(1, parseInt(startInput) || 1);
@@ -994,14 +1014,25 @@ function RankExpView() {
     return { rows: out, totalExp: hasInf ? null : totalExp, totalPoints };
   }, [range]);
 
+  // Rows are always generated ascending — desc is just a reverse (no sort needed)
+  const displayRows = sortDir === "asc" ? rows : [...rows].reverse();
+
   const inputStyle = {
     background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 6,
     color: colors.text, padding: "6px 10px", fontSize: 14, fontFamily: "inherit",
     width: 90, textAlign: "center", outline: "none",
   };
 
+  const thBase = { padding: "10px 16px", fontWeight: 600, textAlign: "left", borderBottom: `1px solid ${colors.border}`, fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase" };
+  const thMuted = { ...thBase, color: colors.muted };
+  const thSortable = { ...thBase, color: colors.accent, cursor: isPending ? "wait" : "pointer", userSelect: "none", whiteSpace: "nowrap" };
+
   return (
     <div>
+      <div style={{ marginBottom: 20, display: "flex", alignItems: "center", gap: 12 }}>
+        <img src={getIconUrl("_killExp.png")} alt="" style={{ width: 32, height: 32, objectFit: "contain" }} />
+        <div style={{ fontSize: 22, fontWeight: 900, color: colors.accent, letterSpacing: "0.04em", textTransform: "uppercase" }}>Rank Exp</div>
+      </div>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
         <span style={{ color: colors.muted, fontSize: 13 }}>From level</span>
         <input
@@ -1039,13 +1070,17 @@ function RankExpView() {
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
             <tr style={{ background: colors.panel }}>
-              {["Level", "EXP Required", "Cumulative EXP", "Points Gained", "Cumulative Points"].map(h => (
-                <th key={h} style={{ padding: "10px 16px", color: colors.muted, fontWeight: 600, textAlign: "left", borderBottom: `1px solid ${colors.border}`, fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase" }}>{h}</th>
-              ))}
+              <th onClick={() => !isPending && startTransition(() => setSortDir(d => d === "asc" ? "desc" : "asc"))} style={thSortable}>
+                Level{isPending ? <span className="sort-spinner" /> : (sortDir === "asc" ? " ▲" : " ▼")}
+              </th>
+              <th style={thMuted}>EXP Required</th>
+              <th style={thMuted}>Cumulative EXP</th>
+              <th style={thMuted}>Points Gained</th>
+              <th style={thMuted}>Cumulative Points</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((r, i) => (
+            {displayRows.map((r, i) => (
               <tr key={r.level} style={{ background: i % 2 === 0 ? "transparent" : colors.panel + "60", borderBottom: `1px solid ${colors.border}22` }}>
                 <td style={{ padding: "8px 16px", color: colors.accent, fontWeight: 600 }}>{r.level}</td>
                 <td style={{ padding: "8px 16px", color: colors.text, fontFamily: "monospace" }}>{fmt(r.required)}</td>
@@ -1080,6 +1115,8 @@ function BattlepassExpView() {
   const [startInput, setStartInput] = useState("1");
   const [endInput,   setEndInput]   = useState("150");
   const [range, setRange] = useState({ start: 1, end: 150 });
+  const [sortDir, setSortDir] = useState("asc");
+  const [isPending, startTransition] = useTransition();
 
   function applyRange() {
     const s = Math.max(1, parseInt(startInput) || 1);
@@ -1095,9 +1132,10 @@ function BattlepassExpView() {
 
   const { rows, totalExp } = useMemo(() => {
     const out = [];
+    // EXP to reach level N from N-1 uses battpassExpForLevel(N-1)
     let cumulative = 0;
     for (let i = range.start; i <= range.end; i++) {
-      const required = battpassExpForLevel(i);
+      const required = battpassExpForLevel(i - 1);
       cumulative += required;
       out.push({ level: i, required, cumulative });
     }
@@ -1105,11 +1143,18 @@ function BattlepassExpView() {
     return { rows: out, totalExp };
   }, [range]);
 
+  // Rows are always generated ascending — desc is just a reverse (no sort needed)
+  const displayRows = sortDir === "asc" ? rows : [...rows].reverse();
+
   const inputStyle = {
     background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 6,
     color: colors.text, padding: "6px 10px", fontSize: 14, fontFamily: "inherit",
     width: 90, textAlign: "center", outline: "none",
   };
+
+  const thBase = { padding: "10px 16px", fontWeight: 600, textAlign: "left", borderBottom: `1px solid ${colors.border}`, fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase" };
+  const thMuted = { ...thBase, color: colors.muted };
+  const thSortable = { ...thBase, color: colors.accent, cursor: isPending ? "wait" : "pointer", userSelect: "none", whiteSpace: "nowrap" };
 
   return (
     <div>
@@ -1146,13 +1191,15 @@ function BattlepassExpView() {
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
             <tr style={{ background: colors.panel }}>
-              {["Level", "EXP Required", "Cumulative EXP"].map(h => (
-                <th key={h} style={{ padding: "10px 16px", color: colors.muted, fontWeight: 600, textAlign: "left", borderBottom: `1px solid ${colors.border}`, fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase" }}>{h}</th>
-              ))}
+              <th onClick={() => !isPending && startTransition(() => setSortDir(d => d === "asc" ? "desc" : "asc"))} style={thSortable}>
+                Level{isPending ? <span className="sort-spinner" /> : (sortDir === "asc" ? " ▲" : " ▼")}
+              </th>
+              <th style={thMuted}>EXP Required</th>
+              <th style={thMuted}>Cumulative EXP</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((r, i) => (
+            {displayRows.map((r, i) => (
               <tr key={r.level} style={{ background: i % 2 === 0 ? "transparent" : colors.panel + "60", borderBottom: `1px solid ${colors.border}22` }}>
                 <td style={{ padding: "8px 16px", color: colors.accent, fontWeight: 600 }}>{r.level}</td>
                 <td style={{ padding: "8px 16px", color: colors.text, fontFamily: "monospace" }}>{fmt(r.required)}</td>
@@ -2859,6 +2906,15 @@ const HOME_SECTIONS = [
     ],
   },
   {
+    group: "Challenges",
+    color: "#4ac8ff",
+    items: [
+      { key: "challenges",        label: "Challenges",         icon: "_starBlue.png",       desc: "Challenge rewards by difficulty" },
+      { key: "playerIcons",       label: "Player Icons",       icon: "icon_inforound.png",  desc: "Player icon costs and bonuses" },
+      { key: "playerBackgrounds", label: "Player Backgrounds", icon: "_prestigeBg.png",     desc: "Background unlock requirements and rewards" },
+    ],
+  },
+  {
     group: "Calculators",
     color: colors.accent,
     items: [
@@ -3461,6 +3517,156 @@ function MapPerksView() {
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// CHALLENGES VIEW
+// ─────────────────────────────────────────────
+function ChallengesView() {
+  const bannerStyle = { background: `linear-gradient(180deg, #3a6eb0 0%, ${colors.bannerBg} 100%)`, border: `1px solid #4a7ec0`, borderRadius: 8, padding: "8px 20px", marginBottom: 14, textAlign: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" };
+  return (
+    <div>
+      <div style={{ marginBottom: 20, display: "flex", alignItems: "center", gap: 12 }}>
+        <img src={getIconUrl("_starBlue.png")} alt="" style={{ width: 32, height: 32, objectFit: "contain" }} />
+        <div style={{ fontSize: 22, fontWeight: 900, color: colors.accent, letterSpacing: "0.04em", textTransform: "uppercase" }}>Challenges</div>
+      </div>
+      {Object.entries(challengesData.groups).map(([groupName, items]) => (
+        <div key={groupName} style={{ marginBottom: 32 }}>
+          <div style={bannerStyle}>
+            <span style={{ fontSize: 14, fontWeight: 800, color: colors.bannerText, letterSpacing: "0.12em", textTransform: "uppercase", textShadow: "0 1px 4px rgba(0,0,0,0.6)" }}>{groupName}</span>
+          </div>
+          <div className="card-grid">
+            {items.map(item => (
+              <div key={item.id} style={{ background: `linear-gradient(180deg, #2a5c96 0%, ${colors.header} 100%)`, border: `1px solid ${colors.border}`, borderRadius: 8, padding: 12, boxShadow: "0 2px 6px rgba(0,0,0,0.2)", display: "flex", gap: 12, alignItems: "center" }}>
+                <div style={{ width: 52, height: 52, flexShrink: 0, borderRadius: 8, background: item.bgColor, border: `2px solid ${item.borderColor}`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                  <img src={getIconUrl(item.icon)} alt="" style={{ width: 36, height: 36, objectFit: "contain" }} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ color: colors.text, fontWeight: 700, fontSize: 15, lineHeight: 1.2, marginBottom: 4 }}>{item.name}</div>
+                  <div style={{ fontSize: 13, color: colors.muted, marginBottom: 2 }}>
+                    Req <span style={{ color: colors.gold, fontWeight: 700 }}>{item.requirement.toLocaleString()}</span>
+                  </div>
+                  <div style={{ fontSize: 13, color: colors.muted }}>
+                    Reward{" "}<span style={{ color: item.reward < 0 ? colors.positive : colors.accent, fontWeight: 700 }}>{item.reward > 0 ? "+" : ""}{item.reward}{rewardUnitSym(item.rewardUnit)}</span>{" "}{item.rewardUnit}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// PLAYER ICONS VIEW
+// ─────────────────────────────────────────────
+function PlayerIconsView() {
+  const fmt = useFmt();
+  const bannerStyle = { background: `linear-gradient(180deg, #3a6eb0 0%, ${colors.bannerBg} 100%)`, border: `1px solid #4a7ec0`, borderRadius: 8, padding: "8px 20px", marginBottom: 14, textAlign: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" };
+  return (
+    <div>
+      <div style={{ marginBottom: 20, display: "flex", alignItems: "center", gap: 12 }}>
+        <img src={getIconUrl("icon_inforound.png")} alt="" style={{ width: 32, height: 32, objectFit: "contain" }} />
+        <div style={{ fontSize: 22, fontWeight: 900, color: colors.accent, letterSpacing: "0.04em", textTransform: "uppercase" }}>Player Icons</div>
+      </div>
+      {Object.entries(playerIconsData.groups).map(([groupName, items]) => (
+        <div key={groupName} style={{ marginBottom: 32 }}>
+          <div style={bannerStyle}>
+            <span style={{ fontSize: 14, fontWeight: 800, color: colors.bannerText, letterSpacing: "0.12em", textTransform: "uppercase", textShadow: "0 1px 4px rgba(0,0,0,0.6)" }}>{groupName}</span>
+          </div>
+          <div className="card-grid">
+            {items.map(item => (
+              <div key={item.id} style={{ background: `linear-gradient(180deg, #2a5c96 0%, ${colors.header} 100%)`, border: `1px solid ${colors.border}`, borderRadius: 8, padding: 12, boxShadow: "0 2px 6px rgba(0,0,0,0.2)", display: "flex", gap: 12, alignItems: "center" }}>
+                {/* Reward stat icon — left, with colored border */}
+                {item.rewardIcon ? (
+                  <div style={{ width: 52, height: 52, flexShrink: 0, borderRadius: 8, background: item.rewardBgColor, border: `2px solid ${item.rewardBorderColor}`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                    <img src={getIconUrl(item.rewardIcon)} alt="" style={{ width: 36, height: 36, objectFit: "contain" }} />
+                  </div>
+                ) : (
+                  <div style={{ width: 52, height: 52, flexShrink: 0, borderRadius: 8, background: colors.panel, border: `2px solid ${colors.border}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <span style={{ color: colors.muted, fontSize: 18 }}>—</span>
+                  </div>
+                )}
+                {/* Content */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ color: colors.text, fontWeight: 700, fontSize: 15, lineHeight: 1.2, marginBottom: 4 }}>{item.name}</div>
+                  <div style={{ fontSize: 13, color: colors.muted, marginBottom: 2 }}>
+                    Cost <span style={{ color: item.cost === 0 ? colors.positive : colors.gold, fontWeight: 700 }}>{item.cost === 0 ? "Free" : fmt(item.cost)}</span>
+                  </div>
+                  {item.rewardUnit && (
+                    <div style={{ fontSize: 13, color: colors.muted }}>
+                      Reward{" "}<span style={{ color: item.reward < 0 ? colors.positive : colors.accent, fontWeight: 700 }}>{item.reward > 0 ? "+" : ""}{item.reward}{rewardUnitSym(item.rewardUnit)}</span>{" "}{item.rewardUnit}
+                    </div>
+                  )}
+                </div>
+                {/* Player icon image — right, no border */}
+                <img src={getIconUrl(item.icon)} alt={item.name} style={{ width: 52, height: 52, flexShrink: 0, borderRadius: 6, objectFit: "contain" }} />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// PLAYER BACKGROUNDS VIEW
+// ─────────────────────────────────────────────
+function PlayerBackgroundsView() {
+  const bannerStyle = { background: `linear-gradient(180deg, #3a6eb0 0%, ${colors.bannerBg} 100%)`, border: `1px solid #4a7ec0`, borderRadius: 8, padding: "8px 20px", marginBottom: 14, textAlign: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" };
+  return (
+    <div>
+      <div style={{ marginBottom: 20, display: "flex", alignItems: "center", gap: 12 }}>
+        <img src={getIconUrl("_prestigeBg.png")} alt="" style={{ width: 32, height: 32, objectFit: "contain" }} />
+        <div style={{ fontSize: 22, fontWeight: 900, color: colors.accent, letterSpacing: "0.04em", textTransform: "uppercase" }}>Player Backgrounds</div>
+      </div>
+      {Object.entries(playerBgData.groups).map(([groupName, items]) => (
+        <div key={groupName} style={{ marginBottom: 32 }}>
+          <div style={bannerStyle}>
+            <span style={{ fontSize: 14, fontWeight: 800, color: colors.bannerText, letterSpacing: "0.12em", textTransform: "uppercase", textShadow: "0 1px 4px rgba(0,0,0,0.6)" }}>{groupName}</span>
+          </div>
+          <div className="card-grid">
+            {items.map(item => (
+              <div key={item.id} style={{ position: "relative", backgroundImage: item.background ? `url(${getIconUrl(item.background)})` : "none", backgroundSize: "cover", backgroundPosition: "center", border: `1px solid ${colors.border}`, borderRadius: 8, padding: 12, boxShadow: "0 2px 6px rgba(0,0,0,0.2)", overflow: "hidden" }}>
+                {/* Dark overlay so text stays readable */}
+                {item.background && <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.55)" }} />}
+                {/* Card content above the overlay */}
+                <div style={{ position: "relative", zIndex: 1, display: "flex", gap: 12, alignItems: "center" }}>
+                  {item.icon ? (
+                    <div style={{ width: 52, height: 52, flexShrink: 0, borderRadius: 8, background: item.bgColor, border: `2px solid ${item.borderColor}`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                      <img src={getIconUrl(item.icon)} alt="" style={{ width: 36, height: 36, objectFit: "contain" }} />
+                    </div>
+                  ) : (
+                    <div style={{ width: 52, height: 52, flexShrink: 0, borderRadius: 8, background: colors.panel, border: `2px solid ${colors.border}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <span style={{ color: colors.muted, fontSize: 18 }}>—</span>
+                    </div>
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ color: colors.text, fontWeight: 700, fontSize: 15, lineHeight: 1.2, marginBottom: 4 }}>{item.name}</div>
+                    <div style={{ fontSize: 13, color: colors.muted, marginBottom: 2 }}>
+                      Req <span style={{ color: colors.gold, fontWeight: 700 }}>
+                        {item.requirement != null
+                          ? (typeof item.requirement === "string" ? item.requirement : item.requirement.toLocaleString())
+                          : "—"}
+                      </span>
+                    </div>
+                    {item.rewardUnit && (
+                      <div style={{ fontSize: 13, color: colors.muted }}>
+                        Reward{" "}<span style={{ color: item.reward < 0 ? colors.positive : colors.accent, fontWeight: 700 }}>{item.reward > 0 ? "+" : ""}{item.reward}{rewardUnitSym(item.rewardUnit)}</span>{" "}{item.rewardUnit}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -4075,6 +4281,9 @@ export default function App() {
           {activeKey === "allMaps"    && <AllMapsView />}
           {activeKey === "mapPerks"   && <MapPerksView />}
           {activeKey === "battpassExp" && <BattlepassExpView />}
+          {activeKey === "challenges"        && <ChallengesView />}
+          {activeKey === "playerIcons"       && <PlayerIconsView />}
+          {activeKey === "playerBackgrounds" && <PlayerBackgroundsView />}
         </div>
 
       </div>

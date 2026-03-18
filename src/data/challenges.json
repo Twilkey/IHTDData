@@ -1,0 +1,586 @@
+{
+  "menuOrder": 12,
+  "parentMenuName": "Challenges",
+  "menuIcon": "_challenges.png",
+  "label": "Challenges",
+  "groups": {
+    "Easy": [
+      {
+        "id": "highest_hero_level_reached_1",
+        "name": "Highest Hero Level Reached",
+        "requirement": 250,
+        "rewardUnit": "Damage",
+        "reward": 25,
+        "icon": "_dps.png",
+        "bgColor": "#960000",
+        "borderColor": "#FF0000"
+      },
+      {
+        "id": "kills_from_melee_heroes_2",
+        "name": "Kills from Melee Heroes",
+        "requirement": 25000,
+        "rewardUnit": "Damage",
+        "reward": 25,
+        "icon": "_dps.png",
+        "bgColor": "#960000",
+        "borderColor": "#FF0000"
+      },
+      {
+        "id": "kills_from_skill_damage_3",
+        "name": "Kills from Skill Damage",
+        "requirement": 10000,
+        "rewardUnit": "Skill Power",
+        "reward": 1,
+        "icon": "_skillPower_2.png",
+        "bgColor": "#009F9F",
+        "borderColor": "#00DEE0"
+      },
+      {
+        "id": "gems_spent_4",
+        "name": "Gems Spent",
+        "requirement": 1000,
+        "rewardUnit": "Kill Gold",
+        "reward": 25,
+        "icon": "_coin.png",
+        "bgColor": "#999900",
+        "borderColor": "#FFFF00"
+      },
+      {
+        "id": "synergies_active_at_once_5",
+        "name": "Synergies Active at Once",
+        "requirement": 10,
+        "rewardUnit": "Prestige Power",
+        "reward": 25,
+        "icon": "_planet.png",
+        "bgColor": "#6E00A2",
+        "borderColor": "#AF00FF"
+      },
+      {
+        "id": "battlepass_level_6",
+        "name": "Battlepass Level",
+        "requirement": 10,
+        "rewardUnit": "Battlepass Exp",
+        "reward": 1,
+        "icon": "_battlepassExp.png",
+        "bgColor": "#007700",
+        "borderColor": "#00C800"
+      }
+    ],
+    "Medium": [
+      {
+        "id": "goblin_hoarders_killed_7",
+        "name": "Goblin Hoarders Killed",
+        "requirement": 500,
+        "rewardUnit": "Kill Gold",
+        "reward": 50,
+        "icon": "_coin.png",
+        "bgColor": "#999900",
+        "borderColor": "#FFFF00"
+      },
+      {
+        "id": "kills_with_gold_lust_skill_applied_8",
+        "name": "Kills with Gold Lust Skill Applied",
+        "requirement": 5000,
+        "rewardUnit": "Super Gold Chance",
+        "reward": 5,
+        "icon": "_goldSuper.png",
+        "bgColor": "#8E8D04",
+        "borderColor": "#E9E90C"
+      },
+      {
+        "id": "most_energy_held_at_once_9",
+        "name": "Most Energy Held at Once",
+        "requirement": 100000,
+        "rewardUnit": "Energy Income",
+        "reward": 2,
+        "icon": "_energy2.png",
+        "bgColor": "#00A300",
+        "borderColor": "#00FF00"
+      },
+      {
+        "id": "daily_gifts_claimed_10",
+        "name": "Daily Gifts Claimed",
+        "requirement": 25,
+        "rewardUnit": "Prestige Power",
+        "reward": 50,
+        "icon": "_planet.png",
+        "bgColor": "#6E00A2",
+        "borderColor": "#AF00FF"
+      },
+      {
+        "id": "highest_hero_rank_11",
+        "name": "Highest Hero Rank",
+        "requirement": 15,
+        "rewardUnit": "Rank",
+        "reward": 3,
+        "icon": "_exp.png",
+        "bgColor": "#0A6899",
+        "borderColor": "#19AFFF"
+      },
+      {
+        "id": "total_spell_levels_12",
+        "name": "Total Spell Levels",
+        "requirement": 100,
+        "rewardUnit": "Spell Duration",
+        "reward": 3,
+        "icon": "_skillDuration.png",
+        "bgColor": "#007575",
+        "borderColor": "#00C8C8"
+      }
+    ],
+    "Hard": [
+      {
+        "id": "highest_hero_level_reached_13",
+        "name": "Highest Hero Level Reached",
+        "requirement": 750,
+        "rewardUnit": "Damage",
+        "reward": 100,
+        "icon": "_dps.png",
+        "bgColor": "#960000",
+        "borderColor": "#FF0000"
+      },
+      {
+        "id": "battlepass_level_14",
+        "name": "Battlepass Level",
+        "requirement": 25,
+        "rewardUnit": "Damage",
+        "reward": 100,
+        "icon": "_dps.png",
+        "bgColor": "#960000",
+        "borderColor": "#FF0000"
+      },
+      {
+        "id": "kills_from_range_heroes_15",
+        "name": "Kills from Range Heroes",
+        "requirement": 250000,
+        "rewardUnit": "Kill Gold",
+        "reward": 100,
+        "icon": "_coin.png",
+        "bgColor": "#999900",
+        "borderColor": "#FFFF00"
+      },
+      {
+        "id": "gems_spent_16",
+        "name": "Gems Spent",
+        "requirement": 10000,
+        "rewardUnit": "Kill Gold",
+        "reward": 100,
+        "icon": "_coin.png",
+        "bgColor": "#999900",
+        "borderColor": "#FFFF00"
+      },
+      {
+        "id": "power_mages_killed_17",
+        "name": "Power Mages Killed",
+        "requirement": 500,
+        "rewardUnit": "Energy Income",
+        "reward": 3,
+        "icon": "_energy2.png",
+        "bgColor": "#00A300",
+        "borderColor": "#00FF00"
+      },
+      {
+        "id": "synergies_active_at_once_18",
+        "name": "Synergies Active at Once",
+        "requirement": 20,
+        "rewardUnit": "Prestige Power",
+        "reward": 100,
+        "icon": "_planet.png",
+        "bgColor": "#6E00A2",
+        "borderColor": "#AF00FF"
+      }
+    ],
+    "Very Hard": [
+      {
+        "id": "daily_tasks_completed_19",
+        "name": "Daily Tasks Completed",
+        "requirement": 250,
+        "rewardUnit": "Damage",
+        "reward": 150,
+        "icon": "_dps.png",
+        "bgColor": "#960000",
+        "borderColor": "#FF0000"
+      },
+      {
+        "id": "kills_with_any_debuff_skill_applied_20",
+        "name": "Kills with any Debuff Skill Applied",
+        "requirement": 100000,
+        "rewardUnit": "Kill Gold",
+        "reward": 50,
+        "icon": "_coin.png",
+        "bgColor": "#999900",
+        "borderColor": "#FFFF00"
+      },
+      {
+        "id": "most_energy_held_at_once_21",
+        "name": "Most Energy Held at Once",
+        "requirement": 1000000,
+        "rewardUnit": "Energy Income",
+        "reward": 4,
+        "icon": "_energy2.png",
+        "bgColor": "#00A300",
+        "borderColor": "#00FF00"
+      },
+      {
+        "id": "training_dummies_killed_22",
+        "name": "Training Dummies Killed",
+        "requirement": 250,
+        "rewardUnit": "Rank",
+        "reward": 25,
+        "icon": "_exp.png",
+        "bgColor": "#0A6899",
+        "borderColor": "#19AFFF"
+      },
+      {
+        "id": "total_hero_ranks_23",
+        "name": "Total Hero Ranks",
+        "requirement": 500,
+        "rewardUnit": "Rank",
+        "reward": 10,
+        "icon": "_exp.png",
+        "bgColor": "#0A6899",
+        "borderColor": "#19AFFF"
+      },
+      {
+        "id": "daily_gifts_claimed_24",
+        "name": "Daily Gifts Claimed",
+        "requirement": 50,
+        "rewardUnit": "Prestige Power",
+        "reward": 150,
+        "icon": "_planet.png",
+        "bgColor": "#6E00A2",
+        "borderColor": "#AF00FF"
+      }
+    ],
+    "Extreme": [
+      {
+        "id": "highest_hero_level_reached_25",
+        "name": "Highest Hero Level Reached",
+        "requirement": 1500,
+        "rewardUnit": "Damage",
+        "reward": 200,
+        "icon": "_dps.png",
+        "bgColor": "#960000",
+        "borderColor": "#FF0000"
+      },
+      {
+        "id": "kills_from_mage_heroes_26",
+        "name": "Kills from Mage Heroes",
+        "requirement": 2500000,
+        "rewardUnit": "Skill Power",
+        "reward": 3,
+        "icon": "_skillPower_2.png",
+        "bgColor": "#009F9F",
+        "borderColor": "#00DEE0"
+      },
+      {
+        "id": "gems_spent_27",
+        "name": "Gems Spent",
+        "requirement": 50000,
+        "rewardUnit": "Kill Gold",
+        "reward": 200,
+        "icon": "_coin.png",
+        "bgColor": "#999900",
+        "borderColor": "#FFFF00"
+      },
+      {
+        "id": "battlepass_level_28",
+        "name": "Battlepass Level",
+        "requirement": 50,
+        "rewardUnit": "Super Gold Amount",
+        "reward": 100,
+        "icon": "_goldSuper.png",
+        "bgColor": "#8E8D04",
+        "borderColor": "#E9E90C"
+      },
+      {
+        "id": "synergies_active_at_once_29",
+        "name": "Synergies Active at Once",
+        "requirement": 25,
+        "rewardUnit": "Prestige Power",
+        "reward": 200,
+        "icon": "_planet.png",
+        "bgColor": "#6E00A2",
+        "borderColor": "#AF00FF"
+      },
+      {
+        "id": "ancient_shadows_killed_30",
+        "name": "Ancient Shadows Killed",
+        "requirement": 500,
+        "rewardUnit": "Shadow Runes",
+        "reward": 1,
+        "icon": "_rune2.png",
+        "bgColor": "#473875",
+        "borderColor": "#7D64C8"
+      }
+    ],
+    "Challenge": [
+      {
+        "id": "highest_killcount_on_a_hero_31",
+        "name": "Highest Killcount on a Hero",
+        "requirement": 10000000,
+        "rewardUnit": "Damage",
+        "reward": 250,
+        "icon": "_dps.png",
+        "bgColor": "#960000",
+        "borderColor": "#FF0000"
+      },
+      {
+        "id": "most_energy_held_at_once_32",
+        "name": "Most Energy Held at Once",
+        "requirement": 10000000,
+        "rewardUnit": "Energy Income",
+        "reward": 6,
+        "icon": "_energy2.png",
+        "bgColor": "#00A300",
+        "borderColor": "#00FF00"
+      },
+      {
+        "id": "energy_from_skills_spells_33",
+        "name": "Energy from Skills / Spells",
+        "requirement": 1000000,
+        "rewardUnit": "Super Energy Amount",
+        "reward": 50,
+        "icon": "_energy_2.png",
+        "bgColor": "#048B04",
+        "borderColor": "#0CE70C"
+      },
+      {
+        "id": "daily_gifts_claimed_34",
+        "name": "Daily Gifts Claimed",
+        "requirement": 100,
+        "rewardUnit": "Prestige Power",
+        "reward": 250,
+        "icon": "_planet.png",
+        "bgColor": "#6E00A2",
+        "borderColor": "#AF00FF"
+      },
+      {
+        "id": "heroes_with_rank_50_35",
+        "name": "Heroes with Rank 50+",
+        "requirement": 25,
+        "rewardUnit": "Rank",
+        "reward": 25,
+        "icon": "_exp.png",
+        "bgColor": "#0A6899",
+        "borderColor": "#19AFFF"
+      },
+      {
+        "id": "exotic_alien_kills_36",
+        "name": "Exotic Alien Kills",
+        "requirement": 500,
+        "rewardUnit": "Alien Tech",
+        "reward": 5,
+        "icon": "_techPts.png",
+        "bgColor": "#4A3B79",
+        "borderColor": "#7D64C8"
+      }
+    ],
+    "Impossible": [
+      {
+        "id": "highest_wave_in_23min_37",
+        "name": "Highest Wave in 23min",
+        "requirement": 5000,
+        "rewardUnit": "Energy Income",
+        "reward": 8,
+        "icon": "_energy2.png",
+        "bgColor": "#00A300",
+        "borderColor": "#00FF00"
+      },
+      {
+        "id": "highest_hero_level_reached_38",
+        "name": "Highest Hero Level Reached",
+        "requirement": 2500,
+        "rewardUnit": "Kill Gold",
+        "reward": 300,
+        "icon": "_coin.png",
+        "bgColor": "#999900",
+        "borderColor": "#FFFF00"
+      },
+      {
+        "id": "heroes_with_rank_250_39",
+        "name": "Heroes with Rank 250+",
+        "requirement": 42,
+        "rewardUnit": "Rank",
+        "reward": 250,
+        "icon": "_exp.png",
+        "bgColor": "#0A6899",
+        "borderColor": "#19AFFF"
+      },
+      {
+        "id": "battlepass_level_40",
+        "name": "Battlepass Level",
+        "requirement": 75,
+        "rewardUnit": "Damage",
+        "reward": 300,
+        "icon": "_dps.png",
+        "bgColor": "#960000",
+        "borderColor": "#FF0000"
+      },
+      {
+        "id": "synergies_active_at_once_41",
+        "name": "Synergies Active at Once",
+        "requirement": 35,
+        "rewardUnit": "Tournament Trophies",
+        "reward": 25,
+        "icon": "_trophy.png",
+        "bgColor": "#956E12",
+        "borderColor": "#F9BA26"
+      },
+      {
+        "id": "ultimus_bosses_killed_42",
+        "name": "Ultimus Bosses Killed",
+        "requirement": 250,
+        "rewardUnit": "Ultimus Tokens",
+        "reward": 25,
+        "icon": "_token_2.png",
+        "bgColor": "#1A1A9B",
+        "borderColor": "#3232FF"
+      }
+    ],
+    "Get a Life": [
+      {
+        "id": "highest_wave_with_only_common_heroes_43",
+        "name": "Highest wave with only Common Heroes",
+        "requirement": 10000,
+        "rewardUnit": "Damage",
+        "reward": 400,
+        "icon": "_dps.png",
+        "bgColor": "#960000",
+        "borderColor": "#FF0000"
+      },
+      {
+        "id": "total_hero_levels_in_one_prestige_44",
+        "name": "Total Hero Levels in One Prestige",
+        "requirement": 320000,
+        "rewardUnit": "Kill Gold",
+        "reward": 400,
+        "icon": "_coin.png",
+        "bgColor": "#999900",
+        "borderColor": "#FFFF00"
+      },
+      {
+        "id": "highest_hero_rank_45",
+        "name": "Highest Hero Rank",
+        "requirement": 500,
+        "rewardUnit": "Rank",
+        "reward": 500,
+        "icon": "_exp.png",
+        "bgColor": "#0A6899",
+        "borderColor": "#19AFFF"
+      },
+      {
+        "id": "energy_earned_in_one_prestige_46",
+        "name": "Energy Earned in One Prestige",
+        "requirement": 10000000,
+        "rewardUnit": "Energy Income",
+        "reward": 10,
+        "icon": "_energy2.png",
+        "bgColor": "#00A300",
+        "borderColor": "#00FF00"
+      },
+      {
+        "id": "ultra_gold_procs_on_goblin_hoarders_47",
+        "name": "Ultra Gold Procs on Goblin Hoarders",
+        "requirement": 6000,
+        "rewardUnit": "Ultra Gold Amount",
+        "reward": 100,
+        "icon": "_goldUltra.png",
+        "bgColor": "#848305",
+        "borderColor": "#DDDD10"
+      },
+      {
+        "id": "ultra_exp_procs_on_training_dummy_48",
+        "name": "Ultra Exp Procs on Training Dummy",
+        "requirement": 300,
+        "rewardUnit": "Ultra Exp Amount",
+        "reward": 100,
+        "icon": "_expUltra.png",
+        "bgColor": "#00517F",
+        "borderColor": "#008DD9"
+      }
+    ],
+    "Addiction Problems": [
+      {
+        "id": "wave_20k_on_all_7_maps_49",
+        "name": "Wave 20k+ on All 7 Maps",
+        "requirement": 7,
+        "rewardUnit": "Max Boss Rush",
+        "reward": 4,
+        "icon": "_gameSpeedHud.png",
+        "bgColor": "#117D11",
+        "borderColor": "#21C821"
+      },
+      {
+        "id": "wave_35k_on_all_7_maps_50",
+        "name": "Wave 35k+ on All 7 Maps",
+        "requirement": 7,
+        "rewardUnit": "Map Perks",
+        "reward": 10,
+        "icon": "_castle.png",
+        "bgColor": "#009600",
+        "borderColor": "#00FF00"
+      },
+      {
+        "id": "highest_killcount_on_a_hero_51",
+        "name": "Highest Killcount on a Hero",
+        "requirement": 35000000,
+        "rewardUnit": "Ultra Crit Chance",
+        "reward": 10,
+        "icon": "_critChanceUltra.png",
+        "bgColor": "#770000",
+        "borderColor": "#C80000"
+      },
+      {
+        "id": "heroes_with_rank_2000_52",
+        "name": "Heroes with Rank 2000+",
+        "requirement": 42,
+        "rewardUnit": "Rank Exp (%)",
+        "reward": 10,
+        "icon": "_exp.png",
+        "bgColor": "#0A689A",
+        "borderColor": "#1395D9"
+      },
+      {
+        "id": "synergies_active_at_once_53",
+        "name": "Synergies Active at Once",
+        "requirement": 50,
+        "rewardUnit": "Kill Gold",
+        "reward": 500,
+        "icon": "_coin.png",
+        "bgColor": "#999900",
+        "borderColor": "#FFFF00"
+      },
+      {
+        "id": "damage_wave_perks_in_one_prestige_54",
+        "name": "Damage Wave Perks in One Prestige",
+        "requirement": 15,
+        "rewardUnit": "Damage",
+        "reward": 500,
+        "icon": "_dps.png",
+        "bgColor": "#960000",
+        "borderColor": "#FF0000"
+      },
+      {
+        "id": "supreme_shadow_kills_55",
+        "name": "Supreme Shadow Kills",
+        "requirement": 2500,
+        "rewardUnit": "Supreme Shadow Chance",
+        "reward": 10,
+        "icon": "_boss.png",
+        "bgColor": "#770000",
+        "borderColor": "#C80000"
+      },
+      {
+        "id": "automation_upgrade_levels_56",
+        "name": "Automation Upgrade Levels",
+        "requirement": 180,
+        "rewardUnit": "Auto Upgrade Times",
+        "reward": -10,
+        "icon": "_skillCd.png",
+        "bgColor": "#302C43",
+        "borderColor": "#544C71"
+      }
+    ]
+  }
+}

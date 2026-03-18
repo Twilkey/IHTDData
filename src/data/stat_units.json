@@ -136,7 +136,7 @@
     "label": "Energy Income"
   },
   "battlepass_exp": {
-    "unit": "%",
+    "unit": "",
     "label": "Battlepass Exp"
   },
   "progressive_rank_exp": {
@@ -346,5 +346,9 @@
   "blizzard": {
     "unit": "%",
     "label": "Blizzard"
+  },
+  "auto_upgrade_times": {
+    "unit": "%",
+    "label": "Auto Upgrade Times"
   }
 }

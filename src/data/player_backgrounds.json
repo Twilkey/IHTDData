@@ -1,0 +1,528 @@
+{
+  "menuOrder": 14,
+  "parentMenuName": "Cosmetics",
+  "menuIcon": "_player_bg.png",
+  "label": "Player Backgrounds",
+  "groups": {
+    "Highest Wave": [
+      {
+        "id": "default",
+        "name": "Default",
+        "background": null,
+        "requirement": null,
+        "rewardUnit": null,
+        "reward": null,
+        "icon": null,
+        "bgColor": null,
+        "borderColor": null
+      },
+      {
+        "id": "1_timePlayed",
+        "name": "Time Played",
+        "background": "1_timePlayed.png",
+        "requirement": "04:00:00",
+        "rewardUnit": "Damage",
+        "reward": 5,
+        "icon": "_dps.png",
+        "bgColor": "#960000",
+        "borderColor": "#FF0000"
+      },
+      {
+        "id": "islandHideout1",
+        "name": "Highest Wave on Island Hideout",
+        "background": "islandHideout1.png",
+        "requirement": 1000,
+        "rewardUnit": "Kill Gold",
+        "reward": 10,
+        "icon": "_coin.png",
+        "bgColor": "#999900",
+        "borderColor": "#FFFF00"
+      },
+      {
+        "id": "snow1",
+        "name": "Highest Wave on Snow Fort",
+        "background": "snow1.png",
+        "requirement": 2000,
+        "rewardUnit": "Enemy Speed",
+        "reward": -5,
+        "icon": "_moveSpeed.png",
+        "bgColor": "#4C0000",
+        "borderColor": "#800000"
+      },
+      {
+        "id": "desert1",
+        "name": "Highest Wave on Barren Desert",
+        "background": "desert1.png",
+        "requirement": 3000,
+        "rewardUnit": "Rank Exp",
+        "reward": 5,
+        "icon": "_exp.png",
+        "bgColor": "#0A6899",
+        "borderColor": "#19AFFF"
+      },
+      {
+        "id": "cemetery1",
+        "name": "Highest Wave on Haunted Cemetery",
+        "background": "cemetery1.png",
+        "requirement": 4000,
+        "rewardUnit": "Prestige Power",
+        "reward": 25,
+        "icon": "_planet.png",
+        "bgColor": "#6E00A2",
+        "borderColor": "#AF00FF"
+      },
+      {
+        "id": "lavaDungeon1",
+        "name": "Highest Wave on Lava Dungeon",
+        "background": "lavaDungeon1.png",
+        "requirement": 5000,
+        "rewardUnit": "Damage",
+        "reward": 35,
+        "icon": "_dps.png",
+        "bgColor": "#960000",
+        "borderColor": "#FF0000"
+      },
+      {
+        "id": "sunnyFarms1",
+        "name": "Highest Wave on Sunny Farm",
+        "background": "sunnyFarms1.png",
+        "requirement": 6000,
+        "rewardUnit": "Energy Income",
+        "reward": 3,
+        "icon": "_energy2.png",
+        "bgColor": "#00A300",
+        "borderColor": "#00FF00"
+      },
+      {
+        "id": "islandHideout2",
+        "name": "Highest Wave on Island Hideout",
+        "background": "islandHideout2.png",
+        "requirement": 10000,
+        "rewardUnit": "Kill Gold",
+        "reward": 50,
+        "icon": "_coin.png",
+        "bgColor": "#999900",
+        "borderColor": "#FFFF00"
+      },
+      {
+        "id": "snow2",
+        "name": "Highest Wave on Snow Fort",
+        "background": "snow2.png",
+        "requirement": 12000,
+        "rewardUnit": "Damage",
+        "reward": 75,
+        "icon": "_dps.png",
+        "bgColor": "#960000",
+        "borderColor": "#FF0000"
+      },
+      {
+        "id": "desert2",
+        "name": "Highest Wave on Barren Desert",
+        "background": "desert2.png",
+        "requirement": 14000,
+        "rewardUnit": "Range",
+        "reward": 10,
+        "icon": "_range_2.png",
+        "bgColor": "#9F9E00",
+        "borderColor": "#FFFF00"
+      },
+      {
+        "id": "cemetery2",
+        "name": "Highest Wave on Haunted Cemetery",
+        "background": "cemetery2.png",
+        "requirement": 16000,
+        "rewardUnit": "Battlepass Exp",
+        "reward": 5,
+        "icon": "_battlepassExp.png",
+        "bgColor": "#007700",
+        "borderColor": "#00C800"
+      },
+      {
+        "id": "lavaDungeon2",
+        "name": "Highest Wave on Lava Dungeon",
+        "background": "lavaDungeon2.png",
+        "requirement": 18000,
+        "rewardUnit": "Kill Gold",
+        "reward": 100,
+        "icon": "_coin.png",
+        "bgColor": "#999900",
+        "borderColor": "#FFFF00"
+      },
+      {
+        "id": "sunnyFarms2",
+        "name": "Highest Wave on Sunny Farm",
+        "background": "sunnyFarms2.png",
+        "requirement": 20000,
+        "rewardUnit": "Energy Income",
+        "reward": 10,
+        "icon": "_energy2.png",
+        "bgColor": "#00A300",
+        "borderColor": "#00FF00"
+      }
+    ],
+    "Prestiges": [
+      {
+        "id": "prestige1",
+        "name": "Total Prestiges",
+        "background": "prestige1.png",
+        "requirement": 50,
+        "rewardUnit": "Prestige Power",
+        "reward": 10,
+        "icon": "_planet.png",
+        "bgColor": "#6E00A2",
+        "borderColor": "#AF00FF"
+      },
+      {
+        "id": "prestige2",
+        "name": "Total Prestiges",
+        "background": "prestige2.png",
+        "requirement": 250,
+        "rewardUnit": "Damage",
+        "reward": 25,
+        "icon": "_dps.png",
+        "bgColor": "#960000",
+        "borderColor": "#FF0000"
+      },
+      {
+        "id": "prestige3",
+        "name": "Total Prestiges",
+        "background": "prestige3.png",
+        "requirement": 1000,
+        "rewardUnit": "Kill Gold",
+        "reward": 50,
+        "icon": "_coin.png",
+        "bgColor": "#999900",
+        "borderColor": "#FFFF00"
+      },
+      {
+        "id": "prestige4",
+        "name": "Total Prestiges",
+        "background": "prestige4.png",
+        "requirement": 2500,
+        "rewardUnit": "Energy Income",
+        "reward": 5,
+        "icon": "_energy2.png",
+        "bgColor": "#00A300",
+        "borderColor": "#00FF00"
+      }
+    ],
+    "Enemies Killed": [
+      {
+        "id": "killsEnemies",
+        "name": "Enemies Killed",
+        "background": "killsEnemies.png",
+        "requirement": 50000,
+        "rewardUnit": "Kill Gold",
+        "reward": 10,
+        "icon": "_coin.png",
+        "bgColor": "#999900",
+        "borderColor": "#FFFF00"
+      },
+      {
+        "id": "killsBosses",
+        "name": "bosses Killed",
+        "background": "killsBosses.png",
+        "requirement": 25000,
+        "rewardUnit": "Damage",
+        "reward": 15,
+        "icon": "_dps.png",
+        "bgColor": "#960000",
+        "borderColor": "#FF0000"
+      },
+      {
+        "id": "killsGoblins",
+        "name": "Goblin Hoarders Killed",
+        "background": "killsGoblins.png",
+        "requirement": 5000,
+        "rewardUnit": "Goblin Hoarder Gold",
+        "reward": 50,
+        "icon": "_hoarderGold.png",
+        "bgColor": "#878600",
+        "borderColor": "#DEDE00"
+      },
+      {
+        "id": "killsPowerMages",
+        "name": "Power Mages Killed",
+        "background": "killsPowerMages.png",
+        "requirement": 4000,
+        "rewardUnit": "Power Mage Energy",
+        "reward": 50,
+        "icon": "_energy_2.png",
+        "bgColor": "#008200",
+        "borderColor": "#00DE00"
+      },
+      {
+        "id": "killsTrainers",
+        "name": "Training Dummies Killed",
+        "background": "killsTrainers.png",
+        "requirement": 800,
+        "rewardUnit": "Training Dummy Exp",
+        "reward": 25,
+        "icon": "_trainerExp2.png",
+        "bgColor": "#005987",
+        "borderColor": "#0096E1"
+      },
+      {
+        "id": "killsShadows",
+        "name": "Ancient Shadows Killed",
+        "background": "killsShadows.png",
+        "requirement": 1000,
+        "rewardUnit": "Shadow Runes",
+        "reward": 1,
+        "icon": "_rune2.png",
+        "bgColor": "#770000",
+        "borderColor": "#C80000"
+      },
+      {
+        "id": "killsAliens",
+        "name": "Exotic Aliens Killed",
+        "background": "killsAliens.png",
+        "requirement": 3500,
+        "rewardUnit": "Alien Tech",
+        "reward": 3,
+        "icon": "_techPts.png",
+        "bgColor": "#4A3B79",
+        "borderColor": "#7D64C8"
+      },
+      {
+        "id": "killsUltimus",
+        "name": "Ultimus Boss Kills",
+        "background": "killsUltimus.png",
+        "requirement": 600,
+        "rewardUnit": "Ultimus Tokens",
+        "reward": 25,
+        "icon": "_token_2.png",
+        "bgColor": "#1A1A9B",
+        "borderColor": "#3232FF"
+      }
+    ],
+    "Best Hero": [
+      {
+        "id": "heroRanks1",
+        "name": "Highest Hero Rank",
+        "background": "heroRanks1.png",
+        "requirement": 15,
+        "rewardUnit": "Prestige Power",
+        "reward": 10,
+        "icon": "_planet.png",
+        "bgColor": "#6E00A2",
+        "borderColor": "#AF00FF"
+      },
+      {
+        "id": "heroRanks2",
+        "name": "Highest Hero Rank",
+        "background": "heroRanks2.png",
+        "requirement": 50,
+        "rewardUnit": "Kill Gold",
+        "reward": 25,
+        "icon": "_coin.png",
+        "bgColor": "#999900",
+        "borderColor": "#FFFF00"
+      },
+      {
+        "id": "heroRanks3",
+        "name": "Highest Hero Rank",
+        "background": "heroRanks3.png",
+        "requirement": 100,
+        "rewardUnit": "Damage",
+        "reward": 50,
+        "icon": "_dps.png",
+        "bgColor": "#960000",
+        "borderColor": "#FF0000"
+      },
+      {
+        "id": "heroRanks4",
+        "name": "Highest Hero Rank",
+        "background": "heroRanks4.png",
+        "requirement": 250,
+        "rewardUnit": "Prestige Power",
+        "reward": 75,
+        "icon": "_planet.png",
+        "bgColor": "#6E00A2",
+        "borderColor": "#AF00FF"
+      },
+      {
+        "id": "heroRanks5",
+        "name": "Highest Hero Rank",
+        "background": "heroRanks5.png",
+        "requirement": 500,
+        "rewardUnit": "Kill Gold",
+        "reward": 100,
+        "icon": "_coin.png",
+        "bgColor": "#999900",
+        "borderColor": "#FFFF00"
+      },
+      {
+        "id": "heroRanks6",
+        "name": "Highest Hero Rank",
+        "background": "heroRanks6.png",
+        "requirement": 750,
+        "rewardUnit": "Damage",
+        "reward": 125,
+        "icon": "_dps.png",
+        "bgColor": "#960000",
+        "borderColor": "#FF0000"
+      }
+    ],
+    "All Heroes": [
+      {
+        "id": "allRanks1",
+        "name": "Minimum Rank of All Heroes",
+        "background": "allRanks1.png",
+        "requirement": 100,
+        "rewardUnit": "Damage",
+        "reward": 25,
+        "icon": "_dps.png",
+        "bgColor": "#960000",
+        "borderColor": "#FF0000"
+      },
+      {
+        "id": "allRanks2",
+        "name": "Minimum Rank of All Heroes",
+        "background": "allRanks2.png",
+        "requirement": 200,
+        "rewardUnit": "Kill Gold",
+        "reward": 50,
+        "icon": "_coin.png",
+        "bgColor": "#999900",
+        "borderColor": "#FFFF00"
+      },
+      {
+        "id": "allRanks3",
+        "name": "Minimum Rank of All Heroes",
+        "background": "allRanks3.png",
+        "requirement": 350,
+        "rewardUnit": "Damage",
+        "reward": 75,
+        "icon": "_dps.png",
+        "bgColor": "#960000",
+        "borderColor": "#FF0000"
+      },
+      {
+        "id": "allRanks4",
+        "name": "Minimum Rank of All Heroes",
+        "background": "allRanks4.png",
+        "requirement": 500,
+        "rewardUnit": "Kill Gold",
+        "reward": 100,
+        "icon": "_coin.png",
+        "bgColor": "#999900",
+        "borderColor": "#FFFF00"
+      }
+    ],
+    "Super & Ultras": [
+      {
+        "id": "goldProcs1",
+        "name": "Super Gold Kills",
+        "background": "goldProcs1.png",
+        "requirement": 250000,
+        "rewardUnit": "Super Gold Amount",
+        "reward": 25,
+        "icon": "_goldSuper.png",
+        "bgColor": "#8E8D04",
+        "borderColor": "#E9E90C"
+      },
+      {
+        "id": "goldProcs2",
+        "name": "Ultra Gold Kills",
+        "background": "goldProcs2.png",
+        "requirement": 250000,
+        "rewardUnit": "Ultra Gold Amount",
+        "reward": 50,
+        "icon": "_goldUltra.png",
+        "bgColor": "#848305",
+        "borderColor": "#DDDD10"
+      },
+      {
+        "id": "exp1",
+        "name": "Super Exp Kills",
+        "background": "exp1.png",
+        "requirement": 250000,
+        "rewardUnit": "Super Exp Amount",
+        "reward": 25,
+        "icon": "_expSuper.png",
+        "bgColor": "#0B5F8C",
+        "borderColor": "#199FE7"
+      },
+      {
+        "id": "exp2",
+        "name": "Ultra Exp Kills",
+        "background": "exp2.png",
+        "requirement": 250000,
+        "rewardUnit": "Ultra Exp Amount",
+        "reward": 50,
+        "icon": "_expUltra.png",
+        "bgColor": "#00517F",
+        "borderColor": "#008DD9"
+      },
+      {
+        "id": "energy1",
+        "name": "Super Energy Waves",
+        "background": "energy1.png",
+        "requirement": 15000,
+        "rewardUnit": "Super Energy Amount",
+        "reward": 25,
+        "icon": "_energy_2.png",
+        "bgColor": "#048B04",
+        "borderColor": "#0CE70C"
+      },
+      {
+        "id": "energy2",
+        "name": "Ultra Energy Waves",
+        "background": "energy2.png",
+        "requirement": 15000,
+        "rewardUnit": "Ultra Energy Amount",
+        "reward": 50,
+        "icon": "_energyUltra.png",
+        "bgColor": "#038003",
+        "borderColor": "#09D109"
+      }
+    ],
+    "Achievements": [
+      {
+        "id": "achievements1",
+        "name": "Total Achievement Stars",
+        "background": "achievements1.png",
+        "requirement": 50,
+        "rewardUnit": "Rank Exp",
+        "reward": 3,
+        "icon": "_exp.png",
+        "bgColor": "#0A6899",
+        "borderColor": "#19AFFF"
+      },
+      {
+        "id": "achievements2",
+        "name": "Total Achievement Stars",
+        "background": "achievements2.png",
+        "requirement": 100,
+        "rewardUnit": "Energy Income",
+        "reward": 2,
+        "icon": "_energy2.png",
+        "bgColor": "#00A300",
+        "borderColor": "#00FF00"
+      },
+      {
+        "id": "achievements3",
+        "name": "Total Achievement Stars",
+        "background": "achievements3.png",
+        "requirement": 200,
+        "rewardUnit": "Kill Gold",
+        "reward": 100,
+        "icon": "_coin.png",
+        "bgColor": "#999900",
+        "borderColor": "#FFFF00"
+      },
+      {
+        "id": "achievements4",
+        "name": "Total Achievement Stars",
+        "background": "achievements4.png",
+        "requirement": 350,
+        "rewardUnit": "Damage",
+        "reward": 150,
+        "icon": "_dps.png",
+        "bgColor": "#960000",
+        "borderColor": "#FF0000"
+      }
+    ]
+  }
+}
