@@ -2033,6 +2033,14 @@ function MapModal({ map, onClose, mapPerkMult = 1 }) {
   const hasVariants = map.astralVariants?.length > 0;
   const [tab, setTab] = useState("perks");
   const [variantIdx, setVariantIdx] = useState(0);
+  const [groupLevels, setGroupLevels] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("astral_group_levels") ?? "{}"); } catch { return {}; }
+  });
+  const setGroupLevel = (enumName, val) => {
+    const next = { ...groupLevels, [enumName]: val };
+    setGroupLevels(next);
+    localStorage.setItem("astral_group_levels", JSON.stringify(next));
+  };
   const totalUnlock      = map.perks.reduce((sum, p) => sum + (p.unlockCost ?? 0), 0);
   const totalUpgrades    = map.perks.reduce((sum, p) => {
     const bp = 5, uc = p.upgradeCost ?? p.baseCost;
@@ -2161,6 +2169,12 @@ function MapModal({ map, onClose, mapPerkMult = 1 }) {
 
           {tab === "variants" && hasVariants && (() => {
             const variant = map.astralVariants[variantIdx];
+            const accentColor = ASTRAL_COLORS[variant.enumName] ?? "#b47aff";
+            const groupPerk = map.perks.find(p => p.id.includes(variant.enumName));
+            const rawGroupLv = parseInt(groupLevels[variant.enumName]) || 0;
+            const groupLv = groupPerk ? Math.min(Math.max(0, rawGroupLv), groupPerk.maxLevel) : 0;
+            const groupMult = groupPerk ? (1 + groupLv * groupPerk.statAmt / 100) : 1;
+            const groupBonus = groupPerk ? groupLv * groupPerk.statAmt : 0;
             return (
               <>
                 {/* Variant pill switcher */}
@@ -2181,13 +2195,34 @@ function MapModal({ map, onClose, mapPerkMult = 1 }) {
                 </div>
                 {/* Selected variant effects */}
                 <div style={{ padding: "12px 14px", background: colors.header, borderRadius: 8, border: `1px solid ${colors.border}` }}>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: ASTRAL_COLORS[variant.enumName] ?? "#b47aff", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>{variant.displayName.replace(/ Day$/i, "")}</div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: accentColor, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>{variant.displayName.replace(/ Day$/i, "")}</div>
+                  {/* Group perk level input */}
+                  {groupPerk && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, paddingBottom: 10, borderBottom: `1px solid ${colors.border}40` }}>
+                      <span style={{ fontSize: 12, color: colors.muted, flex: 1 }}>{groupPerk.name} Level</span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={groupPerk.maxLevel}
+                        value={groupLevels[variant.enumName] ?? ""}
+                        onChange={e => setGroupLevel(variant.enumName, e.target.value)}
+                        style={{
+                          width: 52, background: colors.panel, border: `1px solid ${rawGroupLv > groupPerk.maxLevel ? "#e05555" : colors.border}`,
+                          borderRadius: 6, color: colors.text, fontFamily: "inherit", fontSize: 13, padding: "3px 6px", textAlign: "center",
+                        }}
+                      />
+                      <span style={{ fontSize: 12, color: colors.muted }}>/ {groupPerk.maxLevel}</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: groupBonus > 0 ? accentColor : colors.muted, minWidth: 52, textAlign: "right" }}>
+                        {groupBonus > 0 ? `+${groupBonus}% all` : "no bonus"}
+                      </span>
+                    </div>
+                  )}
                   {variant.effects.map((ef, i) => {
                     const negativIsGood = new Set(["skillCooldown", "spellCooldown"]);
                     const isDebuff = negativIsGood.has(ef.statKey) ? ef.amount > 0 : ef.amount < 0;
                     const sign = ef.amount > 0 ? "+" : "";
                     const unitStr = ef.unit === "pct" ? "%" : "";
-                    const rawAmt = isDebuff ? ef.amount : ef.amount * mapPerkMult;
+                    const rawAmt = isDebuff ? ef.amount : ef.amount * mapPerkMult * groupMult;
                     const displayAmt = Number.isInteger(Math.round(rawAmt * 10) / 10) ? Math.round(rawAmt) : parseFloat(rawAmt.toFixed(1));
                     return (
                       <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 0", borderBottom: i < variant.effects.length - 1 ? `1px solid ${colors.border}30` : "none" }}>
