@@ -3,6 +3,7 @@
   "costFormula": "power",
   "formulaNote": "cost = baseCost * pow(level, multCost) * breakpointMult * linearMult. level = new level being purchased (1-indexed). breakpointMult: x3 if level >= ceil(maxLevel*0.5), x8 additional if level >= ceil(maxLevel*0.8) (cumulative x24). linearMult: x(1 + level*0.001) if maxLevel > 999 and level > 1.",
   "note": "5 upgrades override to exponential_endgame formula — see per-item costFormula field. exponential_endgame: cost = baseCost * pow(multCost, level-1) with same breakpointMult and linearMult applied.",
+  "hasLinearMult": true,
   "canCalculateCost": true,
   "isTree": false,
   "menuOrder": 5,

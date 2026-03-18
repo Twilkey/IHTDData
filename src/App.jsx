@@ -40,6 +40,7 @@ function normalizeSection(data) {
     groups[groupName] = items.map(item => ({
       ...item,
       multiCost: item.multCost ?? item.multiCost,
+      hasLinearMult: item.hasLinearMult ?? data.hasLinearMult ?? false,
     }));
   }
   return { ...data, groups };
@@ -276,8 +277,8 @@ function computeTotalCost(item, sectionFormula) {
       case "power": {
         // cost(level) = baseCost × level^multiCost × mult
         // mult = 8 if level > 80% maxLevel, 3 if >= 50%, else 1
-        // linearMult requires float — fall through if maxLevel > 999
-        if (maxLevel > 999) break;
+        // linearMult requires float — fall through if item uses it
+        if (item.hasLinearMult) break;
         const bp1 = BigInt(Math.ceil(maxLevel * 0.5));
         const bp2 = BigInt(Math.ceil(maxLevel * 0.8));
         const sumRange = (a, b) => b >= a ? (b - a + 1n) * (a + b) / 2n : 0n;
@@ -299,8 +300,8 @@ function computeTotalCost(item, sectionFormula) {
       case "exponential":
       case "exponential_endgame": {
         // cost(level) = baseCost × multiCost^(level-1) × bpMult
-        // linearMult requires float — fall through if maxLevel > 999
-        if (maxLevel > 999) break;
+        // linearMult requires float — fall through if item uses it
+        if (item.hasLinearMult) break;
         const bp1 = BigInt(Math.ceil(maxLevel * 0.5));
         const bp2 = BigInt(Math.ceil(maxLevel * 0.8));
         if (!multiCost || multiCost === 1) {
@@ -357,7 +358,7 @@ function computeTotalCost(item, sectionFormula) {
       for (let i = 0; i < maxLevel; i++) {
         const lv = i + 1;
         const mult = lv >= bp2f ? 24 : lv >= bp1f ? 3 : 1;
-        const linMult = (maxLevel > 999 && lv > 1) ? (1 + lv * 0.001) : 1;
+        const linMult = (item.hasLinearMult && lv > 1) ? (1 + lv * 0.001) : 1;
         total += baseCost * Math.pow(lv, mc) * mult * linMult;
       }
       return total;
@@ -367,7 +368,7 @@ function computeTotalCost(item, sectionFormula) {
     case "exponential_endgame": {
       const bp1f = Math.ceil(maxLevel * 0.5);
       const bp2f = Math.ceil(maxLevel * 0.8);
-      if (maxLevel > 999) {
+      if (item.hasLinearMult) {
         // linearMult applies — sum level by level
         let total = 0;
         for (let lv = 1; lv <= maxLevel; lv++) {
@@ -512,7 +513,7 @@ function costAtLevel(level, item, sectionFormula) {
       case "rank_linear":    return bc * lv;
       case "power": {
         const ml = item.maxLevel ?? 999999;
-        if (ml > 999) break; // linearMult requires float path
+        if (item.hasLinearMult) break; // linearMult requires float path
         const bp1 = BigInt(Math.ceil(ml * 0.5));
         const bp2 = BigInt(Math.ceil(ml * 0.8));
         const mult = lv >= bp2 ? 24n : lv >= bp1 ? 3n : 1n;
@@ -521,7 +522,7 @@ function costAtLevel(level, item, sectionFormula) {
       case "exponential":
       case "exponential_endgame": {
         const ml = item.maxLevel ?? 999999;
-        if (ml > 999) break; // linearMult requires float path
+        if (item.hasLinearMult) break; // linearMult requires float path
         const bp1 = BigInt(Math.ceil(ml * 0.5));
         const bp2 = BigInt(Math.ceil(ml * 0.8));
         const bpMult = lv >= bp2 ? 24n : lv >= bp1 ? 3n : 1n;
@@ -545,7 +546,7 @@ function costAtLevel(level, item, sectionFormula) {
       const bp1f = ml * 0.5;
       const bp2f = ml * 0.8;
       const bpMult = level >= bp2f ? 24 : level >= bp1f ? 3 : 1;
-      const linMult = (ml > 999 && level > 1) ? (1 + level * 0.001) : 1;
+      const linMult = (item.hasLinearMult && level > 1) ? (1 + level * 0.001) : 1;
       return baseCost * Math.pow(level, multiCost ?? 1) * bpMult * linMult;
     }
     case "exponential":
@@ -554,7 +555,7 @@ function costAtLevel(level, item, sectionFormula) {
       const bp1f = ml * 0.5;
       const bp2f = ml * 0.8;
       const bpMult = level >= bp2f ? 24 : level >= bp1f ? 3 : 1;
-      const linMult = (ml > 999 && level > 1) ? (1 + level * 0.001) : 1;
+      const linMult = (item.hasLinearMult && level > 1) ? (1 + level * 0.001) : 1;
       return baseCost * Math.pow(multiCost ?? 1, i) * bpMult * linMult;
     }
     case "capped_linear":  return baseCost * Math.min(level, stopCostIncreaseAt ?? level);
