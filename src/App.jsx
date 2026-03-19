@@ -25,7 +25,17 @@ import heroAttributesData from "./data/hero_attributes.json";
 import tournamentBracketsData from "./data/tournament_brackets.json";
 import STAT_UNITS from "./data/stat_units.json";
 import techTreeDisplayData from "./data/tech_tree_display.json";
-import { applyAppSavePayload, buildAppSavePayload } from "./lib/loadoutBuilderSave";
+import { buildComparableAppSavePayload, createComparableAppSavePayload } from "./lib/loadoutBuilderSave";
+import { clearCurrentSavedLoadoutId, getCurrentSavedLoadoutId, hydrateLoadoutRuntime, LOADOUT_RUNTIME_CHANGED_EVENT, persistLoadoutRuntime, schedulePersistLoadoutRuntime } from "./lib/loadoutRuntimeStore";
+import {
+  deleteSavedLoadout,
+  getSavedLoadout,
+  listSavedLoadouts,
+  loadSavedLoadoutIntoWorkingState,
+  saveWorkingLoadoutAsRecord,
+  saveWorkingLoadoutChanges,
+  startFreshWorkingLoadout,
+} from "./lib/loadoutSavedRepository";
 
 const loadSecondaryViews = () => import("./views/secondaryViews.jsx");
 const HomeView = lazy(() => loadSecondaryViews().then((module) => ({ default: module.HomeView })));
@@ -51,6 +61,7 @@ const StatsLoadoutView = lazy(() => loadBuilderViews().then((module) => ({ defau
 const HeroLoadoutView = lazy(() => loadBuilderViews().then((module) => ({ default: module.HeroLoadoutView })));
 const PlayerLoadoutView = lazy(() => loadBuilderViews().then((module) => ({ default: module.PlayerLoadoutView })));
 const StatsHubView = lazy(() => loadBuilderViews().then((module) => ({ default: module.StatsHubView })));
+const SavesView = lazy(() => loadBuilderViews().then((module) => ({ default: module.SavesView })));
 const CoordFinderView = lazy(() => loadBuilderViews().then((module) => ({ default: module.CoordFinderView })));
 
 function normalizeSection(data) {
@@ -126,6 +137,7 @@ const NAV_GROUPS = [
       { key: "heroLoadout", label: "Hero Loadout", menuIcon: "_heroHelm.png" },
       { key: "statsLoadout", label: "Upgrades Loadout", menuIcon: "_heroes.png" },
       { key: "playerLoadout", label: "Player Loadout", menuIcon: "_background.png" },
+      { key: "saves", label: "Saves", menuIcon: "Icon_Trophy_0.png" },
     ],
   },
   {
@@ -3182,15 +3194,89 @@ export default function App() {
   );
   const [mapSpotsById, setMapSpotsById] = useState(() => getInitialMapSpotsById());
   const [loadoutImportVersion, setLoadoutImportVersion] = useState(0);
-  const saveImportInputRef = useRef(null);
+  const [isLoadoutRuntimeReady, setIsLoadoutRuntimeReady] = useState(false);
+  const [savedLoadouts, setSavedLoadouts] = useState([]);
+  const [currentSavedLoadoutId, setCurrentSavedLoadoutId] = useState(() => getCurrentSavedLoadoutId(localStorage));
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [saveDraftName, setSaveDraftName] = useState("");
+  const [saveDraftDescription, setSaveDraftDescription] = useState("");
+  const [saveButtonMessage, setSaveButtonMessage] = useState(null);
+  const [saveButtonBusy, setSaveButtonBusy] = useState(false);
+  const [workingLoadoutRevision, setWorkingLoadoutRevision] = useState(0);
+  const [currentSavedLoadoutComparable, setCurrentSavedLoadoutComparable] = useState(null);
   const isMobile = useIsMobile();
   const lazyFallback = <div style={{ color: colors.muted, padding: "24px 0" }}>Loading view...</div>;
   const editableMaps = useMemo(() => mergeMapsWithSpots(mapsData.maps, mapSpotsById), [mapSpotsById]);
   const isLocalAdmin = useMemo(() => isLocalhostAdminHost(), []);
+  const currentSavedLoadout = useMemo(
+    () => savedLoadouts.find((save) => save.id === currentSavedLoadoutId) ?? null,
+    [currentSavedLoadoutId, savedLoadouts]
+  );
   const visibleNavGroups = useMemo(
     () => NAV_GROUPS.filter((group) => group.label !== "Admin" || isLocalAdmin),
     [isLocalAdmin]
   );
+  const workingLoadoutComparable = useMemo(
+    () => buildComparableAppSavePayload(localStorage),
+    [workingLoadoutRevision]
+  );
+  const isCurrentSavedLoadoutDirty = useMemo(() => {
+    if (!currentSavedLoadoutId || !currentSavedLoadoutComparable) {
+      return false;
+    }
+
+    return JSON.stringify(workingLoadoutComparable) !== JSON.stringify(currentSavedLoadoutComparable);
+  }, [currentSavedLoadoutComparable, currentSavedLoadoutId, workingLoadoutComparable]);
+
+  const saveButtonLabel = !currentSavedLoadoutId
+    ? "Save Loadout"
+    : isCurrentSavedLoadoutDirty
+      ? "Save Changes"
+      : currentSavedLoadout
+        ? `${currentSavedLoadout.name} Saved`
+        : "Saved";
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function initializeLoadoutRuntime() {
+      try {
+        await hydrateLoadoutRuntime(localStorage);
+        const nextSavedLoadouts = await listSavedLoadouts();
+
+        if (isCancelled) {
+          return;
+        }
+
+        setNotation(localStorage.getItem("notation") ?? "scientific");
+        setCurrentSavedLoadoutId(getCurrentSavedLoadoutId(localStorage));
+        setSavedLoadouts(nextSavedLoadouts);
+        setLoadoutImportVersion((current) => current + 1);
+      } catch {
+        if (isCancelled) {
+          return;
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoadoutRuntimeReady(true);
+        }
+      }
+    }
+
+    void initializeLoadoutRuntime();
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!saveButtonMessage) {
+      return undefined;
+    }
+
+    const timerId = window.setTimeout(() => setSaveButtonMessage(null), 3000);
+    return () => window.clearTimeout(timerId);
+  }, [saveButtonMessage]);
 
   useEffect(() => {
     if (ADMIN_ROUTE_KEYS.has(activeKey) && !isLocalAdmin) {
@@ -3199,9 +3285,47 @@ export default function App() {
     }
   }, [activeKey, isLocalAdmin]);
 
+  useEffect(() => {
+    function handleRuntimeChanged() {
+      setWorkingLoadoutRevision((current) => current + 1);
+      setCurrentSavedLoadoutId(getCurrentSavedLoadoutId(localStorage));
+    }
+
+    window.addEventListener(LOADOUT_RUNTIME_CHANGED_EVENT, handleRuntimeChanged);
+    return () => window.removeEventListener(LOADOUT_RUNTIME_CHANGED_EVENT, handleRuntimeChanged);
+  }, []);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function loadCurrentSavedPayload() {
+      if (!currentSavedLoadoutId) {
+        setCurrentSavedLoadoutComparable(null);
+        return;
+      }
+
+      const record = await getSavedLoadout(currentSavedLoadoutId);
+      if (!isCancelled) {
+        setCurrentSavedLoadoutComparable(record ? createComparableAppSavePayload(record.payload) : null);
+      }
+    }
+
+    void loadCurrentSavedPayload();
+    return () => {
+      isCancelled = true;
+    };
+  }, [currentSavedLoadoutId, savedLoadouts]);
+
+  async function refreshSavedLoadoutList() {
+    const nextSavedLoadouts = await listSavedLoadouts();
+    setSavedLoadouts(nextSavedLoadouts);
+    return nextSavedLoadouts;
+  }
+
   function handleNotation(val) {
     setNotation(val);
     localStorage.setItem("notation", val);
+    schedulePersistLoadoutRuntime(localStorage);
   }
 
   function openModal(item, formula) {
@@ -3220,51 +3344,116 @@ export default function App() {
     setMapSpotsById((current) => parseMapSpotsByIdFromJsonText(rawJsonText, current));
   }
 
-  function handleExportSave() {
-    const payload = buildAppSavePayload(localStorage);
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-
-    link.href = url;
-    link.download = `ihtddata-save-${stamp}.json`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
+  function openCreateSaveModal() {
+    setSaveDraftName(currentSavedLoadout?.name ?? "");
+    setSaveDraftDescription(currentSavedLoadout?.description ?? "");
+    setIsSaveModalOpen(true);
   }
 
-  function handleImportSaveClick() {
-    saveImportInputRef.current?.click();
-  }
+  async function handleSaveButtonClick() {
+    if (!isLoadoutRuntimeReady || saveButtonBusy) {
+      return;
+    }
 
-  async function handleImportSaveChange(event) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
+    if (!currentSavedLoadoutId) {
+      openCreateSaveModal();
+      return;
+    }
 
-    if (!file) {
+    if (!isCurrentSavedLoadoutDirty) {
       return;
     }
 
     try {
-      const text = await file.text();
-      const payload = JSON.parse(text);
-      const result = applyAppSavePayload(payload, localStorage);
-
-      if (!result.ok) {
-        window.alert(result.message);
-        return;
-      }
-
-      setNotation(localStorage.getItem("notation") ?? "scientific");
-      setLoadoutImportVersion((current) => current + 1);
-    } catch {
-      window.alert("Unable to import that save file.");
+      setSaveButtonBusy(true);
+      const savedRecord = await saveWorkingLoadoutChanges(currentSavedLoadoutId, localStorage);
+      setCurrentSavedLoadoutId(savedRecord.id);
+      await refreshSavedLoadoutList();
+      setCurrentSavedLoadoutComparable(buildComparableAppSavePayload(localStorage));
+      setSaveButtonMessage({ type: "success", text: "Saved changes." });
+    } catch (error) {
+      setSaveButtonMessage({ type: "error", text: error instanceof Error ? error.message : "Unable to save changes." });
+    } finally {
+      setSaveButtonBusy(false);
     }
   }
 
+  async function handleCreateSaveSubmit() {
+    const trimmedName = saveDraftName.trim();
+    if (!trimmedName) {
+      setSaveButtonMessage({ type: "error", text: "Give the save a name first." });
+      return;
+    }
+
+    try {
+      setSaveButtonBusy(true);
+      const savedRecord = await saveWorkingLoadoutAsRecord({
+        name: trimmedName,
+        description: saveDraftDescription,
+      }, localStorage);
+      setCurrentSavedLoadoutId(savedRecord.id);
+      await refreshSavedLoadoutList();
+      setCurrentSavedLoadoutComparable(buildComparableAppSavePayload(localStorage));
+      setIsSaveModalOpen(false);
+      setSaveButtonMessage({ type: "success", text: "Saved loadout." });
+    } catch (error) {
+      setSaveButtonMessage({ type: "error", text: error instanceof Error ? error.message : "Unable to save that loadout." });
+    } finally {
+      setSaveButtonBusy(false);
+    }
+  }
+
+  async function handleLoadSavedLoadout(saveId) {
+    const record = await loadSavedLoadoutIntoWorkingState(saveId, localStorage);
+    setCurrentSavedLoadoutId(record.id);
+    setCurrentSavedLoadoutComparable(buildComparableAppSavePayload(localStorage));
+    setNotation(localStorage.getItem("notation") ?? "scientific");
+    setLoadoutImportVersion((current) => current + 1);
+  }
+
+  async function handleDeleteSavedLoadout(saveId) {
+    await deleteSavedLoadout(saveId);
+
+    if (currentSavedLoadoutId === saveId) {
+      clearCurrentSavedLoadoutId(localStorage);
+      await persistLoadoutRuntime(localStorage);
+      setCurrentSavedLoadoutId("");
+      setCurrentSavedLoadoutComparable(null);
+    }
+
+    await refreshSavedLoadoutList();
+  }
+
+  async function handleStartFreshSave() {
+    await startFreshWorkingLoadout(localStorage);
+    setCurrentSavedLoadoutId("");
+    setCurrentSavedLoadoutComparable(null);
+    setNotation(localStorage.getItem("notation") ?? "scientific");
+    setLoadoutImportVersion((current) => current + 1);
+  }
+
+  async function handleImportComplete(summary) {
+    await refreshSavedLoadoutList();
+
+    if (currentSavedLoadoutId && summary.updatedIds.includes(currentSavedLoadoutId)) {
+      await handleLoadSavedLoadout(currentSavedLoadoutId);
+      return;
+    }
+
+    setCurrentSavedLoadoutId(getCurrentSavedLoadoutId(localStorage));
+  }
+
   const activeSection = SECTION_MAP[activeKey];
+
+  if (!isLoadoutRuntimeReady) {
+    return (
+      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: colors.bg, color: colors.text, fontFamily: "'Exo 2', 'Rajdhani', 'Segoe UI', sans-serif" }}>
+        <div style={{ padding: 24, borderRadius: 16, border: `1px solid ${colors.border}`, background: colors.panel, boxShadow: "0 18px 60px rgba(0,0,0,0.28)" }}>
+          Loading saved loadouts...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <NotationContext.Provider value={notation}>
@@ -3284,31 +3473,6 @@ export default function App() {
           <div style={{ fontSize: 10, color: colors.muted, opacity: 0.7, marginTop: 1 }}>by Asingh · v15.04</div>
         </div>
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
-          <input ref={saveImportInputRef} type="file" accept="application/json,.json" onChange={handleImportSaveChange} style={{ display: "none" }} />
-          <button onClick={handleExportSave} style={{
-            background: colors.header,
-            color: colors.text,
-            border: `1px solid ${colors.border}`,
-            borderRadius: 6,
-            padding: "8px 12px",
-            cursor: "pointer",
-            fontFamily: "inherit",
-            fontWeight: 700,
-          }}>
-            Export Save
-          </button>
-          <button onClick={handleImportSaveClick} style={{
-            background: colors.header,
-            color: colors.text,
-            border: `1px solid ${colors.border}`,
-            borderRadius: 6,
-            padding: "8px 12px",
-            cursor: "pointer",
-            fontFamily: "inherit",
-            fontWeight: 700,
-          }}>
-            Import Save
-          </button>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ fontSize: 11, color: colors.muted, letterSpacing: "0.06em", textTransform: "uppercase" }}>Notation</span>
             {[
@@ -3326,6 +3490,25 @@ export default function App() {
                 <div style={{ fontSize: 10, opacity: 0.75, marginTop: 2 }}>{example}</div>
               </button>
             ))}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <button onClick={handleSaveButtonClick} style={{
+              background: currentSavedLoadoutId && !isCurrentSavedLoadoutDirty ? colors.header : colors.accent,
+              color: currentSavedLoadoutId && !isCurrentSavedLoadoutDirty ? colors.muted : "#08111d",
+              border: `1px solid ${currentSavedLoadoutId && !isCurrentSavedLoadoutDirty ? colors.border : colors.accent}`,
+              borderRadius: 8,
+              padding: "8px 12px",
+              cursor: saveButtonBusy ? "wait" : currentSavedLoadoutId && !isCurrentSavedLoadoutDirty ? "default" : "pointer",
+              fontFamily: "inherit",
+              fontWeight: 800,
+            }}>
+              {saveButtonBusy ? "Saving..." : saveButtonLabel}
+            </button>
+            {saveButtonMessage ? (
+              <div style={{ fontSize: 12, fontWeight: 700, color: saveButtonMessage.type === "error" ? "#ffb3a8" : "#9ff3b0" }}>
+                {saveButtonMessage.text}
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
@@ -3460,6 +3643,19 @@ export default function App() {
               />
             </Suspense>
           )}
+          {activeKey === "saves" && (
+            <Suspense fallback={lazyFallback}>
+              <SavesView
+                colors={colors}
+                saves={savedLoadouts}
+                currentSavedLoadoutId={currentSavedLoadoutId}
+                onLoadSave={handleLoadSavedLoadout}
+                onDeleteSave={handleDeleteSavedLoadout}
+                onStartFreshSave={handleStartFreshSave}
+                onImportComplete={handleImportComplete}
+              />
+            </Suspense>
+          )}
           {activeKey === "statsHub" && (
             <Suspense fallback={lazyFallback}>
               <StatsHubView
@@ -3525,6 +3721,30 @@ export default function App() {
           sectionFormula={modalFormula}
           onClose={() => setModalItem(null)}
         />
+      )}
+      {isSaveModalOpen && (
+        <div onClick={() => setIsSaveModalOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(3,8,18,0.78)", backdropFilter: "blur(8px)", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", padding: 18 }}>
+          <div onClick={(event) => event.stopPropagation()} style={{ width: "100%", maxWidth: 620, borderRadius: 18, border: `1px solid ${colors.border}`, background: `linear-gradient(180deg, ${colors.header} 0%, ${colors.panel} 26%, ${colors.bg} 100%)`, boxShadow: "0 24px 80px rgba(0,0,0,0.42)", overflow: "hidden" }}>
+            <div style={{ padding: 20, borderBottom: `1px solid ${colors.border}`, display: "grid", gap: 4 }}>
+              <div style={{ fontSize: 20, fontWeight: 800 }}>Save Loadout</div>
+              <div style={{ fontSize: 13, color: colors.muted }}>Give this loadout a name and description so it shows up in the Saves page.</div>
+            </div>
+            <div style={{ padding: 20, display: "grid", gap: 14 }}>
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 12, color: colors.muted, textTransform: "uppercase", letterSpacing: "0.08em" }}>Name</span>
+                <input value={saveDraftName} onChange={(event) => setSaveDraftName(event.target.value)} placeholder="Example: Tournament Push" style={{ background: colors.bg, color: colors.text, border: `1px solid ${colors.border}`, borderRadius: 10, padding: "12px 14px", fontFamily: "inherit", fontSize: 14 }} />
+              </label>
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 12, color: colors.muted, textTransform: "uppercase", letterSpacing: "0.08em" }}>Description</span>
+                <textarea value={saveDraftDescription} onChange={(event) => setSaveDraftDescription(event.target.value)} placeholder="Optional notes about the build, map, or use case." rows={4} style={{ resize: "vertical", background: colors.bg, color: colors.text, border: `1px solid ${colors.border}`, borderRadius: 10, padding: "12px 14px", fontFamily: "inherit", fontSize: 14 }} />
+              </label>
+              <div style={{ display: "flex", justifyContent: "end", gap: 10, flexWrap: "wrap" }}>
+                <button onClick={() => setIsSaveModalOpen(false)} style={{ background: "transparent", color: colors.muted, border: `1px solid ${colors.border}`, borderRadius: 10, padding: "10px 14px", cursor: "pointer", fontFamily: "inherit", fontWeight: 700 }}>Cancel</button>
+                <button onClick={handleCreateSaveSubmit} style={{ background: colors.accent, color: "#08111d", border: `1px solid ${colors.accent}`, borderRadius: 10, padding: "10px 16px", cursor: "pointer", fontFamily: "inherit", fontWeight: 800 }}>Save Loadout</button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
     </NotationContext.Provider>

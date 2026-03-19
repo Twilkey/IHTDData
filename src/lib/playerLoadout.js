@@ -1,6 +1,7 @@
 import playerBackgroundsData from "../data/player_backgrounds.json";
 import playerIconsData from "../data/player_icons.json";
 import STAT_UNITS from "../data/stat_units.json";
+import { schedulePersistLoadoutRuntime } from "./loadoutRuntimeStore";
 
 export const PLAYER_LOADOUT_STATE_STORAGE_KEY = "ihtddata.playerLoadout.state.v1";
 
@@ -166,6 +167,7 @@ export function readPlayerLoadoutState(storage = localStorage) {
 
 export function writePlayerLoadoutState(state, storage = localStorage) {
   storage.setItem(PLAYER_LOADOUT_STATE_STORAGE_KEY, JSON.stringify(normalizePlayerLoadoutState(state)));
+  schedulePersistLoadoutRuntime(storage);
 }
 
 export function getPlayerLoadoutItems(tabKey) {

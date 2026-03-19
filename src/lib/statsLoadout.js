@@ -9,6 +9,7 @@ import ticketsData from "../data/tickets.json";
 import ultimusData from "../data/ultimus.json";
 import masteryData from "../data/mastery.json";
 import STAT_UNITS from "../data/stat_units.json";
+import { schedulePersistLoadoutRuntime } from "./loadoutRuntimeStore";
 
 export const STATS_LOADOUT_SELECTED_TAB_STORAGE_KEY = "ihtddata.statsLoadout.selectedTab";
 export const STATS_LOADOUT_PREVIEW_LEVELS_STORAGE_KEY = "ihtddata.statsLoadout.previewLevelsByTab.v1";
@@ -190,6 +191,7 @@ export function writeStatsLoadoutState(state, storage = localStorage) {
   storage.setItem(STATS_LOADOUT_PREVIEW_LEVELS_STORAGE_KEY, JSON.stringify(normalized.previewLevelsByTab));
   storage.setItem(STATS_LOADOUT_LEVELS_STORAGE_KEY, JSON.stringify(normalized.levelsByTab));
   storage.setItem(STATS_LOADOUT_HIDE_MAXED_STORAGE_KEY, JSON.stringify(normalized.hideMaxedByTab));
+  schedulePersistLoadoutRuntime(storage);
 }
 
 export function getStatsLoadoutBonusTotals(levelsByTab) {

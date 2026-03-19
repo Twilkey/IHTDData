@@ -5,7 +5,7 @@ export const APP_SAVE_VERSION = 8;
 
 import { normalizeStatsLoadoutState, readStatsLoadoutState, writeStatsLoadoutState } from "./statsLoadout";
 import { normalizeMapLoadoutState, readMapLoadoutState, writeMapLoadoutState } from "./mapLoadout";
-import { normalizeHeroLoadoutState, readHeroLoadoutState, writeHeroLoadoutState } from "./heroLoadout";
+import * as heroLoadoutModule from "./heroLoadout";
 import { normalizePlayerLoadoutState, readPlayerLoadoutState, writePlayerLoadoutState } from "./playerLoadout";
 
 function isObject(value) {
@@ -52,10 +52,67 @@ export function buildAppSavePayload(storage = localStorage) {
       loadoutBuilder: readLoadoutBuilderState(storage),
       statsLoadout: readStatsLoadoutState(storage),
       mapLoadout: readMapLoadoutState(storage),
-      heroLoadout: readHeroLoadoutState(storage),
+      heroLoadout: heroLoadoutModule.readHeroLoadoutState(storage),
       playerLoadout: readPlayerLoadoutState(storage),
     },
   };
+}
+
+export function buildDefaultAppSavePayload(storage = localStorage) {
+  return {
+    version: APP_SAVE_VERSION,
+    exportedAt: new Date().toISOString(),
+    preferences: {
+      notation: storage.getItem("notation") ?? "scientific",
+    },
+    sections: {
+      loadoutBuilder: readLoadoutBuilderState({
+        getItem(key) {
+          return key === LOADOUT_BUILDER_SELECTED_MAP_STORAGE_KEY ? "" : "{}";
+        },
+      }),
+      statsLoadout: normalizeStatsLoadoutState({}),
+      mapLoadout: normalizeMapLoadoutState({}),
+      heroLoadout: heroLoadoutModule.normalizeHeroLoadoutState({}),
+      playerLoadout: normalizePlayerLoadoutState({}),
+    },
+  };
+}
+
+export function createComparableAppSavePayload(payload) {
+  return {
+    version: payload?.version ?? APP_SAVE_VERSION,
+    preferences: {
+      notation: payload?.preferences?.notation ?? "scientific",
+    },
+    sections: {
+      loadoutBuilder: readLoadoutBuilderState({
+        getItem(key) {
+          if (key === LOADOUT_BUILDER_SELECTED_MAP_STORAGE_KEY) {
+            return payload?.sections?.loadoutBuilder?.selectedMapId ?? "";
+          }
+
+          if (key === LOADOUT_BUILDER_PLACEMENTS_STORAGE_KEY) {
+            return JSON.stringify(payload?.sections?.loadoutBuilder?.placementsByMap ?? {});
+          }
+
+          if (key === LOADOUT_BUILDER_RANKS_STORAGE_KEY) {
+            return JSON.stringify(payload?.sections?.loadoutBuilder?.placementRanksByMap ?? {});
+          }
+
+          return null;
+        },
+      }),
+      statsLoadout: normalizeStatsLoadoutState(payload?.sections?.statsLoadout ?? {}),
+      mapLoadout: normalizeMapLoadoutState(payload?.sections?.mapLoadout ?? {}),
+      heroLoadout: heroLoadoutModule.normalizeHeroLoadoutState(payload?.sections?.heroLoadout ?? {}),
+      playerLoadout: normalizePlayerLoadoutState(payload?.sections?.playerLoadout ?? {}),
+    },
+  };
+}
+
+export function buildComparableAppSavePayload(storage = localStorage) {
+  return createComparableAppSavePayload(buildAppSavePayload(storage));
 }
 
 export function validateAppSavePayload(payload) {
@@ -142,9 +199,9 @@ export function applyAppSavePayload(payload, storage = localStorage) {
   writeMapLoadoutState(mapLoadout, storage);
 
   const heroLoadout = payload.sections.heroLoadout === undefined
-    ? normalizeHeroLoadoutState({})
-    : normalizeHeroLoadoutState(payload.sections.heroLoadout);
-  writeHeroLoadoutState(heroLoadout, storage);
+    ? heroLoadoutModule.normalizeHeroLoadoutState({})
+    : heroLoadoutModule.normalizeHeroLoadoutState(payload.sections.heroLoadout);
+  heroLoadoutModule.writeHeroLoadoutState(heroLoadout, storage);
 
   const playerLoadout = payload.sections.playerLoadout === undefined
     ? normalizePlayerLoadoutState({})

@@ -1,4 +1,5 @@
 import { mapsData } from "./gameData";
+import { schedulePersistLoadoutRuntime } from "./loadoutRuntimeStore";
 
 export const MAP_LOADOUT_BUILDER_MODE_STORAGE_KEY = "ihtddata.mapLoadout.builderMode";
 export const MAP_LOADOUT_STATE_STORAGE_KEY = "ihtddata.mapLoadout.state.v1";
@@ -202,6 +203,7 @@ export function writeMapLoadoutState(state, storage = localStorage) {
     placementBonusLevels: normalized.placementBonusLevels,
     placementBonusPlacementsByMap: normalized.placementBonusPlacementsByMap,
   }));
+  schedulePersistLoadoutRuntime(storage);
 }
 
 export function readMapLoadoutBuilderMode(storage = localStorage) {
@@ -214,6 +216,7 @@ export function writeMapLoadoutBuilderMode(mode, storage = localStorage) {
     MAP_LOADOUT_BUILDER_MODE_STORAGE_KEY,
     VALID_BUILDER_MODES.has(mode) ? mode : DEFAULT_BUILDER_MODE
   );
+  schedulePersistLoadoutRuntime(storage);
 }
 
 export function countEquippedPerks(perkStateById) {

@@ -8,6 +8,7 @@ import { buildGlobalLoadoutStatModel } from "../../lib/loadoutStatEngine";
 import { getPerkCurrentBonus, getPlacementBonusValue, readMapLoadoutBuilderMode, readMapLoadoutState, writeMapLoadoutBuilderMode } from "../../lib/mapLoadout";
 import { readPlayerLoadoutState } from "../../lib/playerLoadout";
 import { readStatsLoadoutState } from "../../lib/statsLoadout";
+import { schedulePersistLoadoutRuntime } from "../../lib/loadoutRuntimeStore";
 import { MapPerksLoadoutBuilder } from "./MapPerksLoadoutBuilder";
 
 const MAX_DUPLICATE_HEROES = 3;
@@ -1259,6 +1260,7 @@ export function LoadoutBuilderPage({ colors, getIconUrl, maps, heroes, onNavigat
   useEffect(() => {
     if (selectedMap?.id) {
       localStorage.setItem(LOADOUT_BUILDER_SELECTED_MAP_STORAGE_KEY, selectedMap.id);
+      schedulePersistLoadoutRuntime(localStorage);
     }
   }, [selectedMap]);
 
@@ -1268,10 +1270,12 @@ export function LoadoutBuilderPage({ colors, getIconUrl, maps, heroes, onNavigat
 
   useEffect(() => {
     localStorage.setItem(LOADOUT_BUILDER_PLACEMENTS_STORAGE_KEY, JSON.stringify(placementsByMap));
+    schedulePersistLoadoutRuntime(localStorage);
   }, [placementsByMap]);
 
   useEffect(() => {
     localStorage.setItem(LOADOUT_BUILDER_RANKS_STORAGE_KEY, JSON.stringify(placementRanksByMap));
+    schedulePersistLoadoutRuntime(localStorage);
   }, [placementRanksByMap]);
 
   useEffect(() => {

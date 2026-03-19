@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 
 import {
   getHeroMasteryExpCost,
-  getHeroUnlockWave,
   getHeroAttributePreview,
   HERO_ATTRIBUTE_DEFINITIONS,
   readHeroLoadoutState,
@@ -487,7 +486,7 @@ function AttributeCard({ attribute, currentLevel, previewLevels, colors, fmt, ge
 
 function HeaderFieldCard({ label, value, colors, helper, valueColor, min = 0, max, onChange, disabled = false }) {
   return (
-    <div style={{ background: colors.header, border: `1px solid ${colors.border}`, borderRadius: 12, padding: 14, display: "grid", gap: 8 }}>
+    <div style={{ background: colors.header, border: `1px solid ${colors.border}`, borderRadius: 12, padding: 14, display: "grid", gap: 8, minWidth: 0 }}>
       <div style={{ fontSize: 11, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 800 }}>{label}</div>
       {onChange ? (
         <input
@@ -497,7 +496,7 @@ function HeaderFieldCard({ label, value, colors, helper, valueColor, min = 0, ma
           value={value}
           onChange={(event) => onChange(event.target.value)}
           disabled={disabled}
-          style={{ background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 10, color: colors.text, fontSize: 16, fontWeight: 800, padding: "10px 12px", fontFamily: "inherit" }}
+          style={{ width: "100%", minWidth: 0, background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 10, color: colors.text, fontSize: 16, fontWeight: 800, padding: "10px 12px", fontFamily: "inherit" }}
         />
       ) : (
         <div style={{ fontSize: 16, fontWeight: 900, color: valueColor ?? colors.text }}>{value}</div>
@@ -659,7 +658,6 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes }) {
   const selectedHeroRank = selectedHero ? (rankByHero[selectedHero.id] ?? 0) : 0;
   const selectedHeroLevel = selectedHero ? (levelByHero[selectedHero.id] ?? 0) : 0;
   const selectedHeroMasteryLevel = selectedHero ? (masteryLevelByHero[selectedHero.id] ?? 0) : 0;
-  const selectedHeroUnlockWave = selectedHero ? getHeroUnlockWave(selectedHero) : null;
   const activeAttributeLevels = selectedHero ? (attributeLevelsByHero[selectedHero.id] ?? {}) : {};
   const effectSubtabs = typeFilters.some((type) => type === "buff" || type === "debuff")
     ? FILTER_SUBTABS.effects
@@ -963,6 +961,20 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes }) {
                   </div>
                 </div>
 
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
+                  {[
+                    { label: "Hero", value: selectedHero.name },
+                    { label: "Class", value: formatLabel(selectedHero.class) },
+                    { label: "Rarity", value: selectedHero.rarity },
+                    { label: "Type", value: formatLabel(selectedHero.type) },
+                  ].map((item) => (
+                    <div key={item.label} style={{ background: colors.header, border: `1px solid ${colors.border}`, borderRadius: 12, padding: 14, display: "grid", gap: 6, minWidth: 0 }}>
+                      <div style={{ fontSize: 11, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 800 }}>{item.label}</div>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: colors.text, minWidth: 0 }}>{item.value}</div>
+                    </div>
+                  ))}
+                </div>
+
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   {HERO_DETAIL_TABS.map((tab) => (
                     <button
@@ -984,7 +996,7 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes }) {
                   ))}
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 12 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(0, 1fr))", gap: 12 }}>
                   <HeaderFieldCard
                     label="Current Rank"
                     value={selectedHeroRank}
@@ -1010,12 +1022,6 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes }) {
                     helper={selectedHero.masteryExp ? `Max ${selectedHero.masteryLevel?.maxLevel ?? selectedHero.masteryExp?.maxLevel ?? 0}` : "Mastery is unavailable for this hero."}
                   />
                   <HeaderFieldCard
-                    label="Wave Unlocked"
-                    value={selectedHeroUnlockWave != null ? fmt(selectedHeroUnlockWave) : "Not provided"}
-                    colors={colors}
-                    helper="Hero data unlock requirement."
-                  />
-                  <HeaderFieldCard
                     label="Next Mastery Cost"
                     value={selectedHero.masteryExp ? (selectedHeroMasteryLevel >= (selectedHero.masteryExp.maxLevel ?? 0) ? "Maxed" : `${fmt(nextMasteryCost)} exp`) : "Unavailable"}
                     valueColor={colors.accent}
@@ -1027,32 +1033,6 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes }) {
 
               {activeHeroTab === "information" && (
                 <div style={{ display: "grid", gap: 16 }}>
-                  <div style={{ background: colors.panel, border: `1px solid ${colors.border}`, borderRadius: 16, padding: 16, display: "grid", gap: 16 }}>
-                    <div>
-                      <div style={{ fontSize: 18, fontWeight: 900, color: colors.text }}>Overview</div>
-                      <div style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>Core identity, unlock timing, and current progression for the selected hero.</div>
-                    </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "minmax(180px, 240px) minmax(0, 1fr)", gap: 16, alignItems: "stretch" }}>
-                      <div style={{ minHeight: 220, borderRadius: 16, background: `linear-gradient(180deg, ${colors.header} 0%, rgba(15,38,64,0.95) 100%)`, border: `1px solid ${colors.border}`, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-                        {selectedHero.heroIcon ? <img src={getIconUrl(selectedHero.heroIcon)} alt={selectedHero.name} style={{ width: "100%", maxWidth: 160, maxHeight: 160, objectFit: "contain" }} /> : null}
-                      </div>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
-                        {[
-                          { label: "Hero", value: selectedHero.name },
-                          { label: "Rarity", value: selectedHero.rarity },
-                          { label: "Type", value: formatLabel(selectedHero.type) },
-                          { label: "Wave Unlocked", value: selectedHeroUnlockWave != null ? fmt(selectedHeroUnlockWave) : "Not provided" },
-                          { label: "Class", value: formatLabel(selectedHero.class) },
-                        ].map((item) => (
-                          <div key={item.label} style={{ background: colors.header, border: `1px solid ${colors.border}`, borderRadius: 12, padding: 14, display: "grid", gap: 6 }}>
-                            <div style={{ fontSize: 11, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 800 }}>{item.label}</div>
-                            <div style={{ fontSize: 15, fontWeight: 800, color: colors.text }}>{item.value}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
                   <div style={{ background: colors.panel, border: `1px solid ${colors.border}`, borderRadius: 16, padding: 16, display: "grid", gap: 16 }}>
                     <div>
                       <div style={{ fontSize: 18, fontWeight: 900, color: colors.text }}>Active Skill</div>

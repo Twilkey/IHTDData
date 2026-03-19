@@ -7,6 +7,7 @@ import { readHeroLoadoutState } from "../../lib/heroLoadout";
 import { readMapLoadoutState } from "../../lib/mapLoadout";
 import { readPlayerLoadoutState } from "../../lib/playerLoadout";
 import { readStatsLoadoutState } from "../../lib/statsLoadout";
+import { schedulePersistLoadoutRuntime } from "../../lib/loadoutRuntimeStore";
 
 function SelectorCard({ label, value, onChange, options, colors }) {
   return (
@@ -104,6 +105,7 @@ export function StatsHubPage({ colors, heroes, getIconUrl, fmt }) {
 
   useEffect(() => {
     localStorage.setItem(LOADOUT_BUILDER_SELECTED_MAP_STORAGE_KEY, selectedMapId ?? "");
+    schedulePersistLoadoutRuntime(localStorage);
   }, [selectedMapId]);
 
   const selectedHero = useMemo(

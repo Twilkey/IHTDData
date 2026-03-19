@@ -1,5 +1,6 @@
 import heroAttributesData from "../data/hero_attributes.json";
 import { heroList, heroesData } from "./gameData";
+import { schedulePersistLoadoutRuntime } from "./loadoutRuntimeStore";
 
 export const HERO_LOADOUT_STATE_STORAGE_KEY = "ihtddata.heroLoadout.state.v1";
 
@@ -121,6 +122,7 @@ export function readHeroLoadoutState(storage = localStorage) {
 
 export function writeHeroLoadoutState(state, storage = localStorage) {
   storage.setItem(HERO_LOADOUT_STATE_STORAGE_KEY, JSON.stringify(normalizeHeroLoadoutState(state)));
+  schedulePersistLoadoutRuntime(storage);
 }
 
 export function getHeroAttributeTierMultiplier(attribute, targetLevel) {
