@@ -1,0 +1,46 @@
+{
+  "note": "Ultimus Boss reward data. Source: DDACKPKBCIF.cs (BBFEHGEMEEG, ELOBALHHJLB). HP formula TBD — requires further investigation into baseEnemyHp_big scaling.",
+
+  "tokenReward": {
+    "note": "DDACKPKBCIF.BBFEHGEMEEG(wave). Base tokens at current wave, then multiplied by tokenMultiplier.",
+    "formula": "tokens = round((1 + max(wave, 5000) - 5000) / 1000)^2 + 4) * tokenMultiplier",
+    "formulaNotes": "Minimum base = 5 (enforced when formula result < 5, i.e. wave < 5000)",
+    "baseExamples": [
+      { "wave": 5000,  "baseTokens": 5 },
+      { "wave": 6000,  "baseTokens": 8 },
+      { "wave": 7000,  "baseTokens": 13 },
+      { "wave": 8000,  "baseTokens": 20 },
+      { "wave": 10000, "baseTokens": 40 },
+      { "wave": 15000, "baseTokens": 125 },
+      { "wave": 20000, "baseTokens": 260 },
+      { "wave": 25000, "baseTokens": 501 },
+      { "wave": 30000, "baseTokens": 868 }
+    ],
+    "tokenMultiplier": {
+      "note": "ELOBALHHJLB(). Base = 1.0, all sources are multiplicative.",
+      "sources": [
+        { "source": "prestigeUltimusTokens",  "formula": "1 + level * 0.15" },
+        { "source": "supTechUltimusReward",   "formula": "1 + level * 0.05" },
+        { "source": "tournUltimusReward",     "formula": "1 + level * 0.05" },
+        { "source": "gemsUltimusReward",      "formula": "1 + level * 0.05" },
+        { "source": "masteryUltimusTokens",   "formula": "1 + level * 0.10" },
+        { "condition": "chalUltimusKills",    "multiplier": 1.25 },
+        { "condition": "lbIconTech14",        "multiplier": 1.25, "note": "Leaderboard icon unlock" },
+        { "condition": "bgChalKillUltimus",   "multiplier": 1.25, "note": "Background challenge reward" },
+        { "condition": "wavePerkUltimusTokens > 0", "formula": "1 + 0.1 * stacks * wavePerkEffect", "note": "Wave perk" },
+        { "condition": "Astral map + boss perks active", "formula": "1 + mapPerkBonus * (1 + map7Perks_bossGroup5 * 0.1) * 0.1", "note": "Astral Battleground boss perk group 5" }
+      ]
+    }
+  },
+
+  "bossHp": {
+    "note": "TBD. HP = baseEnemyHp_big * [boss-specific constant] * BKDLELOLPOC(). baseEnemyHp_big scales with wave progression (runtime value). ultimusBaseHp is a Unity-serialized minimum fallback shown at low waves only.",
+    "hpReductionSources": [
+      { "source": "researchEnemyHp", "formula": "1 - level * 0.03" },
+      { "source": "techEnemyHp",     "formula": "1 - level * 0.03" },
+      { "source": "runeEnemyHp",     "formula": "1 - level * 0.03" },
+      { "condition": "wavePerkEnemyHp > 0", "formula": "1 - 0.05 * stacks * wavePerkEffect" },
+      { "condition": "lbIconGems3",  "multiplier": 0.90 }
+    ]
+  }
+}

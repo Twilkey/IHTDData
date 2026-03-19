@@ -387,10 +387,10 @@
       "statAmt": 1,
       "maxLevel": 999999,
       "statKey": "progressiveRankExp",
+      "formulaType": "progressive",
       "icon": "_exp.png",
       "bgColor": "#0A6899",
-      "borderColor": "#19AFFF",
-      "notes": "special formula: stat=level*(level+1)/2; affects all heroes"
+      "borderColor": "#19AFFF"
     },
     {
       "id": "energyIncome",

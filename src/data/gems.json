@@ -99,6 +99,7 @@
         "id": "progressive_rank_exp",
         "name": "Progressive Rank Exp",
         "statKey": "progressive_rank_exp",
+        "formulaType": "progressive",
         "waveReq": 0,
         "statAmt": 5,
         "maxLevel": 999999,

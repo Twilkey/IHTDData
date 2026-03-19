@@ -59,24 +59,34 @@
   },
 
   "rewardTickets": {
-    "note": "getRewardTickets(league, rank) from PvpWeeklyBossPanel.cs line 1086. rank is 0-indexed (0 = 1st place). With IAP pvpBossBoost active, all values ×2.",
+    "note": "getRewardTickets(league, rank) from PvpWeeklyBossPanel.cs line 1086. rank is 0-indexed (0 = 1st place). With IAP active (iapPvpBossBoost temporary OR iapPvpBossBoostPerm permanent), all values ×2.",
     "iapMultiplier": 2,
+    "iapFlags": ["iapPvpBossBoost (temporary)", "iapPvpBossBoostPerm (permanent)"],
     "byLeague": {
       "Bronze": [60, 50, 40, 35, 30, 25, 20, 15],
       "Silver": [120, 110, 100, 90, 80, 70, 60, 50],
       "Gold": [180, 170, 160, 150, 140, 130, 120, 110],
       "Diamond": [250, 235, 220, 210, 200, 190, 180, 170]
     },
-    "rankLabels": ["Rank 1", "Rank 2", "Rank 3", "Rank 4", "Rank 5", "Rank 6", "Rank 7", "Rank 8"]
+    "rankLabels": ["Rank 1", "Rank 2", "Rank 3", "Rank 4", "Rank 5", "Rank 6", "Rank 7", "Rank 8"],
+    "rankPlayerRanges": ["1", "2–3", "4–5", "6–10", "11–15", "16–20", "21–25", "26–30"]
   },
 
   "rewardTrophies": {
-    "note": "getMaxRewardTrophy(n) from PvpWeeklyBossPanel.cs line 1237. n = rank (0-indexed). Trophy amount scales with player upgrades via trophyMultiplier (BKNDFEKHIPG). With IAP pvpBossBoost active, ×2. Minimum (rank 1 fallback) = 100 (or 200 with IAP).",
-    "formula": "trophies = round_half_up(1000 * rank_0indexed^2 * trophyMultiplier)",
-    "minimumFallback": 100,
+    "note": "Trophy rewards scale with the player's tournament tier (1–35, same tier system as tournament_brackets.json) and their personal getTournTrophies() multiplier. Source: getMaxRewardTrophy() + getMinRewardTrophy() in PvpWeeklyBossPanel.cs. Verified against in-game screenshots.",
+    "tierParam": "tournament tier (1–35) — NOT the 4-league number",
+    "ranksCount": 8,
+    "rankFormulas": {
+      "note": "rank is 1-indexed (1 = 1st place, 8 = last). Compute max and min first, then interpolate.",
+      "max": "round(1000 * tier^2 * getTournTrophies())",
+      "min": "max(round(1000 * (tier-1)^2 * getTournTrophies()), 100)",
+      "rank_r": "round(max - (r - 1) * (max - min) / 7)"
+    },
     "iapMultiplier": 2,
-    "trophyMultiplier": {
-      "note": "BKNDFEKHIPG() in DDACKPKBCIF.cs line 10687. Base = 1.0, then multiplicative bonuses from player upgrades.",
+    "iapFlags": ["iapPvpBossBoost (temporary)", "iapPvpBossBoostPerm (permanent)"],
+    "iapNote": "With IAP active, apply ×2 to both max and min before computing per-rank values. The min fallback of 100 becomes 200 with IAP.",
+    "getTournTrophies": {
+      "note": "BKNDFEKHIPG() in DDACKPKBCIF.cs. Base = 1.0, then multiplicative bonuses from player upgrades.",
       "sources": [
         { "condition": "chalSynergiesActive32", "multiplier": 1.25 },
         { "source": "supTechTournPts", "formula": "1 + supTechTournPts * 0.05" },

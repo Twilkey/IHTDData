@@ -618,7 +618,7 @@
         "name": "Hero Level Cost",
         "statKey": "hero_level_cost",
         "waveReq": 35000,
-        "statAmt": 5,
+        "statAmt": 0.5,
         "maxLevel": 10,
         "baseCost": 35000,
         "multCost": 1,

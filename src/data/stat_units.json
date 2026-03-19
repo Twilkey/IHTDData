@@ -21,31 +21,43 @@
   },
   "training_dummy_cooldown": {
     "unit": "s",
-    "label": "Training Dummy Cooldown"
+    "label": "Training Dummy Cooldown",
+    "negate": true
   },
   "power_mage_cooldown": {
     "unit": "s",
-    "label": "Power Mage Cooldown"
+    "label": "Power Mage Cooldown",
+    "negate": true
   },
   "mage_spawn_cooldown": {
     "unit": "s",
-    "label": "Mage Spawn Cooldown"
+    "label": "Mage Spawn Cooldown",
+    "negate": true
   },
   "goblin_hoarder_cooldown": {
     "unit": "s",
-    "label": "Goblin Hoarder Cooldown"
+    "label": "Goblin Hoarder Cooldown",
+    "negate": true
   },
   "ultimus_cooldown": {
     "unit": "s",
-    "label": "Ultimus Cooldown"
+    "label": "Ultimus Cooldown",
+    "negate": true
   },
   "skill_cooldown": {
     "unit": "s",
-    "label": "Skill Cooldown"
+    "label": "Skill Cooldown",
+    "negate": true
   },
   "spell_cooldown": {
     "unit": "s",
-    "label": "Spell Cooldown"
+    "label": "Spell Cooldown",
+    "negate": true
+  },
+  "skillCd": {
+    "unit": "%",
+    "label": "Skill Cooldown",
+    "negate": true
   },
   "tower_lives": {
     "unit": "lives",
@@ -140,8 +152,14 @@
     "label": "Battlepass Exp"
   },
   "progressive_rank_exp": {
-    "unit": "%",
-    "label": "Progressive Rank Exp"
+    "unit": "",
+    "label": "Progressive Rank Exp",
+    "formulaNote": "Arithmetic progression: level N grants statAmt×N; total = statAmt×N×(N+1)/2"
+  },
+  "progressiveRankExp": {
+    "unit": "",
+    "label": "Progressive Rank Exp",
+    "formulaNote": "Arithmetic progression: level N grants statAmt×N; total = statAmt×N×(N+1)/2"
   },
   "tournament_trophies": {
     "unit": "%",

@@ -61,7 +61,7 @@
         "id": "hero_level_cost",
         "name": "Hero Level Cost",
         "statKey": "hero_level_cost",
-        "statAmt": 5,
+        "statAmt": 0.5,
         "maxLevel": 10,
         "baseCost": 3,
         "stopCostIncreaseAt": 5,

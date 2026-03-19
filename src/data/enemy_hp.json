@@ -49,9 +49,24 @@
     }
   ],
   "enemyMultipliers": {
-    "evo2": 1.5,
-    "evo3": 2.0,
-    "boss": 7.5
+    "note": "Applied to baseEnemyHp_big before BKDLELOLPOC() reduction. Source: Enemy.cs spawnEnemy(). runeBoss and techBoss use separate HP systems not based on baseEnemyHp_big. pvpBoss (Immortal Boss) uses int.MaxValue.",
+    "normal_evo1": 1.0,
+    "normal_evo2": 1.5,
+    "normal_evo3": 2.0,
+    "boss": 7.5,
+    "goldBoss": 12.5,
+    "energyBoss": 25.0,
+    "expBoss": 150.0,
+    "miniShadow": 15.0,
+    "ultimusMelee": 1000.0,
+    "ultimusMage": 1000.0,
+    "ultimusRange": 1000.0,
+    "ultimusSupreme": 10000000.0,
+    "runeBoss": "separate — uses DataManager.runeBossHp_big (Shadow Ancient boss system)",
+    "techBoss": "separate — uses DataManager.techBossHp_big (Alien boss system)",
+    "techBoss_supreme": "DataManager.techBossHp_big × 1000 (Supreme Alien variant)",
+    "pvpBoss": "int.MaxValue (Immortal Boss — HP managed server-side)",
+    "goldenVariant": 1.1
   },
   "playerStats": {
     "enemy_hp_scaling": {
