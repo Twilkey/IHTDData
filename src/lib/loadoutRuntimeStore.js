@@ -1,6 +1,8 @@
+import { getLoadoutScopeSelectionKey } from "./loadoutScope";
 import { LOADOUT_DB_RUNTIME_STORE, readStoreValue, supportsLoadoutDatabase, writeStoreValue } from "./loadoutDbCore";
 
 export const CURRENT_SAVED_LOADOUT_ID_STORAGE_KEY = "ihtddata.savedLoadouts.currentId";
+export const CURRENT_SAVED_LOADOUT_SELECTIONS_STORAGE_KEY = "ihtddata.savedLoadouts.currentSelections.v1";
 export const LOADOUT_RUNTIME_CHANGED_EVENT = "ihtddata:loadout-runtime-changed";
 
 const RUNTIME_SNAPSHOT_KEY = "workingLoadoutRuntime";
@@ -19,6 +21,7 @@ const LOADOUT_RUNTIME_STORAGE_KEYS = Object.freeze([
   "ihtddata.heroLoadout.state.v1",
   "ihtddata.playerLoadout.state.v1",
   CURRENT_SAVED_LOADOUT_ID_STORAGE_KEY,
+  CURRENT_SAVED_LOADOUT_SELECTIONS_STORAGE_KEY,
 ]);
 
 let persistTimerId = null;
@@ -30,6 +33,41 @@ function cloneSnapshot(snapshot) {
 function notifyLoadoutRuntimeChanged() {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent(LOADOUT_RUNTIME_CHANGED_EVENT));
+  }
+}
+
+function readCurrentSavedLoadoutSelections(storage = localStorage) {
+  let parsedSelections = {};
+
+  try {
+    parsedSelections = JSON.parse(storage.getItem(CURRENT_SAVED_LOADOUT_SELECTIONS_STORAGE_KEY) ?? "{}");
+  } catch {
+    parsedSelections = {};
+  }
+
+  const normalizedSelections = Object.fromEntries(
+    Object.entries(parsedSelections ?? {}).filter(([, value]) => typeof value === "string" && value.trim())
+  );
+  const legacyCurrentId = storage.getItem(CURRENT_SAVED_LOADOUT_ID_STORAGE_KEY) ?? "";
+
+  if (legacyCurrentId.trim() && !normalizedSelections.full) {
+    normalizedSelections.full = legacyCurrentId.trim();
+  }
+
+  return normalizedSelections;
+}
+
+function writeCurrentSavedLoadoutSelections(selections, storage = localStorage) {
+  const normalizedSelections = Object.fromEntries(
+    Object.entries(selections ?? {}).filter(([, value]) => typeof value === "string" && value.trim())
+  );
+
+  storage.setItem(CURRENT_SAVED_LOADOUT_SELECTIONS_STORAGE_KEY, JSON.stringify(normalizedSelections));
+
+  if (normalizedSelections.full) {
+    storage.setItem(CURRENT_SAVED_LOADOUT_ID_STORAGE_KEY, normalizedSelections.full);
+  } else {
+    storage.removeItem(CURRENT_SAVED_LOADOUT_ID_STORAGE_KEY);
   }
 }
 
@@ -104,20 +142,74 @@ export async function hydrateLoadoutRuntime(storage = localStorage) {
 }
 
 export function getCurrentSavedLoadoutId(storage = localStorage) {
-  return storage.getItem(CURRENT_SAVED_LOADOUT_ID_STORAGE_KEY) ?? "";
+  return getCurrentScopedSavedLoadoutId("full", null, storage);
 }
 
 export function setCurrentSavedLoadoutId(saveId, storage = localStorage) {
-  if (typeof saveId === "string" && saveId.trim()) {
-    storage.setItem(CURRENT_SAVED_LOADOUT_ID_STORAGE_KEY, saveId.trim());
-  } else {
-    storage.removeItem(CURRENT_SAVED_LOADOUT_ID_STORAGE_KEY);
-  }
-
-  schedulePersistLoadoutRuntime(storage);
+  setCurrentScopedSavedLoadoutId("full", null, saveId, storage);
 }
 
 export function clearCurrentSavedLoadoutId(storage = localStorage) {
+  clearCurrentScopedSavedLoadoutId("full", null, storage);
+}
+
+export function getCurrentScopedSavedLoadoutId(scopeId, scopeContext, storage = localStorage) {
+  const selectionKey = getLoadoutScopeSelectionKey(scopeId, scopeContext);
+  return readCurrentSavedLoadoutSelections(storage)[selectionKey] ?? "";
+}
+
+export function setCurrentScopedSavedLoadoutId(scopeId, scopeContext, saveId, storage = localStorage) {
+  const selectionKey = getLoadoutScopeSelectionKey(scopeId, scopeContext);
+  const currentSelections = readCurrentSavedLoadoutSelections(storage);
+
+  if (typeof saveId === "string" && saveId.trim()) {
+    currentSelections[selectionKey] = saveId.trim();
+  } else {
+    delete currentSelections[selectionKey];
+  }
+
+  writeCurrentSavedLoadoutSelections(currentSelections, storage);
+  schedulePersistLoadoutRuntime(storage);
+}
+
+export function clearCurrentScopedSavedLoadoutId(scopeId, scopeContext, storage = localStorage) {
+  const selectionKey = getLoadoutScopeSelectionKey(scopeId, scopeContext);
+  const currentSelections = readCurrentSavedLoadoutSelections(storage);
+  delete currentSelections[selectionKey];
+  writeCurrentSavedLoadoutSelections(currentSelections, storage);
+  schedulePersistLoadoutRuntime(storage);
+}
+
+export function getCurrentSavedLoadoutSelections(storage = localStorage) {
+  return readCurrentSavedLoadoutSelections(storage);
+}
+
+export function clearCurrentSavedLoadoutSelections(storage = localStorage) {
+  storage.removeItem(CURRENT_SAVED_LOADOUT_SELECTIONS_STORAGE_KEY);
   storage.removeItem(CURRENT_SAVED_LOADOUT_ID_STORAGE_KEY);
   schedulePersistLoadoutRuntime(storage);
+}
+
+export function removeSavedLoadoutIdFromSelections(saveId, storage = localStorage) {
+  const normalizedSaveId = typeof saveId === "string" ? saveId.trim() : "";
+  if (!normalizedSaveId) {
+    return false;
+  }
+
+  const currentSelections = readCurrentSavedLoadoutSelections(storage);
+  let didChange = false;
+
+  Object.entries(currentSelections).forEach(([selectionKey, selectedSaveId]) => {
+    if (selectedSaveId === normalizedSaveId) {
+      delete currentSelections[selectionKey];
+      didChange = true;
+    }
+  });
+
+  if (didChange) {
+    writeCurrentSavedLoadoutSelections(currentSelections, storage);
+    schedulePersistLoadoutRuntime(storage);
+  }
+
+  return didChange;
 }

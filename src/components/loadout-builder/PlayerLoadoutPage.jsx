@@ -9,6 +9,8 @@ import {
   writePlayerLoadoutState,
 } from "../../lib/playerLoadout";
 import { buildStatBreakdown, formatSignedHeroBonus } from "../../lib/loadoutStatEngine";
+import { LOADOUT_RECORD_SCOPE_PLAYER } from "../../lib/loadoutScope";
+import { ScopedLoadoutPresetsPanel } from "./ScopedLoadoutPresetsPanel";
 
 function TabButton({ tab, isActive, colors, getIconUrl, onSelect }) {
   return (
@@ -173,7 +175,7 @@ function StatSummaryList({ entries, colors, fmt }) {
   );
 }
 
-export function PlayerLoadoutPage({ colors, getIconUrl, fmt }) {
+export function PlayerLoadoutPage({ colors, getIconUrl, fmt, savedLoadouts = [], currentSavedLoadoutId = "", onLoadSave, onDeleteSave, onImportComplete }) {
   const initialState = useMemo(() => readPlayerLoadoutState(localStorage), []);
   const [selectedTab, setSelectedTab] = useState(initialState.selectedTab);
   const [selectedGroupByTab, setSelectedGroupByTab] = useState(initialState.selectedGroupByTab);
@@ -202,6 +204,10 @@ export function PlayerLoadoutPage({ colors, getIconUrl, fmt }) {
     [activeItemIds, activeTab.key, allEntries]
   );
   const purchasedCount = activeItems.filter((item) => Boolean(activePurchased[item.id])).length;
+  const playerPresets = useMemo(
+    () => savedLoadouts.filter((save) => save.scopeId === LOADOUT_RECORD_SCOPE_PLAYER),
+    [savedLoadouts]
+  );
 
   useEffect(() => {
     if (!activeGroup && groupEntries[0]) {
@@ -237,6 +243,18 @@ export function PlayerLoadoutPage({ colors, getIconUrl, fmt }) {
 
   return (
     <div style={{ display: "grid", gap: 20 }}>
+      <ScopedLoadoutPresetsPanel
+        colors={colors}
+        title="Player Loadout Presets"
+        description="Save and manage player-loadout-only presets here. These records only affect the Player Loadout page."
+        scopeId={LOADOUT_RECORD_SCOPE_PLAYER}
+        presets={playerPresets}
+        currentSavedLoadoutId={currentSavedLoadoutId}
+        onLoadSave={onLoadSave}
+        onDeleteSave={onDeleteSave}
+        onImportComplete={onImportComplete}
+      />
+
       <div style={{ background: `linear-gradient(180deg, ${colors.header} 0%, ${colors.panel} 100%)`, border: `1px solid ${colors.border}`, borderRadius: 16, padding: 18, display: "grid", gap: 10 }}>
         <div style={{ fontSize: 22, fontWeight: 900, color: colors.text }}>Player Loadout</div>
         <div style={{ fontSize: 13, color: colors.muted, maxWidth: 780 }}>

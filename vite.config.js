@@ -88,10 +88,6 @@ export default defineConfig({
             return 'loadout-vendor'
           }
 
-          if (id.includes('node_modules/react')) {
-            return 'react-vendor'
-          }
-
           if (id.includes('node_modules')) {
             return 'vendor'
           }

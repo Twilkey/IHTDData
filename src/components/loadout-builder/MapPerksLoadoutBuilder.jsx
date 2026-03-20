@@ -200,9 +200,13 @@ export function MapPerksLoadoutBuilder({ colors, selectedMap, getIconUrl, fmt })
     writeMapLoadoutState(loadoutState, localStorage);
   }, [loadoutState]);
 
+  useEffect(() => {
+    setSelectedPlacementBonusId(null);
+  }, [selectedMap?.id]);
+
   const perkStateById = loadoutState.perksByMap[selectedMap?.id] ?? {};
   const equippedPerkCount = countEquippedPerks(perkStateById);
-  const placementBonusLevels = loadoutState.placementBonusLevels;
+  const placementBonusLevels = loadoutState.placementBonusLevelsByMap[selectedMap?.id] ?? {};
   const bonusPlacementsBySpot = loadoutState.placementBonusPlacementsByMap[selectedMap?.id] ?? {};
   const placementBonuses = mapsData.placementBonuses ?? [];
   const selectedPlacementBonus = placementBonuses.find((bonus) => bonus.id === selectedPlacementBonusId) ?? null;
@@ -282,9 +286,12 @@ export function MapPerksLoadoutBuilder({ colors, selectedMap, getIconUrl, fmt })
     updateLoadout((current) => {
       const nextState = {
         ...current,
-        placementBonusLevels: {
-          ...current.placementBonusLevels,
-          [bonus.id]: clampedLevel,
+        placementBonusLevelsByMap: {
+          ...current.placementBonusLevelsByMap,
+          [selectedMap.id]: {
+            ...current.placementBonusLevelsByMap[selectedMap.id],
+            [bonus.id]: clampedLevel,
+          },
         },
       };
 

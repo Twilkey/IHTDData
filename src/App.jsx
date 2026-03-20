@@ -11,11 +11,15 @@ function useIsMobile() {
 }
 
 import { heroesData, mapsData, getInitialMapSpotsById, mergeMapsWithSpots, normalizeMapSpots, parseMapSpotsByIdFromJsonText } from "./lib/gameData";
+import challengesData from "./data/challenges.json";
+import enemyHpData from "./data/enemy_hp.json";
 import researchData from "./data/research.json";
 import spellsData from "./data/spells.json";
 import powerupsData from "./data/powerups.json";
 import gemsData from "./data/gems.json";
 import masteryData from "./data/mastery.json";
+import playerBgData from "./data/player_backgrounds.json";
+import playerIconsData from "./data/player_icons.json";
 import techData from "./data/tech.json";
 import ticketsData from "./data/tickets.json";
 import tournamentData from "./data/tournament.json";
@@ -23,12 +27,11 @@ import ultimusData from "./data/ultimus.json";
 import runesData from "./data/runes.json";
 import heroAttributesData from "./data/hero_attributes.json";
 import tournamentBracketsData from "./data/tournament_brackets.json";
-import ultimusRewardsData from "./data/ultimus_rewards.json";
 import STAT_UNITS from "./data/stat_units.json";
 import techTreeDisplayData from "./data/tech_tree_display.json";
 import immortalBossData from "./data/immortal_boss.json";
-import { buildComparableAppSavePayload, createComparableAppSavePayload } from "./lib/loadoutBuilderSave";
-import { clearCurrentSavedLoadoutId, getCurrentSavedLoadoutId, hydrateLoadoutRuntime, LOADOUT_RUNTIME_CHANGED_EVENT, persistLoadoutRuntime, schedulePersistLoadoutRuntime } from "./lib/loadoutRuntimeStore";
+import wavePerksData from "./data/wave_perks.json";
+import { hydrateLoadoutRuntime, LOADOUT_RUNTIME_CHANGED_EVENT, persistLoadoutRuntime, schedulePersistLoadoutRuntime, getCurrentSavedLoadoutSelections, getCurrentScopedSavedLoadoutId, removeSavedLoadoutIdFromSelections } from "./lib/loadoutRuntimeStore";
 import {
   deleteSavedLoadout,
   getSavedLoadout,
@@ -38,6 +41,7 @@ import {
   saveWorkingLoadoutChanges,
   startFreshWorkingLoadout,
 } from "./lib/loadoutSavedRepository";
+import { buildActiveLoadoutScope, buildComparableLoadoutScopePayload, createComparableLoadoutScopePayload, getLoadoutScopeDisplayName, LOADOUT_RECORD_SCOPE_FULL } from "./lib/loadoutScope";
 
 const loadSecondaryViews = () => import("./views/secondaryViews.jsx");
 const HomeView = lazy(() => loadSecondaryViews().then((module) => ({ default: module.HomeView })));
@@ -92,6 +96,21 @@ const SECTIONS = [
 ];
 
 const SECTION_MAP = Object.fromEntries(SECTIONS.map((section) => [section.key, section]));
+
+const REWARD_UNIT_SYMBOL = Object.fromEntries(
+  Object.values(STAT_UNITS).map((value) => [value.label.toLowerCase(), value.unit])
+);
+const HERO_GOLD_COST_BASE_COST = heroesData.levelCostFormula.baseCost;
+const HERO_GOLD_COST_MILESTONE_LEVELS = new Set(
+  (heroesData.heroes ?? []).flatMap((hero) => (hero.milestones ?? []).map((milestone) => milestone.requirement))
+);
+const HERO_GOLD_COST_SOURCES = [
+  { key: "tickets", label: "Tickets", icon: "_ticket.png", statAmt: 0.5, maxLevel: 25 },
+  { key: "runes", label: "Runes", icon: "_rune_2.png", statAmt: 0.5, maxLevel: 10 },
+  { key: "ultimus", label: "Ultimus", icon: "token_red.png", statAmt: 0.5, maxLevel: 10 },
+  { key: "mastery", label: "Mastery", icon: "_mastery_2.png", statAmt: 0.5, maxLevel: 10 },
+];
+const HERO_ATTRIBUTE_LIST = [...heroAttributesData.personal, ...heroAttributesData.global];
 
 const NAV_GROUPS = [
   {
@@ -284,6 +303,38 @@ function useFmt() {
   return (n) => formatBigNum(n, notation);
 }
 
+function Badge({ children, color }) {
+  return (
+    <span style={{
+      background: color + "22",
+      color,
+      border: `1px solid ${color}44`,
+      borderRadius: 4,
+      padding: "1px 7px",
+      fontSize: 11,
+      fontWeight: 600,
+      letterSpacing: "0.04em",
+      whiteSpace: "nowrap",
+    }}>
+      {children}
+    </span>
+  );
+}
+
+function getIconUrl(filename) {
+  return new URL(`./images/Icons/${filename}`, import.meta.url).href;
+}
+
+function getPerkUnit(name) {
+  if (name.includes("%")) return "%";
+  if (/chance|synergy|speed|cooldown|bonus|effect|group|damage|power|exp|gold|energy|active play/i.test(name)) return "%";
+  return "";
+}
+
+function rewardUnitSym(rewardUnit) {
+  return REWARD_UNIT_SYMBOL[rewardUnit?.toLowerCase()] ?? "";
+}
+
 function computeTotalCost(item, sectionFormula) {
   const formula = item.costFormula ?? sectionFormula;
   const { baseCost, multiCost, maxLevel, stopCostIncreaseAt } = item;
@@ -457,10 +508,6 @@ function rankExpForLevel(lvl) {
 // ─────────────────────────────────────────────
 // STAT DISPLAY HELPERS
 // ─────────────────────────────────────────────
-function getStatLabel(statKey) {
-  return STAT_UNITS[statKey]?.label ?? statKey;
-}
-
 function formatStat(statAmt, statKey) {
   const info = STAT_UNITS[statKey];
   if (!info) return `+${statAmt}`;
@@ -522,713 +569,6 @@ const ASTRAL_COLORS = {
 };
 
 // ─────────────────────────────────────────────
-// COST AT A SINGLE LEVEL  (1-indexed)
-// ─────────────────────────────────────────────
-// Returns BigInt when all inputs are integers, Number otherwise.
-// All calls for the same item always return the same type.
-function costAtLevel(level, item, sectionFormula) {
-  const formula   = item.costFormula ?? sectionFormula;
-  const { baseCost, multiCost, stopCostIncreaseAt } = item;
-  if (!baseCost || formula === "none") return 0n;
-
-  if (formula === "spell") {
-    const entry = spellCostEntry(level, item);
-    return entry.type === "energy" ? entry.cost : 0n;
-  }
-
-  if (formula === "hero_attr") {
-    const ml  = item.maxLevel ?? 999999;
-    const bp1 = Math.round(ml * 0.5);
-    const bp2 = Math.round(ml * 0.8);
-    const mult = level >= bp2 ? 1.875 : level >= bp1 ? 1.25 : 1.0;
-    return Math.floor(baseCost * level * mult);
-  }
-
-  const intInputs = Number.isInteger(baseCost) &&
-    (multiCost === undefined || Number.isInteger(multiCost));
-
-  if (intInputs) {
-    const bc = BigInt(baseCost);
-    const mc = multiCost !== undefined ? BigInt(multiCost) : 1n;
-    const lv = BigInt(level);
-    switch (formula) {
-      case "flat":           return bc;
-      case "rank_linear":    return bc * lv;
-      case "power": {
-        const ml = item.maxLevel ?? 999999;
-        if (item.hasLinearMult) break; // linearMult requires float path
-        const bp1 = BigInt(Math.ceil(ml * 0.5));
-        const bp2 = BigInt(Math.ceil(ml * 0.8));
-        const mult = lv >= bp2 ? 24n : lv >= bp1 ? 3n : 1n;
-        return bc * lv ** mc * mult;
-      }
-      case "exponential":
-      case "exponential_endgame": {
-        const ml = item.maxLevel ?? 999999;
-        if (item.hasLinearMult) break; // linearMult requires float path
-        const bp1 = BigInt(Math.ceil(ml * 0.5));
-        const bp2 = BigInt(Math.ceil(ml * 0.8));
-        const bpMult = lv >= bp2 ? 24n : lv >= bp1 ? 3n : 1n;
-        return bc * mc ** (lv - 1n) * bpMult;
-      }
-      case "capped_linear": {
-        const cap = stopCostIncreaseAt !== undefined ? BigInt(Math.round(stopCostIncreaseAt)) : lv;
-        return bc * (lv < cap ? lv : cap);
-      }
-      default: return bc;
-    }
-  }
-
-  // Float fallback
-  const i = level - 1;
-  switch (formula) {
-    case "flat":           return baseCost;
-    case "rank_linear":    return baseCost * level;
-    case "power": {
-      const ml   = item.maxLevel ?? 999999;
-      const bp1f = ml * 0.5;
-      const bp2f = ml * 0.8;
-      const bpMult = level >= bp2f ? 24 : level >= bp1f ? 3 : 1;
-      const linMult = (item.hasLinearMult && level > 1) ? (1 + level * 0.001) : 1;
-      return baseCost * Math.pow(level, multiCost ?? 1) * bpMult * linMult;
-    }
-    case "exponential":
-    case "exponential_endgame": {
-      const ml   = item.maxLevel ?? 999999;
-      const bp1f = ml * 0.5;
-      const bp2f = ml * 0.8;
-      const bpMult = level >= bp2f ? 24 : level >= bp1f ? 3 : 1;
-      const linMult = (item.hasLinearMult && level > 1) ? (1 + level * 0.001) : 1;
-      return baseCost * Math.pow(multiCost ?? 1, i) * bpMult * linMult;
-    }
-    case "capped_linear":  return baseCost * Math.min(level, stopCostIncreaseAt ?? level);
-    default:               return baseCost;
-  }
-}
-
-// ─────────────────────────────────────────────
-// UI COMPONENTS
-// ─────────────────────────────────────────────
-function Badge({ children, color }) {
-  return (
-    <span style={{
-      background: color + "22", color, border: `1px solid ${color}44`,
-      borderRadius: 4, padding: "1px 7px", fontSize: 11, fontWeight: 600,
-      letterSpacing: "0.04em", whiteSpace: "nowrap",
-    }}>{children}</span>
-  );
-}
-
-function StatRow({ label, value, sub, valueColor }) {
-  return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", borderBottom: `1px solid ${colors.border}`, padding: "6px 0", gap: 8 }}>
-      <span style={{ color: colors.muted, fontSize: 13 }}>{label}</span>
-      <span style={{ color: valueColor ?? colors.gold, fontFamily: "'Exo 2', monospace", fontSize: 14, textAlign: "right", fontWeight: 700 }}>
-        {value}{sub && <span style={{ color: colors.muted, fontSize: 11 }}> {sub}</span>}
-      </span>
-    </div>
-  );
-}
-
-const MAX_TABLE_ROWS = 500;
-
-function CostModal({ item, sectionFormula, onClose }) {
-  const fmt      = useFmt();
-  const formula  = item.costFormula ?? sectionFormula;
-  const isSpell  = formula === "spell";
-  const maxLevel = item.maxLevel ?? 100;
-  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-
-  // Committed values drive all calculations
-  const [startLvl, setStartLvl] = useState(1);
-  const [endLvl,   setEndLvl]   = useState(Math.min(maxLevel, 100));
-  // Draft values are what the user sees while typing
-  const [startInput, setStartInput] = useState("1");
-  const [endInput,   setEndInput]   = useState(String(Math.min(maxLevel, 100)));
-
-  const start = clamp(startLvl, 1, maxLevel);
-  const end   = clamp(endLvl,   start, maxLevel);
-
-  function commitStart() {
-    const v = clamp(parseInt(startInput) || 1, 1, maxLevel);
-    setStartLvl(v);
-    setStartInput(String(v));
-    // If start now exceeds end, push end up to match
-    if (v > endLvl) {
-      setEndLvl(v);
-      setEndInput(String(v));
-    }
-  }
-  function commitEnd() {
-    const raw = clamp(parseInt(endInput) || 1, 1, maxLevel);
-    // End must be >= start
-    const v = Math.max(raw, startLvl);
-    setEndLvl(v);
-    setEndInput(String(v));
-  }
-
-  const rows = useMemo(() => {
-    const out = [];
-    const limit = Math.min(end - start + 1, MAX_TABLE_ROWS);
-    if (isSpell) {
-      let energyRunning = 0n;
-      for (let lvl = start; lvl <= start + limit - 1; lvl++) {
-        const entry = spellCostEntry(lvl, item);
-        if (entry.type === "energy") {
-          energyRunning += entry.cost;
-          out.push({ lvl, type: "energy", cost: entry.cost, running: energyRunning });
-        } else {
-          out.push({ lvl, type: "unlock", currency: entry.currency, amount: entry.amount, running: energyRunning });
-        }
-      }
-    } else {
-      const zero = typeof costAtLevel(start, item, sectionFormula) === "bigint" ? 0n : 0;
-      let running = zero;
-      for (let lvl = start; lvl <= start + limit - 1; lvl++) {
-        const cost = costAtLevel(lvl, item, sectionFormula);
-        running += cost;
-        out.push({ lvl, type: "energy", cost, running });
-      }
-    }
-    return out;
-  }, [start, end, item, sectionFormula, isSpell]);
-
-  const totalCost = useMemo(() => {
-    if (isSpell) {
-      let t = 0n;
-      for (let lvl = start; lvl <= end; lvl++) {
-        const entry = spellCostEntry(lvl, item);
-        if (entry.type === "energy") t += entry.cost;
-      }
-      return t;
-    }
-    const zero = typeof costAtLevel(start, item, sectionFormula) === "bigint" ? 0n : 0;
-    let t = zero;
-    for (let lvl = start; lvl <= end; lvl++) t += costAtLevel(lvl, item, sectionFormula);
-    return t;
-  }, [start, end, item, sectionFormula, isSpell]);
-
-  // Unlock costs that fall within the selected range (spells only)
-  const unlocksInRange = !isSpell ? [] : [16, 21].flatMap(lvl => {
-    if (lvl < start || lvl > end) return [];
-    const entry = spellCostEntry(lvl, item);
-    return entry.type === "unlock" ? [{ lvl, ...entry }] : [];
-  });
-
-  const truncated = (end - start + 1) > MAX_TABLE_ROWS;
-
-  // Effective increase: only for % stats
-  // Formula: (100 + statAmt×end) / (100 + statAmt×start) - 1
-  const effectiveIncrease = (() => {
-    if (!item.statAmt || !item.statKey) return null;
-    if (STAT_UNITS[item.statKey]?.unit !== "%") return null;
-    const bonusBefore = item.statAmt * start;
-    const bonusAfter  = item.statAmt * end;
-    return (100 + bonusAfter) / (100 + bonusBefore) - 1;
-  })();
-
-  const inputStyle = {
-    background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 6,
-    color: colors.text, padding: "6px 10px", fontSize: 14, fontFamily: "inherit",
-    width: 90, textAlign: "center", outline: "none",
-  };
-  const thStyle = {
-    padding: "8px 16px", color: colors.muted, fontWeight: 700, fontSize: 12,
-    textAlign: "left", borderBottom: `1px solid ${colors.border}`,
-    letterSpacing: "0.06em", textTransform: "uppercase",
-  };
-
-  return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 24 }}>
-      <div className="modal-box" style={{ background: colors.bg, border: `1px solid ${colors.border}`, display: "flex", flexDirection: "column", boxShadow: "0 8px 32px rgba(0,0,0,0.6)" }}>
-
-        {/* Modal header */}
-        <div style={{ padding: "16px 20px", borderBottom: `1px solid ${colors.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div>
-            <div style={{ fontSize: 17, fontWeight: 800, color: colors.text }}>{item.name}</div>
-            {item.statAmt && item.statKey && (
-              <div style={{ fontSize: 13, color: colors.positive, marginTop: 2 }}>
-                {isProgressiveItem(item)
-                  ? `+${item.statAmt} × level (progressive)`
-                  : `${formatStat(item.statAmt, item.statKey)} per level`}
-              </div>
-            )}
-            {item.waveReq > 0 && (
-              <div style={{ display: "inline-block", marginTop: 5, background: "#1a2a3a", border: "1px solid #ffaa44", borderRadius: 4, padding: "2px 8px", fontSize: 11, fontWeight: 700, color: "#ffaa44" }}>
-                Unlocks: Wave {item.waveReq.toLocaleString()}
-              </div>
-            )}
-          </div>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: colors.muted, fontSize: 22, cursor: "pointer", lineHeight: 1, padding: "0 4px" }}>✕</button>
-        </div>
-
-        {/* Level range inputs */}
-        <div style={{ padding: "14px 20px", borderBottom: `1px solid ${colors.border}`, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <span style={{ color: colors.muted, fontSize: 13 }}>From level</span>
-          <input type="number" value={startInput} min={1} max={maxLevel}
-            onChange={e => {
-              setStartInput(e.target.value);
-              if (e.target.value !== "") {
-                const v = clamp(parseInt(e.target.value) || 1, 1, maxLevel);
-                setStartLvl(v);
-                if (v > endLvl) { setEndLvl(v); setEndInput(String(v)); }
-              }
-            }}
-            onBlur={commitStart}
-            onKeyDown={e => e.key === "Enter" && commitStart()}
-            style={inputStyle} />
-          <span style={{ color: colors.muted, fontSize: 13 }}>to</span>
-          <input type="number" value={endInput} min={1} max={maxLevel}
-            onChange={e => {
-              setEndInput(e.target.value);
-              if (e.target.value !== "") {
-                const v = clamp(Math.max(parseInt(e.target.value) || 1, startLvl), 1, maxLevel);
-                setEndLvl(v);
-              }
-            }}
-            onBlur={commitEnd}
-            onKeyDown={e => e.key === "Enter" && commitEnd()}
-            style={inputStyle} />
-          <span style={{ color: colors.muted, fontSize: 12 }}>/ {maxLevel.toLocaleString()}</span>
-        </div>
-
-        {/* Summary */}
-        <div style={{ padding: "12px 20px", borderBottom: `1px solid ${colors.border}`, display: "flex", flexDirection: "column", gap: 10 }}>
-          {/* Row 1: levels, cost, effective increase */}
-          <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-            <div>
-              <div style={{ fontSize: 11, color: colors.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>Levels</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: colors.text }}>{start} → {end} <span style={{ fontSize: 13, color: colors.muted }}>({end - start + 1} lvls)</span></div>
-            </div>
-            <div>
-              <div style={{ fontSize: 11, color: colors.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>{isSpell ? "Total Energy" : "Total Cost"}</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: colors.gold }}>{fmt(totalCost)}</div>
-            </div>
-            {effectiveIncrease !== null && (
-              <div>
-                <div style={{ fontSize: 11, color: colors.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>Effective Increase</div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: colors.positive }}>+{(effectiveIncrease * 100).toFixed(2)}%</div>
-              </div>
-            )}
-          </div>
-          {/* Row 2: tier unlock costs (spells only, only when in range) */}
-          {unlocksInRange.length > 0 && (
-            <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-              {unlocksInRange.map(u => (
-                <div key={u.lvl}>
-                  <div style={{ fontSize: 11, color: colors.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>{u.lvl === 16 ? "Tier 2 Unlock Cost" : "Tier 3 Unlock Cost"}</div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: colors.accent }}>
-                    {fmt(u.amount)} {CURRENCY_LABELS[u.currency] ?? u.currency}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Table */}
-        <div style={{ overflowY: "auto", flex: 1 }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead style={{ position: "sticky", top: 0, background: colors.panel }}>
-              <tr>
-                <th style={thStyle}>Level</th>
-                <th style={{ ...thStyle, textAlign: "right" }}>{isSpell ? "Resource / Cost" : "Cost"}</th>
-                <th style={{ ...thStyle, textAlign: "right" }}>{isSpell ? "Running Energy" : "Running Total"}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r, i) => {
-                if (r.type === "unlock") return (
-                  <tr key={r.lvl} style={{ background: colors.accentDim + "55", borderBottom: `1px solid ${colors.border}` }}>
-                    <td style={{ padding: "7px 16px", color: colors.accent, fontWeight: 700 }}>{r.lvl}</td>
-                    <td style={{ padding: "7px 16px", textAlign: "right" }}>
-                      <span style={{ color: colors.muted, fontSize: 11, marginRight: 4 }}>{CURRENCY_LABELS[r.currency] ?? r.currency}</span>
-                      <span style={{ color: colors.accent, fontFamily: "monospace", fontWeight: 700 }}>{fmt(r.amount)}</span>
-                    </td>
-                    <td style={{ padding: "7px 16px", color: colors.muted, textAlign: "right" }}>—</td>
-                  </tr>
-                );
-                return (
-                  <tr key={r.lvl} style={{ background: i % 2 === 0 ? "transparent" : colors.panel + "60", borderBottom: `1px solid ${colors.border}22` }}>
-                    <td style={{ padding: "7px 16px", color: colors.accent, fontWeight: 600 }}>{r.lvl}</td>
-                    <td style={{ padding: "7px 16px", color: colors.text, fontFamily: "monospace", textAlign: "right" }}>{fmt(r.cost)}</td>
-                    <td style={{ padding: "7px 16px", color: colors.gold, fontFamily: "monospace", textAlign: "right", fontWeight: 600 }}>{fmt(r.running)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {truncated && (
-            <div style={{ padding: "10px 16px", fontSize: 12, color: colors.muted, textAlign: "center", borderTop: `1px solid ${colors.border}` }}>
-              Showing first {MAX_TABLE_ROWS} rows — total cost above reflects the full range.
-            </div>
-          )}
-        </div>
-
-      </div>
-    </div>
-  );
-}
-
-function getIconUrl(filename) {
-  return new URL(`./images/Icons/${filename}`, import.meta.url).href;
-}
-
-function getPerkUnit(name) {
-  if (name.includes("%")) return "%";
-  if (/chance|synergy|speed|cooldown|bonus|effect|group|damage|power|exp|gold|energy|active play/i.test(name)) return "%";
-  return "";
-}
-
-function ItemCard({ item, sectionFormula, canCalculateCost, onOpen }) {
-  const fmt       = useFmt();
-  const formula   = item.costFormula ?? sectionFormula;
-  const isRune    = formula === "none";
-  const isSpell   = formula === "spell";
-  const totalCost = computeTotalCost(item, sectionFormula);
-  const statLine  = item.statAmt !== undefined && item.statKey
-    ? isProgressiveItem(item)
-      ? `+${item.statAmt} × level (progressive)`
-      : `${formatStat(item.statAmt, item.statKey)} per level`
-    : null;
-  const levelLabel = item.maxLevel === undefined ? null : `Max Lvl: ${item.maxLevel.toLocaleString()}`;
-
-  const iconBg     = item.bgColor     ?? "#1a4a8a";
-  const iconBorder = item.borderColor ?? colors.border;
-
-  const clickable = canCalculateCost !== false;
-
-  return (
-    <div onClick={clickable ? onOpen : undefined} style={{ background: `linear-gradient(180deg, #2a5c96 0%, ${colors.header} 100%)`, border: `1px solid ${colors.border}`, borderRadius: 8, padding: 12, boxShadow: "0 2px 6px rgba(0,0,0,0.2)", display: "flex", gap: 12, alignItems: "center", cursor: clickable ? "pointer" : "default", transition: "border-color 0.15s" }}
-      onMouseEnter={e => { if (clickable) e.currentTarget.style.borderColor = colors.accent; }}
-      onMouseLeave={e => e.currentTarget.style.borderColor = colors.border}>
-
-      {/* Icon box */}
-      {isSpell ? (
-        <div style={{ width: 52, height: 52, flexShrink: 0, borderRadius: 8, overflow: "hidden" }}>
-          {item.icon
-            ? <img src={getIconUrl(item.icon)} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
-            : <span style={{ fontSize: 20, fontWeight: 800, color: "#ffffff99", textTransform: "uppercase", userSelect: "none" }}>{item.name.charAt(0)}</span>
-          }
-        </div>
-      ) : (
-        <div style={{ width: 52, height: 52, flexShrink: 0, borderRadius: 8, background: iconBg, border: `2px solid ${iconBorder}`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-          {item.icon
-            ? <img src={getIconUrl(item.icon)} alt="" style={{ width: 36, height: 36, objectFit: "contain" }} />
-            : <span style={{ fontSize: 20, fontWeight: 800, color: "#ffffff99", textTransform: "uppercase", userSelect: "none" }}>{item.name.charAt(0)}</span>
-          }
-        </div>
-      )}
-
-      {/* Content */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-
-        {/* Row 1: name + level */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 6, marginBottom: 3 }}>
-          <span style={{ color: colors.text, fontWeight: 700, fontSize: 15, lineHeight: 1.2 }}>{item.name}</span>
-          <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-            {levelLabel && <Badge color={colors.accent}>{levelLabel}</Badge>}
-          </div>
-        </div>
-
-        {/* Row 2: stat per level */}
-        {statLine && (
-          <div style={{ color: colors.positive, fontWeight: 700, fontSize: 14, marginBottom: 6 }}>{statLine}</div>
-        )}
-
-        {/* Row 3: base cost + total cost + max benefit */}
-        <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-          {item.baseCost !== undefined && !isRune && (
-            <span style={{ fontSize: 13, color: colors.muted }}>{isSpell ? "Unlock" : "Base"} <span style={{ color: colors.gold, fontWeight: 700 }}>{fmt(item.baseCost)}</span></span>
-          )}
-          {totalCost !== null && (
-            <span style={{ fontSize: 13, color: colors.muted }}>Total <span style={{ color: colors.gold, fontWeight: 700 }}>{fmt(totalCost)}</span></span>
-          )}
-          {item.statAmt !== undefined && item.statKey && item.maxLevel !== undefined && (
-            <span style={{ fontSize: 13, color: colors.muted }}>Max Benefit <span style={{ color: colors.positive, fontWeight: 700 }}>{formatStatTotal(isProgressiveItem(item) ? progressiveTotal(item.statAmt, item.maxLevel) : item.statAmt * item.maxLevel, item.statKey, fmt)}</span></span>
-          )}
-          {item.waveReq !== undefined && item.waveReq > 0 && (
-            <span style={{ fontSize: 13, color: colors.muted }}>Unlocks <span style={{ color: colors.accent, fontWeight: 700 }}>Wave {item.waveReq.toLocaleString()}</span></span>
-          )}
-        </div>
-
-      </div>
-    </div>
-  );
-}
-
-function GroupCard({ title, items, sectionFormula, canCalculateCost, onOpen }) {
-  // Use rarity colours if the group name matches a known rarity tier
-  const baseRarity = Object.keys(RARITY_COLORS).find(r => title === r || title.startsWith(r + " "));
-  const rc = baseRarity ? RARITY_COLORS[baseRarity] : null;
-
-  return (
-    <div style={{ marginBottom: 32 }}>
-      <div style={{
-        background: rc
-          ? `linear-gradient(180deg, ${rc.bg}cc 0%, ${rc.bg}88 100%)`
-          : `linear-gradient(180deg, #3a6eb0 0%, ${colors.bannerBg} 100%)`,
-        border: `1px solid ${rc ? rc.border : "#4a7ec0"}`,
-        borderRadius: 8,
-        padding: "8px 20px",
-        marginBottom: 14,
-        textAlign: "center",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
-      }}>
-        <span style={{ fontSize: 14, fontWeight: 800, color: rc ? rc.text : colors.bannerText, letterSpacing: "0.12em", textTransform: "uppercase", textShadow: "0 1px 4px rgba(0,0,0,0.6)" }}>
-          {title}
-        </span>
-      </div>
-      <div className="card-grid">
-        {items.map(item => (
-          <ItemCard key={item.id} item={item} sectionFormula={sectionFormula} canCalculateCost={canCalculateCost} onOpen={() => onOpen(item)} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function SheetView({ sectionData, onOpen }) {
-  const { costFormula, canCalculateCost, groups } = sectionData;
-  return (
-    <div>
-      {Object.entries(groups).map(([groupName, items]) => (
-        <GroupCard key={groupName} title={groupName} items={items} sectionFormula={costFormula} canCalculateCost={canCalculateCost} onOpen={onOpen} />
-      ))}
-    </div>
-  );
-}
-
-function RankExpView() {
-  const fmt = useFmt();
-  const [startInput, setStartInput] = useState("1");
-  const [endInput,   setEndInput]   = useState("5000");
-  const [range, setRange] = useState({ start: 1, end: 5000 });
-  const [isLoading, setIsLoading] = useState(false);
-
-  function applyRange() {
-    const s = Math.max(1, parseInt(startInput) || 1);
-    const e = Math.max(s, parseInt(endInput)   || s);
-    setStartInput(String(s));
-    setEndInput(String(e));
-    setIsLoading(true);
-    setTimeout(() => { setRange({ start: s, end: e }); setIsLoading(false); }, 30);
-  }
-
-  function handleKeyDown(evt) {
-    if (evt.key === "Enter") applyRange();
-  }
-
-  const { rows, totalExp, totalPoints } = useMemo(() => {
-    const out = [];
-    const toBI = (v) => isFinite(v) ? BigInt(Math.round(v)) : null;
-    let prevBI = range.start > 1 ? toBI(rankExpForLevel(range.start - 1)) : 0n;
-    let cumulativePoints = range.start > 1
-      ? Array.from({ length: range.start - 1 }, (_, i) => i + 2).reduce((s, l) => s + l, 0)
-      : 0;
-    const pointsBefore = cumulativePoints;
-    for (let i = range.start; i <= range.end; i++) {
-      const cumBI = toBI(rankExpForLevel(i));
-      const required = (cumBI !== null && prevBI !== null) ? cumBI - prevBI : Infinity;
-      const pointsGained = i === 1 ? 0 : i;
-      cumulativePoints += pointsGained;
-      out.push({ level: i, required, cumulative: cumBI ?? Infinity, pointsGained, cumulativePoints });
-      if (cumBI !== null) prevBI = cumBI;
-    }
-    let totalExp = 0n;
-    let hasInf = false;
-    for (const r of out) {
-      if (r.required === Infinity) { hasInf = true; break; }
-      totalExp += r.required;
-    }
-    const totalPoints = out.length > 0 ? out[out.length - 1].cumulativePoints - pointsBefore : 0;
-    return { rows: out, totalExp: hasInf ? null : totalExp, totalPoints };
-  }, [range]);
-
-  const inputStyle = {
-    background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 6,
-    color: colors.text, padding: "6px 10px", fontSize: 14, fontFamily: "inherit",
-    width: 90, textAlign: "center", outline: "none",
-  };
-
-  return (
-    <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
-        <span style={{ color: colors.muted, fontSize: 13 }}>From level</span>
-        <input
-          type="number" value={startInput} min={1}
-          onChange={e => setStartInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          style={inputStyle}
-        />
-        <span style={{ color: colors.muted, fontSize: 13 }}>to</span>
-        <input
-          type="number" value={endInput} min={1}
-          onChange={e => setEndInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          style={inputStyle}
-        />
-        <button onClick={applyRange} style={{
-          background: colors.accent, color: "#000", border: "none", borderRadius: 6,
-          padding: "6px 18px", cursor: "pointer", fontWeight: 700, fontSize: 13,
-          fontFamily: "inherit",
-        }}>
-          Apply
-        </button>
-      </div>
-      <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-        <div style={{ flex: 1, minWidth: 180, background: colors.panel, border: `1px solid ${colors.border}`, borderRadius: 8, padding: "10px 16px" }}>
-          <div style={{ fontSize: 11, color: colors.muted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Total EXP (Levels {range.start}–{range.end})</div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: colors.positive, fontFamily: "monospace" }}>{totalExp !== null ? fmt(totalExp) : "—"}</div>
-        </div>
-        <div style={{ flex: 1, minWidth: 180, background: colors.panel, border: `1px solid ${colors.border}`, borderRadius: 8, padding: "10px 16px" }}>
-          <div style={{ fontSize: 11, color: colors.muted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Attribute Points (Levels {range.start}–{range.end})</div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: colors.gold, fontFamily: "monospace" }}>{totalPoints.toLocaleString()}</div>
-        </div>
-      </div>
-      <div style={{ background: colors.header, border: `1px solid ${colors.border}`, borderRadius: 8, overflow: "hidden" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-          <thead>
-            <tr style={{ background: colors.panel }}>
-              {["Level", "EXP Required", "Cumulative EXP", "Points Gained", "Cumulative Points"].map(h => (
-                <th key={h} style={{ padding: "10px 16px", color: colors.muted, fontWeight: 600, textAlign: "left", borderBottom: `1px solid ${colors.border}`, fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase" }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r, i) => (
-              <tr key={r.level} style={{ background: i % 2 === 0 ? "transparent" : colors.panel + "60", borderBottom: `1px solid ${colors.border}22` }}>
-                <td style={{ padding: "8px 16px", color: colors.accent, fontWeight: 600 }}>{r.level}</td>
-                <td style={{ padding: "8px 16px", color: colors.text, fontFamily: "monospace" }}>{fmt(r.required)}</td>
-                <td style={{ padding: "8px 16px", color: colors.positive, fontFamily: "monospace" }}>{fmt(r.cumulative)}</td>
-                <td style={{ padding: "8px 16px", color: r.pointsGained === 0 ? colors.muted : colors.gold, fontWeight: r.pointsGained > 0 ? 600 : 400 }}>{r.pointsGained === 0 ? "—" : `+${r.pointsGained}`}</td>
-                <td style={{ padding: "8px 16px", color: colors.gold, fontFamily: "monospace" }}>{r.cumulativePoints.toLocaleString()}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {isLoading && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: colors.panel, border: `1px solid ${colors.border}`, borderRadius: 12, padding: "28px 40px", textAlign: "center" }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: colors.text, marginBottom: 6 }}>Calculating…</div>
-            <div style={{ fontSize: 12, color: colors.muted }}>Computing rank exp, please wait.</div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────
-// ALL HEROES VIEW
-// ─────────────────────────────────────────────
-// ─────────────────────────────────────────────
-// SEARCH BAR
-// ─────────────────────────────────────────────
-function SearchBar({ value, onChange, placeholder }) {
-  return (
-    <div style={{ position: "relative", marginBottom: 20 }}>
-      <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: colors.muted, fontSize: 15, pointerEvents: "none" }}>⌕</span>
-      <input
-        type="text"
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder ?? "Search…"}
-        style={{
-          width: "100%", boxSizing: "border-box",
-          background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 8,
-          color: colors.text, padding: "9px 12px 9px 34px",
-          fontSize: 14, fontFamily: "inherit", outline: "none",
-        }}
-      />
-      {value && (
-        <button onClick={() => onChange("")} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: colors.muted, fontSize: 16, cursor: "pointer", lineHeight: 1, padding: 0 }}>✕</button>
-      )}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────
-// ALL SYNERGIES VIEW
-// ─────────────────────────────────────────────
-const HERO_NAMES = (heroesData.heroes ?? [])
-  .sort((a, b) => a.name.localeCompare(b.name))
-  .map(h => ({ id: h.id, name: h.name }));
-
-const ALL_TIERS = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"];
-
-function ScopeFilter({ value, onChange }) {
-  return (
-    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-      <span style={{ fontSize: 11, color: colors.muted, textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Scope</span>
-      {["both", "global", "personal"].map(opt => (
-        <button key={opt} onClick={() => onChange(opt)} style={{
-          background: value === opt ? colors.accent : colors.header,
-          color: value === opt ? "#000" : colors.text,
-          border: `1px solid ${value === opt ? colors.accent : colors.border}`,
-          borderRadius: 6, padding: "5px 14px", cursor: "pointer",
-          fontFamily: "inherit", fontWeight: value === opt ? 700 : 500,
-          fontSize: 13, textTransform: "capitalize", transition: "all 0.15s",
-        }}>{opt}</button>
-      ))}
-    </div>
-  );
-}
-
-function TierFilter({ value, onChange }) {
-  // value is a Set of selected tiers, empty Set = all
-  function toggle(tier) {
-    const next = new Set(value);
-    next.has(tier) ? next.delete(tier) : next.add(tier);
-    onChange(next);
-  }
-  const allSelected = value.size === 0;
-  return (
-    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-      <span style={{ fontSize: 11, color: colors.muted, textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Tier</span>
-      <button onClick={() => onChange(new Set())} style={{
-        background: allSelected ? colors.accent : colors.header,
-        color: allSelected ? "#000" : colors.text,
-        border: `1px solid ${allSelected ? colors.accent : colors.border}`,
-        borderRadius: 6, padding: "5px 12px", cursor: "pointer",
-        fontFamily: "inherit", fontWeight: allSelected ? 700 : 500, fontSize: 13, transition: "all 0.15s",
-      }}>All</button>
-      {ALL_TIERS.map(tier => {
-        const tc = TIER_COLORS[tier] ?? TIER_COLORS.I;
-        const active = value.has(tier);
-        return (
-          <button key={tier} onClick={() => toggle(tier)} style={{
-            background: active ? tc.border : tc.bg,
-            color: active ? "#000" : tc.text,
-            border: `1px solid ${tc.border}`,
-            borderRadius: 6, padding: "5px 12px", cursor: "pointer",
-            fontFamily: "inherit", fontWeight: 700, fontSize: 13, transition: "all 0.15s",
-          }}>{tier}</button>
-        );
-      })}
-    </div>
-  );
-}
-
-function HeroDropdown({ value, onChange }) {
-  return (
-    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-      <span style={{ fontSize: 11, color: colors.muted, textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Hero</span>
-      <select value={value} onChange={e => onChange(e.target.value)} style={{
-        background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 6,
-        color: colors.text, padding: "5px 10px", fontSize: 13, fontFamily: "inherit",
-        cursor: "pointer", outline: "none", minWidth: 140,
-      }}>
-        <option value="all">All Heroes</option>
-        {HERO_NAMES.map(h => (
-          <option key={h.id} value={h.id}>{h.name}</option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
 function AllSynergiesView() {
   const [query, setQuery] = useState("");
   const [scope, setScope] = useState("both");
@@ -1875,21 +1215,6 @@ function HeroGoldCostView() {
   const fmt = useFmt();
   const isMobile = useIsMobile();
 
-  const BASE_COST = heroesData.levelCostFormula.baseCost; // 10
-
-  const MILESTONE_LEVELS = useMemo(() => {
-    const s = new Set();
-    (heroesData.heroes ?? []).forEach(h => (h.milestones ?? []).forEach(m => s.add(m.requirement)));
-    return s;
-  }, []);
-
-  const SOURCES = [
-    { key: "tickets", label: "Tickets", icon: "_ticket.png",    statAmt: 0.5, maxLevel: 25 },
-    { key: "runes",   label: "Runes",   icon: "_rune_2.png",    statAmt: 0.5, maxLevel: 10 },
-    { key: "ultimus", label: "Ultimus", icon: "token_red.png",  statAmt: 0.5, maxLevel: 10 },
-    { key: "mastery", label: "Mastery", icon: "_mastery_2.png", statAmt: 0.5, maxLevel: 10 },
-  ];
-
   const STORAGE_KEY = "heroGoldCostInputs";
   const saved = useMemo(() => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; } }, []);
 
@@ -1897,7 +1222,7 @@ function HeroGoldCostView() {
   const [endInput,      setEndInput]      = useState(saved.end          ?? "10000");
   const [milestoneOnly, setMilestoneOnly] = useState(saved.milestoneOnly === "true");
   const [upgInputs,     setUpgInputs]     = useState(() => {
-    const defaults = Object.fromEntries(SOURCES.map(s => [s.key, "0"]));
+    const defaults = Object.fromEntries(HERO_GOLD_COST_SOURCES.map(s => [s.key, "0"]));
     return { ...defaults, ...(saved.upgrades || {}) };
   });
 
@@ -1906,7 +1231,7 @@ function HeroGoldCostView() {
   const [params, setParams] = useState(() => {
     const start = Math.max(1, parseInt(saved.start) || 1);
     const end   = Math.max(start + 1, Math.min(parseInt(saved.end) || 10000, 50000));
-    const upgrades = Object.fromEntries(SOURCES.map(s => [s.key, Math.min(Math.max(parseInt((saved.upgrades || {})[s.key]) || 0, 0), s.maxLevel)]));
+    const upgrades = Object.fromEntries(HERO_GOLD_COST_SOURCES.map(s => [s.key, Math.min(Math.max(parseInt((saved.upgrades || {})[s.key]) || 0, 0), s.maxLevel)]));
     return { start, end, milestoneOnly: saved.milestoneOnly === "true", upgrades };
   });
 
@@ -1916,7 +1241,7 @@ function HeroGoldCostView() {
   function apply() {
     const start = Math.max(1, parseInt(startInput) || 1);
     const end   = Math.max(start + 1, Math.min(parseInt(endInput) || 10000, 50000));
-    const upgrades = Object.fromEntries(SOURCES.map(s => [s.key, clampUpg(upgInputs[s.key], s.maxLevel)]));
+    const upgrades = Object.fromEntries(HERO_GOLD_COST_SOURCES.map(s => [s.key, clampUpg(upgInputs[s.key], s.maxLevel)]));
     setStartInput(String(start));
     setEndInput(String(end));
     setUpgInputs(Object.fromEntries(Object.entries(upgrades).map(([k, v]) => [k, String(v)])));
@@ -1928,8 +1253,8 @@ function HeroGoldCostView() {
 
   function clearAll() {
     setStartInput("1"); setEndInput("10000"); setMilestoneOnly(false);
-    setUpgInputs(Object.fromEntries(SOURCES.map(s => [s.key, "0"])));
-    setParams({ start: 1, end: 10000, milestoneOnly: false, upgrades: Object.fromEntries(SOURCES.map(s => [s.key, 0])) });
+    setUpgInputs(Object.fromEntries(HERO_GOLD_COST_SOURCES.map(s => [s.key, "0"])));
+    setParams({ start: 1, end: 10000, milestoneOnly: false, upgrades: Object.fromEntries(HERO_GOLD_COST_SOURCES.map(s => [s.key, 0])) });
     localStorage.removeItem(STORAGE_KEY);
   }
 
@@ -1946,27 +1271,27 @@ function HeroGoldCostView() {
     // Using scale DSCALE=200: contribution = (200 - level * statAmt*2) / 200
     // statAmt*2 is always an integer for statAmt in multiples of 0.5.
     const DSCALE = 200n;
-    const contribs = SOURCES.map(s => BigInt(upgrades[s.key]) * BigInt(Math.round(s.statAmt * 2)));
+    const contribs = HERO_GOLD_COST_SOURCES.map(s => BigInt(upgrades[s.key]) * BigInt(Math.round(s.statAmt * 2)));
     const factorNum = contribs.reduce((prod, c) => prod * (DSCALE - c), 1n);
-    const factorDen = DSCALE ** BigInt(SOURCES.length);
+    const factorDen = DSCALE ** BigInt(HERO_GOLD_COST_SOURCES.length);
     const redNum = 1000n * factorDen + 65n * factorNum;
     const redDen = 1000n * factorDen;
 
     function nextCost(prev, multNum, multDen) {
       // round((prev + BASE_COST) * multNum / multDen)
-      const base = BigInt(BASE_COST);
+      const base = BigInt(HERO_GOLD_COST_BASE_COST);
       return (2n * (prev + base) * multNum + multDen) / (2n * multDen);
     }
 
-    let origCost = BigInt(BASE_COST);
-    let redCost  = BigInt(BASE_COST);
+    let origCost = BigInt(HERO_GOLD_COST_BASE_COST);
+    let redCost  = BigInt(HERO_GOLD_COST_BASE_COST);
     let origCum  = 0n;
     let redCum   = 0n;
     const result = [];
 
     for (let lv = 1; lv <= end; lv++) {
-      if (lv >= start && (!milestoneOnly || MILESTONE_LEVELS.has(lv))) {
-        result.push({ level: lv, origCost, origCum, redCost, redCum, isMilestone: MILESTONE_LEVELS.has(lv) });
+      if (lv >= start && (!milestoneOnly || HERO_GOLD_COST_MILESTONE_LEVELS.has(lv))) {
+        result.push({ level: lv, origCost, origCum, redCost, redCum, isMilestone: HERO_GOLD_COST_MILESTONE_LEVELS.has(lv) });
       }
       origCum  += origCost;
       redCum   += redCost;
@@ -1974,10 +1299,10 @@ function HeroGoldCostView() {
       redCost   = nextCost(redCost,  redNum,  redDen);
     }
     return result;
-  }, [params, MILESTONE_LEVELS]);
+  }, [params]);
 
-  const hasReduction = SOURCES.some(s => (parseInt(upgInputs[s.key]) || 0) > 0);
-  const redFactor   = SOURCES.reduce((f, s) => f * (1 - (parseInt(upgInputs[s.key]) || 0) * s.statAmt / 100), 1);
+  const hasReduction = HERO_GOLD_COST_SOURCES.some(s => (parseInt(upgInputs[s.key]) || 0) > 0);
+  const redFactor   = HERO_GOLD_COST_SOURCES.reduce((f, s) => f * (1 - (parseInt(upgInputs[s.key]) || 0) * s.statAmt / 100), 1);
 
   const smallInput = {
     background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 6,
@@ -1985,7 +1310,7 @@ function HeroGoldCostView() {
     width: 68, textAlign: "center", outline: "none",
   };
 
-  const sortedMilestoneLevels = useMemo(() => [...MILESTONE_LEVELS].sort((a, b) => a - b), [MILESTONE_LEVELS]);
+  const sortedMilestoneLevels = useMemo(() => [...HERO_GOLD_COST_MILESTONE_LEVELS].sort((a, b) => a - b), []);
 
   return (
     <div>
@@ -2032,13 +1357,13 @@ function HeroGoldCostView() {
             <div style={{ fontWeight: 700, fontSize: 13, color: colors.text, marginBottom: 10, display: "flex", alignItems: "center" }}>
               Hero Level Cost Upgrades
               <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
-                <button onClick={() => setUpgInputs(Object.fromEntries(SOURCES.map(s => [s.key, String(s.maxLevel)])))}
+                <button onClick={() => setUpgInputs(Object.fromEntries(HERO_GOLD_COST_SOURCES.map(s => [s.key, String(s.maxLevel)])))}
                   style={{ background: colors.accent + "22", border: `1px solid ${colors.accent}44`, color: colors.accent, borderRadius: 6, padding: "2px 12px", fontFamily: "inherit", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>Max</button>
-                <button onClick={() => setUpgInputs(Object.fromEntries(SOURCES.map(s => [s.key, "0"])))}
+                <button onClick={() => setUpgInputs(Object.fromEntries(HERO_GOLD_COST_SOURCES.map(s => [s.key, "0"])))}
                   style={{ background: "transparent", border: `1px solid ${colors.border}`, color: colors.muted, borderRadius: 6, padding: "2px 12px", fontFamily: "inherit", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>Clear</button>
               </div>
             </div>
-            {SOURCES.map(s => {
+            {HERO_GOLD_COST_SOURCES.map(s => {
               const val = parseInt(upgInputs[s.key]) || 0;
               const over = val > s.maxLevel;
               const pct = (val * s.statAmt).toFixed(1);
@@ -2250,14 +1575,6 @@ function AttributesView() {
 // ─────────────────────────────────────────────
 // MAPS VIEW
 // ─────────────────────────────────────────────
-function perkMaxCost(perk) {
-  const bp = 5;
-  const uc = perk.upgradeCost ?? perk.baseCost;
-  const low  = uc * Math.min(perk.maxLevel, bp);
-  const high = uc * 2 * Math.max(0, perk.maxLevel - bp);
-  return (perk.unlockCost ?? 0) + low + high;
-}
-
 function MapModal({ map, onClose, mapPerkMult = 1 }) {
   const hasVariants = map.astralVariants?.length > 0;
   const [tab, setTab] = useState("perks");
@@ -2524,8 +1841,6 @@ function MapCard({ map, onClick, isMobile, mapPerkMult = 1 }) {
   const hasVariants = map.astralVariants?.length > 0;
   const [variantIdx, setVariantIdx] = useState(0);
 
-  const negativeIsGood = new Set(["skillCooldown", "spellCooldown"]);
-
   return (
     <div onClick={onClick} style={{
       border: `1px solid ${colors.border}`, borderRadius: 10, overflow: "hidden", cursor: "pointer",
@@ -2660,7 +1975,9 @@ function AllMapsView() {
     try {
       const saved = JSON.parse(localStorage.getItem("mapPerkUpgrades"));
       if (saved && typeof saved === "object") return { runes: "", mastery: "", ultimus: "", ...saved };
-    } catch {}
+    } catch {
+      return { runes: "", mastery: "", ultimus: "" };
+    }
     return { runes: "", mastery: "", ultimus: "" };
   });
 
@@ -2805,10 +2122,7 @@ function rankForPoints(points) {
 function RankRequiredView() {
   const fmt = useFmt();
   const isMobile = useIsMobile();
-  const allAttrs = [
-    ...heroAttributesData.personal,
-    ...heroAttributesData.global,
-  ];
+  const allAttrs = HERO_ATTRIBUTE_LIST;
 
   const RR_STORAGE_KEY = "rankRequiredLevels";
 
@@ -2817,7 +2131,9 @@ function RankRequiredView() {
     try {
       const saved = JSON.parse(localStorage.getItem(RR_STORAGE_KEY));
       if (saved && typeof saved === "object") return { ...defaults, ...saved };
-    } catch {}
+    } catch {
+      return defaults;
+    }
     return defaults;
   });
 
@@ -2834,7 +2150,7 @@ function RankRequiredView() {
       const target = Math.min(parseInt(levels[attr.id]) || 0, attr.maxLevel ?? 999999);
       return sum + attrPointsForLevels(attr, target);
     }, 0);
-  }, [levels]);
+  }, [allAttrs, levels]);
 
   const minRank    = rankForPoints(totalPoints);
   const rankExp    = rankExpForLevel(minRank);
@@ -3011,7 +2327,7 @@ function UltimusTokensView() {
 
   // WPE levels — shared localStorage key with Enemy HP / Wave Perks pages
   const [wpeLevels, setWpeLevels] = useState(() => {
-    try { const s = JSON.parse(localStorage.getItem("wavePerkEffectLevels")); if (s && typeof s === "object") return s; } catch {}
+    try { const s = JSON.parse(localStorage.getItem("wavePerkEffectLevels")); if (s && typeof s === "object") return s; } catch { return Object.fromEntries(WAVE_PERK_EFFECT_SOURCES.map(s => [s.key, ""])); }
     return Object.fromEntries(WAVE_PERK_EFFECT_SOURCES.map(s => [s.key, ""]));
   });
   function setWpeLevel(key, val) {
@@ -3028,7 +2344,7 @@ function UltimusTokensView() {
     try { const g = JSON.parse(localStorage.getItem("astral_group_levels")) || {}; localStorage.setItem("astral_group_levels", JSON.stringify({ ...g, boss: val })); } catch { localStorage.setItem("astral_group_levels", JSON.stringify({ boss: val })); }
   }
   const [mpLevels] = useState(() => {
-    try { const s = JSON.parse(localStorage.getItem("mapPerkUpgrades")); if (s && typeof s === "object") return s; } catch {}
+    try { const s = JSON.parse(localStorage.getItem("mapPerkUpgrades")); if (s && typeof s === "object") return s; } catch { return { runes: "", mastery: "", ultimus: "" }; }
     return { runes: "", mastery: "", ultimus: "" };
   });
 
@@ -3366,7 +2682,9 @@ function LegacyEnemyHpView() {
         const defaults = Object.fromEntries(WAVE_PERK_EFFECT_SOURCES.map(s => [s.key, ""]));
         return { ...defaults, ...saved };
       }
-    } catch {}
+    } catch {
+      return Object.fromEntries(WAVE_PERK_EFFECT_SOURCES.map(s => [s.key, ""]));
+    }
     return Object.fromEntries(WAVE_PERK_EFFECT_SOURCES.map(s => [s.key, ""]));
   });
 
@@ -3389,7 +2707,9 @@ function LegacyEnemyHpView() {
     try {
       const saved = JSON.parse(localStorage.getItem("mapPerkUpgrades"));
       if (saved && typeof saved === "object") return { runes: "", mastery: "", ultimus: "", ...saved };
-    } catch {}
+    } catch {
+      return { runes: "", mastery: "", ultimus: "" };
+    }
     return { runes: "", mastery: "", ultimus: "" };
   });
   function setMpLevel(id, val) {
@@ -3569,7 +2889,7 @@ function LegacyEnemyHpView() {
       scalingPct, ehpPct, wavePerkEhpPct, playerIconPct, skipChance, effectiveWave,
       mobCount, hasBoss, mobCountSkip, hasBossSkip, wpeMult, mapPerkMult: mapPerkMultCalc,
     };
-  }, [params, wpeLevels, snowLevel, mpLevels]);
+  }, [enemy_hp.sources, params, wave_skip.sources, wpeLevels, snowLevel, mpLevels]);
 
   const smallInput = {
     background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 6,
@@ -3935,8 +3255,7 @@ function LegacyEnemyHpView() {
 function ImmortalBracketsView() {
   const isMobile = useIsMobile();
 
-  const { leagues, rewardTickets, rewardTrophies, promotion, immuneModifier, availability } = immortalBossData;
-  const rankLabels = rewardTickets.rankLabels;
+  const { leagues, rewardTickets, promotion, immuneModifier, availability } = immortalBossData;
   const rankRanges = rewardTickets.rankPlayerRanges;
 
   // Upgrade inputs for getTournTrophies
@@ -4259,7 +3578,6 @@ const MAP_PERK_START = 25000;
 const MAP_PERK_INTERVAL = 1000;
 
 function LegacyMapPerksView() {
-  const isMobile = useIsMobile();
   const [startWave, setStartWave] = useState(MAP_PERK_START);
   const [endWave,   setEndWave]   = useState(75000);
   const [startInput, setStartInput] = useState(String(MAP_PERK_START));
@@ -4627,7 +3945,9 @@ function LegacyWavePerksView() {
         const defaults = Object.fromEntries(WAVE_PERK_EFFECT_SOURCES.map(s => [s.key, ""]));
         return { ...defaults, ...saved };
       }
-    } catch {}
+    } catch {
+      return Object.fromEntries(WAVE_PERK_EFFECT_SOURCES.map(s => [s.key, ""]));
+    }
     return Object.fromEntries(WAVE_PERK_EFFECT_SOURCES.map(s => [s.key, ""]));
   });
 
@@ -4639,7 +3959,9 @@ function LegacyWavePerksView() {
     try {
       const saved = JSON.parse(localStorage.getItem("mapPerkUpgrades"));
       if (saved && typeof saved === "object") return { runes: "", mastery: "", ultimus: "", ...saved };
-    } catch {}
+    } catch {
+      return { runes: "", mastery: "", ultimus: "" };
+    }
     return { runes: "", mastery: "", ultimus: "" };
   });
 
@@ -5188,7 +4510,7 @@ function TechTreeGroup({ items, layout, onOpen }) {
       }
       return prev;
     });
-  });
+  }, [containerWidth, items, posById]);
 
   function makeLine(fromId, toId, key) {
     const p = pts[fromId], c = pts[toId];
@@ -5408,7 +4730,7 @@ export default function App() {
   const [loadoutImportVersion, setLoadoutImportVersion] = useState(0);
   const [isLoadoutRuntimeReady, setIsLoadoutRuntimeReady] = useState(false);
   const [savedLoadouts, setSavedLoadouts] = useState([]);
-  const [currentSavedLoadoutId, setCurrentSavedLoadoutId] = useState(() => getCurrentSavedLoadoutId(localStorage));
+  const [currentSavedLoadoutSelections, setCurrentSavedLoadoutSelections] = useState(() => getCurrentSavedLoadoutSelections(localStorage));
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [saveDraftName, setSaveDraftName] = useState("");
   const [saveDraftDescription, setSaveDraftDescription] = useState("");
@@ -5420,6 +4742,14 @@ export default function App() {
   const lazyFallback = <div style={{ color: colors.muted, padding: "24px 0" }}>Loading view...</div>;
   const editableMaps = useMemo(() => mergeMapsWithSpots(mapsData.maps, mapSpotsById), [mapSpotsById]);
   const isLocalAdmin = useMemo(() => isLocalhostAdminHost(), []);
+  const activeLoadoutScope = useMemo(
+    () => (void workingLoadoutRevision, buildActiveLoadoutScope(activeKey, localStorage)),
+    [activeKey, workingLoadoutRevision]
+  );
+  const currentSavedLoadoutId = useMemo(
+    () => (void currentSavedLoadoutSelections, getCurrentScopedSavedLoadoutId(activeLoadoutScope.scopeId, activeLoadoutScope.scopeContext, localStorage)),
+    [activeLoadoutScope, currentSavedLoadoutSelections]
+  );
   const currentSavedLoadout = useMemo(
     () => savedLoadouts.find((save) => save.id === currentSavedLoadoutId) ?? null,
     [currentSavedLoadoutId, savedLoadouts]
@@ -5429,8 +4759,8 @@ export default function App() {
     [isLocalAdmin]
   );
   const workingLoadoutComparable = useMemo(
-    () => buildComparableAppSavePayload(localStorage),
-    [workingLoadoutRevision]
+    () => (void workingLoadoutRevision, buildComparableLoadoutScopePayload(localStorage, activeLoadoutScope.scopeId, activeLoadoutScope.scopeContext)),
+    [activeLoadoutScope, workingLoadoutRevision]
   );
   const isCurrentSavedLoadoutDirty = useMemo(() => {
     if (!currentSavedLoadoutId || !currentSavedLoadoutComparable) {
@@ -5440,13 +4770,26 @@ export default function App() {
     return JSON.stringify(workingLoadoutComparable) !== JSON.stringify(currentSavedLoadoutComparable);
   }, [currentSavedLoadoutComparable, currentSavedLoadoutId, workingLoadoutComparable]);
 
+  const activeLoadoutScopeLabel = useMemo(
+    () => getLoadoutScopeDisplayName(activeLoadoutScope.scopeId, activeLoadoutScope.scopeContext),
+    [activeLoadoutScope]
+  );
+  const saveButtonBaseLabel = activeLoadoutScope.scopeId === LOADOUT_RECORD_SCOPE_FULL
+    ? "Loadout"
+    : activeLoadoutScope.scopeId === "mapLoadoutMap"
+      ? "Map Preset"
+      : activeLoadoutScopeLabel;
+
   const saveButtonLabel = !currentSavedLoadoutId
-    ? "Save Loadout"
+    ? `Save ${saveButtonBaseLabel}`
     : isCurrentSavedLoadoutDirty
-      ? "Save Changes"
+      ? `Save ${saveButtonBaseLabel} Changes`
       : currentSavedLoadout
         ? `${currentSavedLoadout.name} Saved`
         : "Saved";
+  const saveScopeBadgeLabel = activeLoadoutScope.scopeId === LOADOUT_RECORD_SCOPE_FULL
+    ? "Whole Save"
+    : activeLoadoutScopeLabel;
 
   useEffect(() => {
     let isCancelled = false;
@@ -5461,7 +4804,7 @@ export default function App() {
         }
 
         setNotation(localStorage.getItem("notation") ?? "scientific");
-        setCurrentSavedLoadoutId(getCurrentSavedLoadoutId(localStorage));
+        setCurrentSavedLoadoutSelections(getCurrentSavedLoadoutSelections(localStorage));
         setSavedLoadouts(nextSavedLoadouts);
         setLoadoutImportVersion((current) => current + 1);
       } catch {
@@ -5500,7 +4843,7 @@ export default function App() {
   useEffect(() => {
     function handleRuntimeChanged() {
       setWorkingLoadoutRevision((current) => current + 1);
-      setCurrentSavedLoadoutId(getCurrentSavedLoadoutId(localStorage));
+      setCurrentSavedLoadoutSelections(getCurrentSavedLoadoutSelections(localStorage));
     }
 
     window.addEventListener(LOADOUT_RUNTIME_CHANGED_EVENT, handleRuntimeChanged);
@@ -5518,7 +4861,11 @@ export default function App() {
 
       const record = await getSavedLoadout(currentSavedLoadoutId);
       if (!isCancelled) {
-        setCurrentSavedLoadoutComparable(record ? createComparableAppSavePayload(record.payload) : null);
+        setCurrentSavedLoadoutComparable(
+          record
+            ? createComparableLoadoutScopePayload(record.payload, record.scopeId, record.scopeContext)
+            : null
+        );
       }
     }
 
@@ -5526,12 +4873,16 @@ export default function App() {
     return () => {
       isCancelled = true;
     };
-  }, [currentSavedLoadoutId, savedLoadouts]);
+  }, [activeLoadoutScope, currentSavedLoadoutId, savedLoadouts]);
 
   async function refreshSavedLoadoutList() {
     const nextSavedLoadouts = await listSavedLoadouts();
     setSavedLoadouts(nextSavedLoadouts);
     return nextSavedLoadouts;
+  }
+
+  function refreshCurrentSavedSelections() {
+    setCurrentSavedLoadoutSelections(getCurrentSavedLoadoutSelections(localStorage));
   }
 
   function handleNotation(val) {
@@ -5578,10 +4929,10 @@ export default function App() {
 
     try {
       setSaveButtonBusy(true);
-      const savedRecord = await saveWorkingLoadoutChanges(currentSavedLoadoutId, localStorage);
-      setCurrentSavedLoadoutId(savedRecord.id);
+      await saveWorkingLoadoutChanges(currentSavedLoadoutId, localStorage);
+      refreshCurrentSavedSelections();
       await refreshSavedLoadoutList();
-      setCurrentSavedLoadoutComparable(buildComparableAppSavePayload(localStorage));
+      setCurrentSavedLoadoutComparable(buildComparableLoadoutScopePayload(localStorage, activeLoadoutScope.scopeId, activeLoadoutScope.scopeContext));
       setSaveButtonMessage({ type: "success", text: "Saved changes." });
     } catch (error) {
       setSaveButtonMessage({ type: "error", text: error instanceof Error ? error.message : "Unable to save changes." });
@@ -5599,13 +4950,15 @@ export default function App() {
 
     try {
       setSaveButtonBusy(true);
-      const savedRecord = await saveWorkingLoadoutAsRecord({
+      await saveWorkingLoadoutAsRecord({
         name: trimmedName,
         description: saveDraftDescription,
+        scopeId: activeLoadoutScope.scopeId,
+        scopeContext: activeLoadoutScope.scopeContext,
       }, localStorage);
-      setCurrentSavedLoadoutId(savedRecord.id);
+      refreshCurrentSavedSelections();
       await refreshSavedLoadoutList();
-      setCurrentSavedLoadoutComparable(buildComparableAppSavePayload(localStorage));
+      setCurrentSavedLoadoutComparable(buildComparableLoadoutScopePayload(localStorage, activeLoadoutScope.scopeId, activeLoadoutScope.scopeContext));
       setIsSaveModalOpen(false);
       setSaveButtonMessage({ type: "success", text: "Saved loadout." });
     } catch (error) {
@@ -5617,8 +4970,8 @@ export default function App() {
 
   async function handleLoadSavedLoadout(saveId) {
     const record = await loadSavedLoadoutIntoWorkingState(saveId, localStorage);
-    setCurrentSavedLoadoutId(record.id);
-    setCurrentSavedLoadoutComparable(buildComparableAppSavePayload(localStorage));
+    refreshCurrentSavedSelections();
+    setCurrentSavedLoadoutComparable(buildComparableLoadoutScopePayload(localStorage, record.scopeId, record.scopeContext));
     setNotation(localStorage.getItem("notation") ?? "scientific");
     setLoadoutImportVersion((current) => current + 1);
   }
@@ -5626,19 +4979,20 @@ export default function App() {
   async function handleDeleteSavedLoadout(saveId) {
     await deleteSavedLoadout(saveId);
 
-    if (currentSavedLoadoutId === saveId) {
-      clearCurrentSavedLoadoutId(localStorage);
+    if (removeSavedLoadoutIdFromSelections(saveId, localStorage)) {
       await persistLoadoutRuntime(localStorage);
-      setCurrentSavedLoadoutId("");
-      setCurrentSavedLoadoutComparable(null);
     }
 
+    refreshCurrentSavedSelections();
+    if (currentSavedLoadoutId === saveId) {
+      setCurrentSavedLoadoutComparable(null);
+    }
     await refreshSavedLoadoutList();
   }
 
   async function handleStartFreshSave() {
     await startFreshWorkingLoadout(localStorage);
-    setCurrentSavedLoadoutId("");
+    refreshCurrentSavedSelections();
     setCurrentSavedLoadoutComparable(null);
     setNotation(localStorage.getItem("notation") ?? "scientific");
     setLoadoutImportVersion((current) => current + 1);
@@ -5652,7 +5006,7 @@ export default function App() {
       return;
     }
 
-    setCurrentSavedLoadoutId(getCurrentSavedLoadoutId(localStorage));
+    refreshCurrentSavedSelections();
   }
 
   const activeSection = SECTION_MAP[activeKey];
@@ -5704,6 +5058,21 @@ export default function App() {
             ))}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <div style={{ display: "grid", gap: 4, justifyItems: "end" }}>
+              <div style={{ fontSize: 10, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 700 }}>
+                Save Target
+              </div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                <span style={{ background: "rgba(255,255,255,0.04)", color: colors.text, border: `1px solid ${colors.border}`, borderRadius: 999, padding: "5px 10px", fontSize: 11, fontWeight: 800, letterSpacing: "0.04em" }}>
+                  {saveScopeBadgeLabel}
+                </span>
+                {currentSavedLoadout ? (
+                  <span style={{ background: "rgba(245,146,30,0.12)", color: colors.accent, border: `1px solid rgba(245,146,30,0.36)`, borderRadius: 999, padding: "5px 10px", fontSize: 11, fontWeight: 800, maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {currentSavedLoadout.name}
+                  </span>
+                ) : null}
+              </div>
+            </div>
             <button onClick={handleSaveButtonClick} style={{
               background: currentSavedLoadoutId && !isCurrentSavedLoadoutDirty ? colors.header : colors.accent,
               color: currentSavedLoadoutId && !isCurrentSavedLoadoutDirty ? colors.muted : "#08111d",
@@ -5820,6 +5189,11 @@ export default function App() {
                 fmt={fmt}
                 maps={editableMaps}
                 heroes={heroesData.heroes}
+                savedLoadouts={savedLoadouts}
+                currentSavedLoadoutId={currentSavedLoadoutId}
+                onLoadSave={handleLoadSavedLoadout}
+                onDeleteSave={handleDeleteSavedLoadout}
+                onImportComplete={handleImportComplete}
                 onNavigate={key => { setActiveKey(key); localStorage.setItem("activeKey", key); }}
               />
             </Suspense>
@@ -5832,6 +5206,11 @@ export default function App() {
                 getIconUrl={getIconUrl}
                 fmt={fmt}
                 heroes={heroesData.heroes}
+                savedLoadouts={savedLoadouts}
+                currentSavedLoadoutId={currentSavedLoadoutId}
+                onLoadSave={handleLoadSavedLoadout}
+                onDeleteSave={handleDeleteSavedLoadout}
+                onImportComplete={handleImportComplete}
               />
             </Suspense>
           )}
@@ -5842,6 +5221,11 @@ export default function App() {
                 colors={colors}
                 getIconUrl={getIconUrl}
                 fmt={fmt}
+                savedLoadouts={savedLoadouts}
+                currentSavedLoadoutId={currentSavedLoadoutId}
+                onLoadSave={handleLoadSavedLoadout}
+                onDeleteSave={handleDeleteSavedLoadout}
+                onImportComplete={handleImportComplete}
               />
             </Suspense>
           )}
@@ -5852,6 +5236,11 @@ export default function App() {
                 colors={colors}
                 getIconUrl={getIconUrl}
                 fmt={fmt}
+                savedLoadouts={savedLoadouts}
+                currentSavedLoadoutId={currentSavedLoadoutId}
+                onLoadSave={handleLoadSavedLoadout}
+                onDeleteSave={handleDeleteSavedLoadout}
+                onImportComplete={handleImportComplete}
               />
             </Suspense>
           )}
@@ -5860,7 +5249,7 @@ export default function App() {
               <SavesView
                 colors={colors}
                 saves={savedLoadouts}
-                currentSavedLoadoutId={currentSavedLoadoutId}
+                currentSavedLoadoutSelections={currentSavedLoadoutSelections}
                 onLoadSave={handleLoadSavedLoadout}
                 onDeleteSave={handleDeleteSavedLoadout}
                 onStartFreshSave={handleStartFreshSave}
@@ -5941,8 +5330,8 @@ export default function App() {
         <div onClick={() => setIsSaveModalOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(3,8,18,0.78)", backdropFilter: "blur(8px)", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", padding: 18 }}>
           <div onClick={(event) => event.stopPropagation()} style={{ width: "100%", maxWidth: 620, borderRadius: 18, border: `1px solid ${colors.border}`, background: `linear-gradient(180deg, ${colors.header} 0%, ${colors.panel} 26%, ${colors.bg} 100%)`, boxShadow: "0 24px 80px rgba(0,0,0,0.42)", overflow: "hidden" }}>
             <div style={{ padding: 20, borderBottom: `1px solid ${colors.border}`, display: "grid", gap: 4 }}>
-              <div style={{ fontSize: 20, fontWeight: 800 }}>Save Loadout</div>
-              <div style={{ fontSize: 13, color: colors.muted }}>Give this loadout a name and description so it shows up in the Saves page.</div>
+              <div style={{ fontSize: 20, fontWeight: 800 }}>Save {saveButtonBaseLabel}</div>
+              <div style={{ fontSize: 13, color: colors.muted }}>Create a saved record for {activeLoadoutScopeLabel.toLowerCase()} so it can be loaded, exported, and imported later.</div>
             </div>
             <div style={{ padding: 20, display: "grid", gap: 14 }}>
               <label style={{ display: "grid", gap: 6 }}>
@@ -5955,7 +5344,7 @@ export default function App() {
               </label>
               <div style={{ display: "flex", justifyContent: "end", gap: 10, flexWrap: "wrap" }}>
                 <button onClick={() => setIsSaveModalOpen(false)} style={{ background: "transparent", color: colors.muted, border: `1px solid ${colors.border}`, borderRadius: 10, padding: "10px 14px", cursor: "pointer", fontFamily: "inherit", fontWeight: 700 }}>Cancel</button>
-                <button onClick={handleCreateSaveSubmit} style={{ background: colors.accent, color: "#08111d", border: `1px solid ${colors.accent}`, borderRadius: 10, padding: "10px 16px", cursor: "pointer", fontFamily: "inherit", fontWeight: 800 }}>Save Loadout</button>
+                <button onClick={handleCreateSaveSubmit} style={{ background: colors.accent, color: "#08111d", border: `1px solid ${colors.accent}`, borderRadius: 10, padding: "10px 16px", cursor: "pointer", fontFamily: "inherit", fontWeight: 800 }}>Save {saveButtonBaseLabel}</button>
               </div>
             </div>
           </div>

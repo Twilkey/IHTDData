@@ -10,6 +10,8 @@ import {
   STATS_LOADOUT_TABS,
   writeStatsLoadoutState,
 } from "../../lib/statsLoadout";
+import { LOADOUT_RECORD_SCOPE_STATS } from "../../lib/loadoutScope";
+import { ScopedLoadoutPresetsPanel } from "./ScopedLoadoutPresetsPanel";
 
 function CostValue({ amount, colors, fmt, prefix }) {
   if (amount == null) {
@@ -215,7 +217,7 @@ function UpgradeCard({ item, sectionFormula, currentLevel, previewLevels, colors
   );
 }
 
-export function StatsLoadoutPage({ colors, getIconUrl, fmt }) {
+export function StatsLoadoutPage({ colors, getIconUrl, fmt, savedLoadouts = [], currentSavedLoadoutId = "", onLoadSave, onDeleteSave, onImportComplete }) {
   const initialState = useMemo(() => readStatsLoadoutState(localStorage), []);
   const [selectedTab, setSelectedTab] = useState(initialState.selectedTab);
   const [previewLevelsByTab, setPreviewLevelsByTab] = useState(initialState.previewLevelsByTab);
@@ -248,6 +250,10 @@ export function StatsLoadoutPage({ colors, getIconUrl, fmt }) {
   const visibleGroups = getDisplayedGroups(activeGroupBuckets, activeParentGroup);
   const shouldShowParentGroups = activeGroupBuckets.normal.length > 0 && activeGroupBuckets.supreme.length > 0;
   const activeGroupItems = (activeTab.data.groups[activeGroupName] ?? []).filter((item) => !hideMaxed || (activeLevels[item.id] ?? 0) < (item.maxLevel ?? 999999));
+  const statsPresets = useMemo(
+    () => savedLoadouts.filter((save) => save.scopeId === LOADOUT_RECORD_SCOPE_STATS),
+    [savedLoadouts]
+  );
 
   useEffect(() => {
     if (!activeGroupName && activeGroups[0]?.[0]) {
@@ -313,6 +319,18 @@ export function StatsLoadoutPage({ colors, getIconUrl, fmt }) {
 
   return (
     <div style={{ display: "grid", gap: 20 }}>
+      <ScopedLoadoutPresetsPanel
+        colors={colors}
+        title="Upgrades Loadout Presets"
+        description="Save and manage upgrades-loadout-only presets here. These records only affect the Upgrades Loadout page."
+        scopeId={LOADOUT_RECORD_SCOPE_STATS}
+        presets={statsPresets}
+        currentSavedLoadoutId={currentSavedLoadoutId}
+        onLoadSave={onLoadSave}
+        onDeleteSave={onDeleteSave}
+        onImportComplete={onImportComplete}
+      />
+
       <div style={{ background: `linear-gradient(180deg, ${colors.header} 0%, ${colors.panel} 100%)`, border: `1px solid ${colors.border}`, borderRadius: 16, padding: 18, display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 22, fontWeight: 900, color: colors.text }}>Upgrades Loadout</div>

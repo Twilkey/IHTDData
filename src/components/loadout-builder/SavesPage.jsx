@@ -4,7 +4,6 @@ import {
   exportSavedLoadoutsBundle,
   getLoadoutExportScope,
   importLoadoutEntries,
-  LOADOUT_EXPORT_SCOPES,
   parseImportedLoadoutFile,
 } from "../../lib/loadoutSavedRepository";
 
@@ -32,12 +31,11 @@ function downloadBlob(blob, fileName) {
   URL.revokeObjectURL(url);
 }
 
-function buildEntryPlan(entry, currentSavedLoadoutId) {
+function buildEntryPlan(entry) {
   return {
     ...entry,
-    mode: entry.scopeId === "full" ? "new" : "overwrite-page",
-    targetId: currentSavedLoadoutId || "",
-    targetIds: currentSavedLoadoutId ? [currentSavedLoadoutId] : [],
+    mode: "new",
+    targetId: "",
   };
 }
 
@@ -106,7 +104,7 @@ function SaveModal({ children, onClose, title, subtitle, colors, maxWidth = 880 
 export function SavesPage({
   colors,
   saves,
-  currentSavedLoadoutId,
+  currentSavedLoadoutSelections = {},
   onLoadSave,
   onDeleteSave,
   onStartFreshSave,
@@ -114,8 +112,6 @@ export function SavesPage({
 }) {
   const importInputRef = useRef(null);
   const [selectedSaveIds, setSelectedSaveIds] = useState(() => []);
-  const [exportScopeId, setExportScopeId] = useState("full");
-  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [message, setMessage] = useState(null);
   const [busyAction, setBusyAction] = useState("");
@@ -141,12 +137,10 @@ export function SavesPage({
     return () => window.clearTimeout(timerId);
   }, [message]);
 
-  const selectedSaves = useMemo(
-    () => saves.filter((save) => selectedSaveIds.includes(save.id)),
-    [saves, selectedSaveIds]
+  const currentSaveIds = useMemo(
+    () => new Set(Object.values(currentSavedLoadoutSelections).filter(Boolean)),
+    [currentSavedLoadoutSelections]
   );
-
-  const exportScope = getLoadoutExportScope(exportScopeId);
 
   function toggleSaveSelection(saveId) {
     setSelectedSaveIds((current) => (
@@ -165,28 +159,22 @@ export function SavesPage({
     }));
   }
 
-  function toggleImportTarget(importId, targetId) {
-    setImportState((current) => ({
-      ...current,
-      entries: current.entries.map((entry) => {
-        if (entry.importId !== importId) {
-          return entry;
-        }
-
-        const targetIds = entry.targetIds.includes(targetId)
-          ? entry.targetIds.filter((value) => value !== targetId)
-          : [...entry.targetIds, targetId];
-        return { ...entry, targetIds };
-      }),
-    }));
+  function isImportPlanValid(entry) {
+    return entry.mode === "new" || (entry.mode === "overwrite" && entry.targetId);
   }
 
-  function isImportPlanValid(entry) {
-    if (entry.scopeId === "full") {
-      return entry.mode === "new" || (entry.mode === "overwrite" && entry.targetId);
-    }
+  function getOverwriteCandidates(entry) {
+    return saves.filter((save) => {
+      if (save.scopeId !== entry.scopeId) {
+        return false;
+      }
 
-    return entry.targetIds.length > 0;
+      if (entry.scopeId !== "mapLoadoutMap") {
+        return true;
+      }
+
+      return save.scopeContext?.mapId === entry.scopeContext?.mapId;
+    });
   }
 
   async function handleExportSelected() {
@@ -194,11 +182,9 @@ export function SavesPage({
       setBusyAction("export");
       const { blob, fileName } = await exportSavedLoadoutsBundle({
         saveIds: selectedSaveIds,
-        scopeId: exportScopeId,
       });
       downloadBlob(blob, fileName);
-      setIsExportModalOpen(false);
-      setMessage({ type: "success", text: `Exported ${selectedSaveIds.length} save${selectedSaveIds.length === 1 ? "" : "s"} as ${exportScope.label.toLowerCase()}.` });
+      setMessage({ type: "success", text: `Exported ${selectedSaveIds.length} save${selectedSaveIds.length === 1 ? "" : "s"}.` });
     } catch (error) {
       setMessage({ type: "error", text: error instanceof Error ? error.message : "Unable to export the selected saves." });
     } finally {
@@ -225,7 +211,7 @@ export function SavesPage({
         isOpen: true,
         sourceName: file.name,
         warnings: parsed.warnings,
-        entries: parsed.entries.map((entry) => buildEntryPlan(entry, currentSavedLoadoutId)),
+        entries: parsed.entries.map((entry) => buildEntryPlan(entry)),
         applying: false,
         error: "",
       });
@@ -251,9 +237,9 @@ export function SavesPage({
 
       const summary = await importLoadoutEntries(importState.entries.map((entry) => ({
         scopeId: entry.scopeId,
-        mode: entry.scopeId === "full" ? entry.mode : "overwrite-page",
+        scopeContext: entry.scopeContext,
+        mode: entry.mode,
         targetId: entry.targetId,
-        targetIds: entry.targetIds,
         name: entry.name,
         description: entry.description,
         payload: entry.payload,
@@ -354,7 +340,7 @@ export function SavesPage({
               {busyAction === "fresh" ? "Resetting..." : "Start Fresh Save"}
             </button>
             <button
-              onClick={() => setIsExportModalOpen(true)}
+              onClick={handleExportSelected}
               disabled={!selectedSaveIds.length || busyAction === "export"}
               style={{
                 background: selectedSaveIds.length ? colors.accent : colors.header,
@@ -367,7 +353,7 @@ export function SavesPage({
                 fontWeight: 800,
               }}
             >
-              Export Selected
+              {busyAction === "export" ? "Exporting..." : "Export Selected"}
             </button>
             <button
               onClick={handleImportClick}
@@ -415,7 +401,7 @@ export function SavesPage({
       {saves.length ? (
         <div style={{ display: "grid", gap: 14 }}>
           {saves.map((save) => {
-            const isCurrent = save.id === currentSavedLoadoutId;
+            const isCurrent = currentSaveIds.has(save.id);
             const isSelected = selectedSaveIds.includes(save.id);
             return (
               <div
@@ -439,9 +425,12 @@ export function SavesPage({
                   <div style={{ flex: 1, minWidth: 220 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                       <div style={{ fontSize: 19, fontWeight: 800 }}>{save.name}</div>
+                      <span style={{ borderRadius: 999, padding: "4px 10px", background: "rgba(255,255,255,0.05)", border: `1px solid ${colors.border}`, fontSize: 11, color: colors.muted, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                        {getLoadoutExportScope(save.scopeId).label}
+                      </span>
                       {isCurrent ? (
                         <span style={{ borderRadius: 999, padding: "4px 10px", background: "rgba(245,146,30,0.16)", color: colors.accent, border: `1px solid rgba(245,146,30,0.45)`, fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-                          Current Working Save
+                          In Use
                         </span>
                       ) : null}
                     </div>
@@ -467,6 +456,7 @@ export function SavesPage({
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 12, color: colors.muted }}>
+                  <div>{save.scopeLabel}</div>
                   <div>Created: {formatDateTime(save.createdAt)}</div>
                   <div>Updated: {formatDateTime(save.updatedAt)}</div>
                 </div>
@@ -480,48 +470,12 @@ export function SavesPage({
         </div>
       )}
 
-      {isExportModalOpen ? (
-        <SaveModal
-          colors={colors}
-          onClose={() => setIsExportModalOpen(false)}
-          title="Export Saves"
-          subtitle="Choose whether to export the whole save or only one loadout page from each selected save."
-          maxWidth={720}
-        >
-          <div style={{ display: "grid", gap: 18 }}>
-            <div style={{ display: "grid", gap: 12 }}>
-              {LOADOUT_EXPORT_SCOPES.map((scope) => (
-                <label key={scope.id} style={{ display: "flex", gap: 14, padding: 14, borderRadius: 14, border: `1px solid ${scope.id === exportScopeId ? colors.accent : colors.border}`, background: scope.id === exportScopeId ? "rgba(245,146,30,0.12)" : "rgba(255,255,255,0.02)", cursor: "pointer" }}>
-                  <input type="radio" checked={scope.id === exportScopeId} onChange={() => setExportScopeId(scope.id)} />
-                  <div style={{ display: "grid", gap: 4 }}>
-                    <div style={{ fontSize: 15, fontWeight: 800 }}>{scope.label}</div>
-                    <div style={{ fontSize: 12, color: colors.muted, lineHeight: 1.5 }}>{scope.description}</div>
-                  </div>
-                </label>
-              ))}
-            </div>
-            <div style={{ borderRadius: 14, border: `1px solid ${colors.border}`, background: colors.panel, padding: 14, display: "grid", gap: 8 }}>
-              <div style={{ fontSize: 13, fontWeight: 800 }}>Selected Saves</div>
-              <div style={{ fontSize: 12, color: colors.muted, lineHeight: 1.5 }}>
-                {selectedSaves.map((save) => save.name).join(", ")}
-              </div>
-            </div>
-            <div style={{ display: "flex", justifyContent: "end", gap: 10, flexWrap: "wrap" }}>
-              <button onClick={() => setIsExportModalOpen(false)} style={{ background: "transparent", color: colors.muted, border: `1px solid ${colors.border}`, borderRadius: 10, padding: "10px 14px", cursor: "pointer", fontFamily: "inherit", fontWeight: 700 }}>Cancel</button>
-              <button onClick={handleExportSelected} style={{ background: colors.accent, color: "#07111d", border: `1px solid ${colors.accent}`, borderRadius: 10, padding: "10px 16px", cursor: "pointer", fontFamily: "inherit", fontWeight: 800 }}>
-                Export {selectedSaveIds.length} Save{selectedSaveIds.length === 1 ? "" : "s"}
-              </button>
-            </div>
-          </div>
-        </SaveModal>
-      ) : null}
-
       {importState.isOpen ? (
         <SaveModal
           colors={colors}
           onClose={() => setImportState({ isOpen: false, entries: [], warnings: [], sourceName: "", applying: false, error: "" })}
           title="Import Saves"
-          subtitle="Choose how each imported entry should be applied. Whole saves can be imported as new records or overwrite one record. Page exports can overwrite one or more existing saves for that page only."
+          subtitle="Choose whether each imported record should be added as a new save or overwrite one compatible existing record."
         >
           <div style={{ display: "grid", gap: 16 }}>
             {importState.warnings.length ? (
@@ -547,50 +501,26 @@ export function SavesPage({
                     </div>
                   </div>
 
-                  {entry.scopeId === "full" ? (
-                    <div style={{ display: "grid", gap: 10 }}>
-                      <label style={{ display: "flex", gap: 10, alignItems: "center", cursor: "pointer" }}>
-                        <input type="radio" checked={entry.mode === "new"} onChange={() => updateImportEntry(entry.importId, { mode: "new", targetId: "" })} />
-                        <span>Import as a new save record</span>
-                      </label>
-                      <label style={{ display: "grid", gap: 8, cursor: "pointer" }}>
-                        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                          <input type="radio" checked={entry.mode === "overwrite"} onChange={() => updateImportEntry(entry.importId, { mode: "overwrite" })} />
-                          <span>Overwrite one existing save record</span>
-                        </div>
-                        {entry.mode === "overwrite" ? (
-                          <select value={entry.targetId} onChange={(event) => updateImportEntry(entry.importId, { targetId: event.target.value })} style={{ marginLeft: 28, background: colors.bg, color: colors.text, border: `1px solid ${colors.border}`, borderRadius: 10, padding: "10px 12px", fontFamily: "inherit" }}>
-                            <option value="">Choose a save</option>
-                            {saves.map((save) => (
-                              <option key={save.id} value={save.id}>{save.name}</option>
-                            ))}
-                          </select>
-                        ) : null}
-                      </label>
-                    </div>
-                  ) : (
-                    <div style={{ display: "grid", gap: 10 }}>
-                      <div style={{ fontSize: 12, color: colors.muted, lineHeight: 1.5 }}>
-                        This page export will only overwrite the {scope.label.toLowerCase()} data inside the selected saves.
+                  <div style={{ display: "grid", gap: 10 }}>
+                    <label style={{ display: "flex", gap: 10, alignItems: "center", cursor: "pointer" }}>
+                      <input type="radio" checked={entry.mode === "new"} onChange={() => updateImportEntry(entry.importId, { mode: "new", targetId: "" })} />
+                      <span>Import as a new save record</span>
+                    </label>
+                    <label style={{ display: "grid", gap: 8, cursor: "pointer" }}>
+                      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                        <input type="radio" checked={entry.mode === "overwrite"} onChange={() => updateImportEntry(entry.importId, { mode: "overwrite" })} />
+                        <span>Overwrite one existing compatible save record</span>
                       </div>
-                      <div style={{ display: "grid", gap: 8 }}>
-                        {saves.length ? saves.map((save) => {
-                          const checked = entry.targetIds.includes(save.id);
-                          return (
-                            <label key={`${entry.importId}-${save.id}`} style={{ display: "flex", gap: 10, alignItems: "center", padding: "10px 12px", borderRadius: 12, border: `1px solid ${checked ? colors.accent : colors.border}`, background: checked ? "rgba(245,146,30,0.10)" : "transparent", cursor: "pointer" }}>
-                              <input type="checkbox" checked={checked} onChange={() => toggleImportTarget(entry.importId, save.id)} />
-                              <div style={{ display: "grid", gap: 2 }}>
-                                <div style={{ fontSize: 13, fontWeight: 700 }}>{save.name}</div>
-                                <div style={{ fontSize: 11, color: colors.muted }}>{save.description || "No description."}</div>
-                              </div>
-                            </label>
-                          );
-                        }) : (
-                          <div style={{ fontSize: 12, color: "#ffb3a8" }}>Import at least one whole save before applying page-only imports.</div>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                      {entry.mode === "overwrite" ? (
+                        <select value={entry.targetId} onChange={(event) => updateImportEntry(entry.importId, { targetId: event.target.value })} style={{ marginLeft: 28, background: colors.bg, color: colors.text, border: `1px solid ${colors.border}`, borderRadius: 10, padding: "10px 12px", fontFamily: "inherit" }}>
+                          <option value="">Choose a save</option>
+                          {getOverwriteCandidates(entry).map((save) => (
+                            <option key={save.id} value={save.id}>{save.name}</option>
+                          ))}
+                        </select>
+                      ) : null}
+                    </label>
+                  </div>
                 </div>
               );
             })}

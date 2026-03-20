@@ -9,7 +9,9 @@ import { getPerkCurrentBonus, getPlacementBonusValue, readMapLoadoutBuilderMode,
 import { readPlayerLoadoutState } from "../../lib/playerLoadout";
 import { readStatsLoadoutState } from "../../lib/statsLoadout";
 import { schedulePersistLoadoutRuntime } from "../../lib/loadoutRuntimeStore";
+import { MapLoadoutPresetsPanel } from "./MapLoadoutPresetsPanel";
 import { MapPerksLoadoutBuilder } from "./MapPerksLoadoutBuilder";
+import { MapSpellLoadoutBuilder } from "./MapSpellLoadoutBuilder";
 
 const MAX_DUPLICATE_HEROES = 3;
 const RANGE_RADIUS_SCALE = 0.085;
@@ -1145,7 +1147,19 @@ function FocusedHeroSynergyCard({ synergy, colors }) {
   );
 }
 
-export function LoadoutBuilderPage({ colors, getIconUrl, maps, heroes, onNavigate, fmt }) {
+export function LoadoutBuilderPage({
+  colors,
+  getIconUrl,
+  maps,
+  heroes,
+  onNavigate,
+  fmt,
+  savedLoadouts = [],
+  currentSavedLoadoutId = "",
+  onLoadSave,
+  onDeleteSave,
+  onImportComplete,
+}) {
   const statsLoadoutState = useMemo(() => readStatsLoadoutState(localStorage), []);
   const playerLoadoutState = useMemo(() => readPlayerLoadoutState(localStorage), []);
   const heroLoadoutState = useMemo(() => readHeroLoadoutState(localStorage), []);
@@ -1203,6 +1217,13 @@ export function LoadoutBuilderPage({ colors, getIconUrl, maps, heroes, onNavigat
   const selectedMap = useMemo(
     () => maps.find((map) => map.id === selectedMapId) ?? maps[0] ?? null,
     [maps, selectedMapId]
+  );
+  const selectedMapPlacementBonusLevels = selectedMap
+    ? (mapLoadoutState.placementBonusLevelsByMap[selectedMap.id] ?? {})
+    : {};
+  const selectedMapSavedLoadouts = useMemo(
+    () => savedLoadouts.filter((save) => save.scopeId === "mapLoadoutMap" && save.scopeContext?.mapId === selectedMap?.id),
+    [savedLoadouts, selectedMap?.id]
   );
   const statsLoadoutBonuses = useMemo(
     () => buildGlobalLoadoutStatModel({ statsLoadoutState, playerLoadoutState }).totals,
@@ -1408,7 +1429,7 @@ export function LoadoutBuilderPage({ colors, getIconUrl, maps, heroes, onNavigat
           addNormalizedBonusTotal(
             placementTotals,
             normalizeMapPlacementBonusKey(placedBonus.statKey),
-            getPlacementBonusValue(placedBonus, mapLoadoutState.placementBonusLevels[placedBonus.id] ?? 0)
+            getPlacementBonusValue(placedBonus, selectedMapPlacementBonusLevels[placedBonus.id] ?? 0)
           );
         }
 
@@ -1593,7 +1614,7 @@ export function LoadoutBuilderPage({ colors, getIconUrl, maps, heroes, onNavigat
         },
       };
     });
-  }, [heroLoadoutState.attributeLevelsByHero, heroLoadoutState.levelByHero, heroes, mapLoadoutState.placementBonusLevels, placementBonusDefinitionsById, placementRanks, placements, selectedMap, selectedMapGlobalBonuses, selectedMapPlacementBonuses, statsLoadoutBonuses]);
+  }, [heroLoadoutState.attributeLevelsByHero, heroLoadoutState.levelByHero, heroes, placementBonusDefinitionsById, placementRanks, placements, selectedMap, selectedMapGlobalBonuses, selectedMapPlacementBonuses, selectedMapPlacementBonusLevels, statsLoadoutBonuses]);
 
   const previewFocusedHero = useMemo(() => {
     const baseHero = heroes.find((hero) => hero.id === inspectedHeroId) ?? null;
@@ -1855,6 +1876,16 @@ export function LoadoutBuilderPage({ colors, getIconUrl, maps, heroes, onNavigat
     <div style={{ display: "grid", gap: 20 }}>
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragCancel={handleDragCancel} onDragEnd={handleDragEnd}>
         <div style={{ display: "grid", gap: 14 }}>
+          <MapLoadoutPresetsPanel
+            colors={colors}
+            selectedMap={selectedMap}
+            presets={selectedMapSavedLoadouts}
+            currentSavedLoadoutId={currentSavedLoadoutId}
+            onLoadSave={onLoadSave}
+            onDeleteSave={onDeleteSave}
+            onImportComplete={onImportComplete}
+          />
+
           <div style={{
             display: "grid",
             gap: 14,
@@ -1879,6 +1910,7 @@ export function LoadoutBuilderPage({ colors, getIconUrl, maps, heroes, onNavigat
                   {[
                     { id: "hero", label: "Placement Loadout" },
                     { id: "perks", label: "Map Perks Loadout" },
+                    { id: "spell", label: "Spell Loadout" },
                   ].map((mode) => (
                     <button
                       key={mode.id}
@@ -2152,7 +2184,7 @@ export function LoadoutBuilderPage({ colors, getIconUrl, maps, heroes, onNavigat
                             <div style={{ fontSize: 11, color: colors.muted }}>{entry.spot.label} · {entry.spot.id}</div>
                             <div style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>Hero Level {entry.hero.currentLevel ?? 0}</div>
                             <div style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>
-                              {entry.placedBonus ? `${entry.placedBonus.name} ${formatSignedHeroBonus(normalizeMapPlacementBonusKey(entry.placedBonus.statKey), getPlacementBonusValue(entry.placedBonus, mapLoadoutState.placementBonusLevels[entry.placedBonus.id] ?? 0), fmt)}` : "No placement bonus"}
+                              {entry.placedBonus ? `${entry.placedBonus.name} ${formatSignedHeroBonus(normalizeMapPlacementBonusKey(entry.placedBonus.statKey), getPlacementBonusValue(entry.placedBonus, selectedMapPlacementBonusLevels[entry.placedBonus.id] ?? 0), fmt)}` : "No placement bonus"}
                             </div>
                           </div>
                         </div>
@@ -2350,13 +2382,19 @@ export function LoadoutBuilderPage({ colors, getIconUrl, maps, heroes, onNavigat
                 </div>
               </div>
             </div>
-          ) : (
+          ) : builderMode === "perks" ? (
             <MapPerksLoadoutBuilder
               colors={colors}
               selectedMap={selectedMap}
               maps={maps}
               getIconUrl={getIconUrl}
               fmt={fmt}
+            />
+          ) : (
+            <MapSpellLoadoutBuilder
+              colors={colors}
+              selectedMap={selectedMap}
+              getIconUrl={getIconUrl}
             />
           )}
         </div>

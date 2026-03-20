@@ -7,6 +7,8 @@ import {
   readHeroLoadoutState,
   writeHeroLoadoutState,
 } from "../../lib/heroLoadout";
+import { LOADOUT_RECORD_SCOPE_HERO } from "../../lib/loadoutScope";
+import { ScopedLoadoutPresetsPanel } from "./ScopedLoadoutPresetsPanel";
 
 const RARITY_SORT_ORDER = ["Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic", "Supreme", "Ascended"];
 const ATTRIBUTE_GROUPS = [
@@ -506,7 +508,7 @@ function HeaderFieldCard({ label, value, colors, helper, valueColor, min = 0, ma
   );
 }
 
-export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes }) {
+export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts = [], currentSavedLoadoutId = "", onLoadSave, onDeleteSave, onImportComplete }) {
   const initialState = useMemo(() => readHeroLoadoutState(localStorage), []);
   const [selectedHeroId, setSelectedHeroId] = useState(initialState.selectedHeroId);
   const [previewLevelsByHero, setPreviewLevelsByHero] = useState(initialState.previewLevelsByHero);
@@ -519,6 +521,10 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes }) {
   const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
   const [activeFilterTab, setActiveFilterTab] = useState("search");
   const [activeFilterSubtabs, setActiveFilterSubtabs] = useState(DEFAULT_FILTER_SUBTABS);
+  const heroPresets = useMemo(
+    () => savedLoadouts.filter((save) => save.scopeId === LOADOUT_RECORD_SCOPE_HERO),
+    [savedLoadouts]
+  );
   const [searchValue, setSearchValue] = useState("");
   const [searchScopes, setSearchScopes] = useState({
     name: true,
@@ -798,6 +804,18 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes }) {
 
   return (
     <div style={{ display: "grid", gap: 20 }}>
+      <ScopedLoadoutPresetsPanel
+        colors={colors}
+        title="Hero Loadout Presets"
+        description="Save and manage hero-loadout-only presets here. These records only affect the Hero Loadout page."
+        scopeId={LOADOUT_RECORD_SCOPE_HERO}
+        presets={heroPresets}
+        currentSavedLoadoutId={currentSavedLoadoutId}
+        onLoadSave={onLoadSave}
+        onDeleteSave={onDeleteSave}
+        onImportComplete={onImportComplete}
+      />
+
       <div style={{ background: `linear-gradient(180deg, ${colors.header} 0%, ${colors.panel} 100%)`, border: `1px solid ${colors.border}`, borderRadius: 16, padding: 18, display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 22, fontWeight: 900, color: colors.text }}>Hero Loadout</div>
