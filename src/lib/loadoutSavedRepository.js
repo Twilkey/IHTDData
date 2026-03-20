@@ -26,6 +26,7 @@ import {
   getLoadoutScopeDisplayName,
   LOADOUT_RECORD_SCOPES,
   LOADOUT_RECORD_SCOPE_FULL,
+  LOADOUT_RECORD_SCOPE_HERO,
   normalizeLoadoutScopeContext,
 } from "./loadoutScope";
 
@@ -36,6 +37,10 @@ const BUNDLE_VERSION = 1;
 
 function cloneValue(value) {
   return JSON.parse(JSON.stringify(value));
+}
+
+function isObject(value) {
+  return value != null && typeof value === "object" && !Array.isArray(value);
 }
 
 function createId() {
@@ -60,6 +65,30 @@ function sanitizeFileName(value, fallback = "save") {
   return compact || fallback;
 }
 
+function normalizeLinkedLoadouts(linkedLoadouts) {
+  if (!isObject(linkedLoadouts)) {
+    return null;
+  }
+
+  const heroLoadoutId = sanitizeString(linkedLoadouts.heroLoadoutId);
+  if (!heroLoadoutId) {
+    return null;
+  }
+
+  return { heroLoadoutId };
+}
+
+function remapLinkedLoadouts(linkedLoadouts, sourceToTargetIdMap) {
+  const normalizedLinkedLoadouts = normalizeLinkedLoadouts(linkedLoadouts);
+  if (!normalizedLinkedLoadouts) {
+    return null;
+  }
+
+  return normalizeLinkedLoadouts({
+    heroLoadoutId: sourceToTargetIdMap.get(normalizedLinkedLoadouts.heroLoadoutId) ?? normalizedLinkedLoadouts.heroLoadoutId,
+  });
+}
+
 function getScopeDefinition(scopeId) {
   return getLoadoutRecordScope(scopeId);
 }
@@ -81,6 +110,7 @@ function normalizeRecord(record) {
     updatedAt: sanitizeString(record?.updatedAt, new Date().toISOString()),
     scopeId,
     scopeContext,
+    linkedLoadouts: normalizeLinkedLoadouts(record?.linkedLoadouts),
     payload,
   };
 }
@@ -94,6 +124,7 @@ function summarizeRecord(record) {
     updatedAt: record.updatedAt,
     scopeId: record.scopeId,
     scopeContext: cloneValue(record.scopeContext),
+    linkedLoadouts: cloneValue(record.linkedLoadouts),
     scopeLabel: getLoadoutScopeDisplayName(record.scopeId, record.scopeContext),
   };
 }
@@ -112,6 +143,7 @@ function buildEntryPayload(record) {
     bundleVersion: BUNDLE_VERSION,
     scopeId: getScopeDefinition(record.scopeId).id,
     scopeContext: cloneValue(record.scopeContext),
+    linkedLoadouts: cloneValue(record.linkedLoadouts),
     save: summarizeRecord(record),
     payload: cloneValue(record.payload),
   };
@@ -138,6 +170,7 @@ function validateImportedEntry(entry, fileName) {
     sourceSaveId: sanitizeString(entry.save?.id),
     createdAt: sanitizeString(entry.save?.createdAt, new Date().toISOString()),
     updatedAt: sanitizeString(entry.save?.updatedAt, new Date().toISOString()),
+    linkedLoadouts: normalizeLinkedLoadouts(entry.linkedLoadouts ?? entry.save?.linkedLoadouts),
     payload: cloneValue(entry.payload),
   };
 }
@@ -164,6 +197,7 @@ export async function createSavedLoadout({
   payload,
   scopeId = LOADOUT_RECORD_SCOPE_FULL,
   scopeContext = null,
+  linkedLoadouts = null,
 }) {
   const validation = validateAppSavePayload(payload);
   if (!validation.ok) {
@@ -172,6 +206,7 @@ export async function createSavedLoadout({
 
   const normalizedScopeId = getScopeDefinition(scopeId).id;
   const normalizedScopeContext = normalizeLoadoutScopeContext(normalizedScopeId, scopeContext);
+  const normalizedLinkedLoadouts = normalizeLinkedLoadouts(linkedLoadouts);
   if (normalizedScopeId === "mapLoadoutMap" && !normalizedScopeContext?.mapId) {
     throw new Error("Single-map presets need a map before they can be saved.");
   }
@@ -185,6 +220,7 @@ export async function createSavedLoadout({
     updatedAt: timestamp,
     scopeId: normalizedScopeId,
     scopeContext: normalizedScopeContext,
+    linkedLoadouts: normalizedLinkedLoadouts,
     payload,
   });
 
@@ -205,6 +241,9 @@ export async function updateSavedLoadout(saveId, updates) {
 
   const nextScopeId = getScopeDefinition(updates.scopeId ?? existingRecord.scopeId).id;
   const nextScopeContext = normalizeLoadoutScopeContext(nextScopeId, updates.scopeContext ?? existingRecord.scopeContext);
+  const nextLinkedLoadouts = updates.linkedLoadouts === undefined
+    ? existingRecord.linkedLoadouts
+    : normalizeLinkedLoadouts(updates.linkedLoadouts);
   if (nextScopeId === "mapLoadoutMap" && !nextScopeContext?.mapId) {
     throw new Error("Single-map presets need a map before they can be saved.");
   }
@@ -215,6 +254,7 @@ export async function updateSavedLoadout(saveId, updates) {
     description: updates.description ?? existingRecord.description,
     scopeId: nextScopeId,
     scopeContext: nextScopeContext,
+    linkedLoadouts: nextLinkedLoadouts,
     payload: nextPayload,
     updatedAt: new Date().toISOString(),
   });
@@ -224,6 +264,19 @@ export async function updateSavedLoadout(saveId, updates) {
 
 export async function deleteSavedLoadout(saveId) {
   await deleteStoreValue(LOADOUT_DB_SAVES_STORE, saveId);
+
+  const records = await readAllStoreValues(LOADOUT_DB_SAVES_STORE);
+  const affectedRecords = records
+    .map(normalizeRecord)
+    .filter((record) => record.linkedLoadouts?.heroLoadoutId === saveId);
+
+  for (const record of affectedRecords) {
+    await putRecord({
+      ...record,
+      linkedLoadouts: null,
+      updatedAt: new Date().toISOString(),
+    });
+  }
 }
 
 export async function saveWorkingLoadoutAsRecord({
@@ -231,9 +284,10 @@ export async function saveWorkingLoadoutAsRecord({
   description = "",
   scopeId = LOADOUT_RECORD_SCOPE_FULL,
   scopeContext = null,
+  linkedLoadouts = null,
 }, storage = localStorage) {
   const payload = buildAppSavePayload(storage);
-  const record = await createSavedLoadout({ name, description, payload, scopeId, scopeContext });
+  const record = await createSavedLoadout({ name, description, payload, scopeId, scopeContext, linkedLoadouts });
   setCurrentScopedSavedLoadoutId(record.scopeId, record.scopeContext, record.id, storage);
   await persistLoadoutRuntime(storage);
   return record;
@@ -267,9 +321,32 @@ export async function loadSavedLoadoutIntoWorkingState(saveId, storage = localSt
     throw new Error(result.message);
   }
 
+  const appliedLinkedLoadouts = [];
+  if (record.scopeId === "mapLoadoutMap" && record.linkedLoadouts?.heroLoadoutId) {
+    const linkedHeroRecord = await getSavedLoadout(record.linkedLoadouts.heroLoadoutId);
+    if (linkedHeroRecord?.scopeId === LOADOUT_RECORD_SCOPE_HERO) {
+      const linkedHeroResult = applyPayloadForLoadoutScope(
+        linkedHeroRecord.payload,
+        linkedHeroRecord.scopeId,
+        linkedHeroRecord.scopeContext,
+        storage
+      );
+
+      if (!linkedHeroResult.ok) {
+        throw new Error(linkedHeroResult.message);
+      }
+
+      setCurrentScopedSavedLoadoutId(linkedHeroRecord.scopeId, linkedHeroRecord.scopeContext, linkedHeroRecord.id, storage);
+      appliedLinkedLoadouts.push(summarizeRecord(linkedHeroRecord));
+    }
+  }
+
   setCurrentScopedSavedLoadoutId(record.scopeId, record.scopeContext, record.id, storage);
   await persistLoadoutRuntime(storage);
-  return summarizeRecord(record);
+  return {
+    ...summarizeRecord(record),
+    appliedLinkedLoadouts,
+  };
 }
 
 export async function startFreshWorkingLoadout(storage = localStorage) {
@@ -391,6 +468,7 @@ export async function parseImportedLoadoutFile(file) {
       sourceSaveId: "",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      linkedLoadouts: null,
       payload: cloneValue(parsedJson),
     }],
     warnings: ["Imported a legacy single-save JSON file. It will be treated as a whole save import."],
@@ -400,6 +478,8 @@ export async function parseImportedLoadoutFile(file) {
 export async function importLoadoutEntries(importPlans) {
   const created = [];
   const updated = [];
+  const sourceToTargetIdMap = new Map();
+  const pendingLinkedLoadoutUpdates = [];
 
   for (const plan of importPlans) {
     const scopeId = getScopeDefinition(plan.scopeId).id;
@@ -412,8 +492,13 @@ export async function importLoadoutEntries(importPlans) {
         payload: plan.payload,
         scopeId,
         scopeContext,
+        linkedLoadouts: plan.linkedLoadouts,
       });
       created.push(record.id);
+      pendingLinkedLoadoutUpdates.push({ recordId: record.id, linkedLoadouts: plan.linkedLoadouts });
+      if (plan.sourceSaveId) {
+        sourceToTargetIdMap.set(plan.sourceSaveId, record.id);
+      }
       continue;
     }
 
@@ -424,9 +509,20 @@ export async function importLoadoutEntries(importPlans) {
         payload: plan.payload,
         scopeId,
         scopeContext,
+        linkedLoadouts: plan.linkedLoadouts,
       });
       updated.push(plan.targetId);
+      pendingLinkedLoadoutUpdates.push({ recordId: plan.targetId, linkedLoadouts: plan.linkedLoadouts });
+      if (plan.sourceSaveId) {
+        sourceToTargetIdMap.set(plan.sourceSaveId, plan.targetId);
+      }
     }
+  }
+
+  for (const pendingUpdate of pendingLinkedLoadoutUpdates) {
+    await updateSavedLoadout(pendingUpdate.recordId, {
+      linkedLoadouts: remapLinkedLoadouts(pendingUpdate.linkedLoadouts, sourceToTargetIdMap),
+    });
   }
 
   return {

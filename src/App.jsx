@@ -40,6 +40,7 @@ import {
   saveWorkingLoadoutAsRecord,
   saveWorkingLoadoutChanges,
   startFreshWorkingLoadout,
+  updateSavedLoadout,
 } from "./lib/loadoutSavedRepository";
 import { buildActiveLoadoutScope, buildComparableLoadoutScopePayload, createComparableLoadoutScopePayload, getLoadoutScopeDisplayName, LOADOUT_RECORD_SCOPE_FULL } from "./lib/loadoutScope";
 
@@ -4790,6 +4791,7 @@ export default function App() {
   const saveScopeBadgeLabel = activeLoadoutScope.scopeId === LOADOUT_RECORD_SCOPE_FULL
     ? "Whole Save"
     : activeLoadoutScopeLabel;
+  const isSaveButtonPassive = Boolean(currentSavedLoadoutId && !isCurrentSavedLoadoutDirty);
 
   useEffect(() => {
     let isCancelled = false;
@@ -4974,6 +4976,14 @@ export default function App() {
     setCurrentSavedLoadoutComparable(buildComparableLoadoutScopePayload(localStorage, record.scopeId, record.scopeContext));
     setNotation(localStorage.getItem("notation") ?? "scientific");
     setLoadoutImportVersion((current) => current + 1);
+    return record;
+  }
+
+  async function handleUpdateSavedLoadout(saveId, updates) {
+    const record = await updateSavedLoadout(saveId, updates);
+    await refreshSavedLoadoutList();
+    refreshCurrentSavedSelections();
+    return record;
   }
 
   async function handleDeleteSavedLoadout(saveId) {
@@ -5026,70 +5036,75 @@ export default function App() {
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", fontFamily: "'Exo 2', 'Rajdhani', 'Segoe UI', sans-serif", color: colors.text, background: colors.bg }}>
 
       {/* Header */}
-      <div style={{ background: colors.panel, borderBottom: `1px solid ${colors.border}`, padding: "0 20px", flexShrink: 0, display: "flex", alignItems: "center", gap: 12 }}>
+      <div className="app-header-shell" style={{ background: colors.panel, borderBottom: `1px solid ${colors.border}`, flexShrink: 0 }}>
         {isMobile && (
           <button onClick={() => setDrawerOpen(o => !o)}
-            style={{ background: "none", border: "none", color: colors.text, fontSize: 22, cursor: "pointer", padding: "14px 4px", lineHeight: 1 }}>
+            className="app-header-shell__menu-button"
+            style={{ color: colors.text }}>
             ☰
           </button>
         )}
-        <div style={{ padding: "14px 0", cursor: "pointer" }} onClick={() => { setActiveKey("home"); localStorage.setItem("activeKey", "home"); }}>
+        <div className="app-header-shell__brand" onClick={() => { setActiveKey("home"); localStorage.setItem("activeKey", "home"); }}>
           <div style={{ fontSize: 17, fontWeight: 900, color: colors.accent, letterSpacing: "0.06em", textTransform: "uppercase", textShadow: "0 0 12px rgba(245,146,30,0.4)" }}>Idle Hero TD</div>
-          <div style={{ fontSize: 11, color: colors.muted, marginTop: 1, letterSpacing: "0.04em" }}>Game Data Reference</div>
-          <div style={{ fontSize: 10, color: colors.muted, opacity: 0.7, marginTop: 1 }}>by Asingh · v15.04</div>
+          <div style={{ fontSize: 11, color: colors.muted, marginTop: 1, letterSpacing: "0.04em" }}>Game Data Reference · v15.04</div>
         </div>
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 11, color: colors.muted, letterSpacing: "0.06em", textTransform: "uppercase" }}>Notation</span>
-            {[
-              { val: "scientific", label: "Scientific", example: "1.23e15" },
-              { val: "letters",    label: "Letters",    example: "aa, ab…"  },
-            ].map(({ val, label, example }) => (
-              <button key={val} onClick={() => handleNotation(val)} style={{
-                background: notation === val ? colors.accent : colors.header,
-                color: notation === val ? "#000" : colors.text,
-                border: `1px solid ${notation === val ? colors.accent : colors.border}`,
-                borderRadius: 6, padding: "5px 12px", cursor: "pointer",
-                fontFamily: "inherit", textAlign: "center", lineHeight: 1.2,
-              }}>
-                <div style={{ fontWeight: 700, fontSize: 12 }}>{label}</div>
-                <div style={{ fontSize: 10, opacity: 0.75, marginTop: 2 }}>{example}</div>
-              </button>
-            ))}
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            <div style={{ display: "grid", gap: 4, justifyItems: "end" }}>
-              <div style={{ fontSize: 10, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 700 }}>
-                Save Target
-              </div>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                <span style={{ background: "rgba(255,255,255,0.04)", color: colors.text, border: `1px solid ${colors.border}`, borderRadius: 999, padding: "5px 10px", fontSize: 11, fontWeight: 800, letterSpacing: "0.04em" }}>
-                  {saveScopeBadgeLabel}
-                </span>
-                {currentSavedLoadout ? (
-                  <span style={{ background: "rgba(245,146,30,0.12)", color: colors.accent, border: `1px solid rgba(245,146,30,0.36)`, borderRadius: 999, padding: "5px 10px", fontSize: 11, fontWeight: 800, maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {currentSavedLoadout.name}
-                  </span>
-                ) : null}
-              </div>
+        <div className="app-header-toolbar">
+          <div className="app-header-toolbar__group">
+            <span className="app-header-toolbar__label" style={{ color: colors.muted }}>Notation</span>
+            <div className="app-header-toolbar__segmented" style={{ borderColor: colors.border }}>
+              {[
+                { val: "scientific", label: "Scientific", example: "1.23e15" },
+                { val: "letters", label: "Letters", example: "aa, ab..." },
+              ].map(({ val, label, example }) => {
+                const isActive = notation === val;
+                return (
+                  <button
+                    key={val}
+                    onClick={() => handleNotation(val)}
+                    className={`app-header-toolbar__segment${isActive ? " app-header-toolbar__segment--active" : ""}`}
+                    style={{
+                      background: isActive ? colors.accent : "transparent",
+                      color: isActive ? "#08111d" : colors.text,
+                    }}
+                  >
+                    <span className="app-header-toolbar__segment-label">{label}</span>
+                    <span className="app-header-toolbar__segment-example" style={{ color: isActive ? "rgba(8, 17, 29, 0.78)" : colors.muted }}>{example}</span>
+                  </button>
+                );
+              })}
             </div>
-            <button onClick={handleSaveButtonClick} style={{
-              background: currentSavedLoadoutId && !isCurrentSavedLoadoutDirty ? colors.header : colors.accent,
-              color: currentSavedLoadoutId && !isCurrentSavedLoadoutDirty ? colors.muted : "#08111d",
-              border: `1px solid ${currentSavedLoadoutId && !isCurrentSavedLoadoutDirty ? colors.border : colors.accent}`,
-              borderRadius: 8,
-              padding: "8px 12px",
-              cursor: saveButtonBusy ? "wait" : currentSavedLoadoutId && !isCurrentSavedLoadoutDirty ? "default" : "pointer",
-              fontFamily: "inherit",
-              fontWeight: 800,
-            }}>
-              {saveButtonBusy ? "Saving..." : saveButtonLabel}
-            </button>
-            {saveButtonMessage ? (
-              <div style={{ fontSize: 12, fontWeight: 700, color: saveButtonMessage.type === "error" ? "#ffb3a8" : "#9ff3b0" }}>
-                {saveButtonMessage.text}
-              </div>
-            ) : null}
+          </div>
+          <div className="app-header-toolbar__group app-header-toolbar__group--save">
+            <div className="app-header-toolbar__save-meta">
+              <span className="app-header-toolbar__label" style={{ color: colors.muted }}>Save</span>
+              {currentSavedLoadout ? (
+                <span className="app-header-toolbar__value" style={{ color: colors.text }} title={currentSavedLoadout.name}>
+                  {currentSavedLoadout.name}
+                </span>
+              ) : (
+                <span className="app-header-toolbar__value" style={{ color: colors.text }}>{saveButtonBaseLabel}</span>
+              )}
+              <span className="app-header-toolbar__meta-text" style={{ color: colors.muted }}>{saveScopeBadgeLabel}</span>
+              {saveButtonMessage ? (
+                <span className={`app-header-toolbar__message app-header-toolbar__message--${saveButtonMessage.type}`}>
+                  {saveButtonMessage.text}
+                </span>
+              ) : null}
+            </div>
+            <div className="app-header-toolbar__save-actions">
+              <button
+                onClick={handleSaveButtonClick}
+                className={`app-header-toolbar__save-button${isSaveButtonPassive ? " app-header-toolbar__save-button--passive" : ""}`}
+                style={{
+                  background: isSaveButtonPassive ? colors.header : colors.accent,
+                  color: isSaveButtonPassive ? colors.muted : "#08111d",
+                  borderColor: isSaveButtonPassive ? colors.border : colors.accent,
+                  cursor: saveButtonBusy ? "wait" : isSaveButtonPassive ? "default" : "pointer",
+                }}
+              >
+                {saveButtonBusy ? "Saving..." : saveButtonLabel}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -5193,6 +5208,7 @@ export default function App() {
                 currentSavedLoadoutId={currentSavedLoadoutId}
                 onLoadSave={handleLoadSavedLoadout}
                 onDeleteSave={handleDeleteSavedLoadout}
+                onUpdateSave={handleUpdateSavedLoadout}
                 onImportComplete={handleImportComplete}
                 onNavigate={key => { setActiveKey(key); localStorage.setItem("activeKey", key); }}
               />

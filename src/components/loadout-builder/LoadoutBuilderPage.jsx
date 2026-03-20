@@ -1158,6 +1158,7 @@ export function LoadoutBuilderPage({
   currentSavedLoadoutId = "",
   onLoadSave,
   onDeleteSave,
+  onUpdateSave,
   onImportComplete,
 }) {
   const statsLoadoutState = useMemo(() => readStatsLoadoutState(localStorage), []);
@@ -1224,6 +1225,10 @@ export function LoadoutBuilderPage({
   const selectedMapSavedLoadouts = useMemo(
     () => savedLoadouts.filter((save) => save.scopeId === "mapLoadoutMap" && save.scopeContext?.mapId === selectedMap?.id),
     [savedLoadouts, selectedMap?.id]
+  );
+  const heroSavedLoadouts = useMemo(
+    () => savedLoadouts.filter((save) => save.scopeId === "heroLoadoutPage"),
+    [savedLoadouts]
   );
   const statsLoadoutBonuses = useMemo(
     () => buildGlobalLoadoutStatModel({ statsLoadoutState, playerLoadoutState }).totals,
@@ -1880,9 +1885,11 @@ export function LoadoutBuilderPage({
             colors={colors}
             selectedMap={selectedMap}
             presets={selectedMapSavedLoadouts}
+            heroPresets={heroSavedLoadouts}
             currentSavedLoadoutId={currentSavedLoadoutId}
             onLoadSave={onLoadSave}
             onDeleteSave={onDeleteSave}
+            onUpdateSave={onUpdateSave}
             onImportComplete={onImportComplete}
           />
 
