@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
 import { MapStage, OverlayAnchor, HeroToken } from "../map/MapStage";
 import { mapsData } from "../../lib/gameData";
@@ -19,6 +19,14 @@ import { schedulePersistLoadoutRuntime } from "../../lib/loadoutRuntimeStore";
 import { MapLoadoutPresetsPanel } from "./MapLoadoutPresetsPanel";
 import { MapPerksLoadoutBuilder } from "./MapPerksLoadoutBuilder";
 import { MapSpellLoadoutBuilder } from "./MapSpellLoadoutBuilder";
+import {
+  buildHeroSearchIndex as buildSharedHeroSearchIndex,
+  filterHeroes,
+  getEnabledSearchScopes as getSharedEnabledSearchScopes,
+  getHeroSubtypeOptions,
+  HeroFiltersPanel,
+  useHeroFilters,
+} from "./HeroFiltersPanel";
 
 const MAX_DUPLICATE_HEROES = 3;
 const RANGE_RADIUS_SCALE = 0.085;
@@ -1274,36 +1282,16 @@ export function LoadoutBuilderPage({
       return {};
     }
   });
-  const [searchValue, setSearchValue] = useState("");
-  const [searchScopes, setSearchScopes] = useState({
-    name: true,
-    skills: true,
-    mastery: true,
-    milestones: true,
-    synergies: true,
-  });
-  const [placementFilter, setPlacementFilter] = useState("all");
-  const [sortMode, setSortMode] = useState("order");
-  const [classFilters, setClassFilters] = useState([]);
-  const [rarityFilters, setRarityFilters] = useState([]);
-  const [typeFilters, setTypeFilters] = useState([]);
-  const [subtypeFilters, setSubtypeFilters] = useState([]);
-  const [milestoneTypeFilters, setMilestoneTypeFilters] = useState([]);
-  const [synergyTypeFilters, setSynergyTypeFilters] = useState([]);
+  const heroFilters = useHeroFilters({ includePlacementFilter: true });
   const [selectedHeroAction, setSelectedHeroAction] = useState(null);
   const [inspectedHeroId, setInspectedHeroId] = useState(heroes[0]?.id ?? null);
   const [inspectedHeroSpotId, setInspectedHeroSpotId] = useState(null);
   const [dragState, setDragState] = useState(null);
-  const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
-  const [activeFilterTab, setActiveFilterTab] = useState("search");
-  const [activeFilterSubtabs, setActiveFilterSubtabs] = useState(DEFAULT_FILTER_SUBTABS);
   const [isFocusedHeroExpanded, setIsFocusedHeroExpanded] = useState(false);
   const [activeFocusedHeroInfoTab, setActiveFocusedHeroInfoTab] = useState("skill");
   const [activeFocusedMilestoneTab, setActiveFocusedMilestoneTab] = useState("active");
   const [activeFocusedSynergyTab, setActiveFocusedSynergyTab] = useState("active");
   const [hoveredMapHeroSpotId, setHoveredMapHeroSpotId] = useState(null);
-
-  const deferredSearch = useDeferredValue(searchValue);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
   const selectedMap = useMemo(
@@ -1457,7 +1445,7 @@ export function LoadoutBuilderPage({
   const placementMasteryLevels = selectedMap ? placementMasteryLevelsByMap[selectedMap.id] ?? buildPlacementMasteryLevelsState(heroes) : {};
   const isSelectedMapExpanded = selectedMap ? Boolean(expandedMapsById[selectedMap.id]) : false;
   const heroSearchIndex = useMemo(
-    () => Object.fromEntries(upgradedHeroes.map((hero) => [hero.id, buildHeroSearchIndex(hero)])),
+    () => Object.fromEntries(upgradedHeroes.map((hero) => [hero.id, buildSharedHeroSearchIndex(hero)])),
     [upgradedHeroes]
   );
   const heroPlacementCounts = useMemo(
@@ -1481,60 +1469,39 @@ export function LoadoutBuilderPage({
     () => [...new Set(upgradedHeroes.flatMap((hero) => (hero.synergies ?? []).map((synergy) => synergy.type)).filter(Boolean))],
     [upgradedHeroes]
   );
-  const subtypeOptions = useMemo(() => {
-    const relevantTypes = typeFilters.filter((type) => type === "buff" || type === "debuff");
-    if (!relevantTypes.length) {
-      return [];
-    }
-
-    return [...new Set(
-      upgradedHeroes
-        .filter((hero) => relevantTypes.includes(hero.type))
-        .flatMap((hero) => hero.typeSubtype ?? [])
-        .filter(Boolean)
-    )];
-  }, [upgradedHeroes, typeFilters]);
+  const subtypeOptions = useMemo(() => getHeroSubtypeOptions(upgradedHeroes, heroFilters.typeFilters), [heroFilters.typeFilters, upgradedHeroes]);
 
   const filteredHeroes = useMemo(() => {
-    const normalizedQuery = deferredSearch.trim().toLowerCase();
-    const searchTerms = deferredSearch
-      .trim()
-      .toLowerCase()
-      .split(/\s+/)
-      .filter(Boolean);
-    const enabledSearchScopes = getEnabledSearchScopes(searchScopes);
-    const shouldRestrictToExactNameMatches = searchScopes.name && Object.entries(searchScopes).every(([scope, isEnabled]) => scope === "name" ? isEnabled : !isEnabled);
-    const exactNameMatches = shouldRestrictToExactNameMatches && normalizedQuery
-      ? new Set(
-        upgradedHeroes
-          .filter((hero) => {
-            const normalizedName = normalizeText(hero.name);
-            const normalizedId = normalizeText(hero.id);
-            return normalizedName === normalizedQuery || normalizedId === normalizedQuery;
-          })
-          .map((hero) => hero.id)
-      )
-      : null;
-
-    const nextHeroes = upgradedHeroes.filter((hero) => {
-      const matchesSearch = !searchTerms.length || searchTerms.every((term) => enabledSearchScopes.some((scope) => heroSearchIndex[hero.id]?.[scope]?.includes(term)));
-      const matchesExactName = !exactNameMatches?.size || exactNameMatches.has(hero.id);
-      const placementCount = heroPlacementCounts[hero.id] ?? 0;
-      const matchesPlacement = placementFilter === "all"
-        || (placementFilter === "available" && placementCount < MAX_DUPLICATE_HEROES)
-        || (placementFilter === "placed" && placementCount > 0);
-      const matchesClass = !classFilters.length || classFilters.includes(hero.class);
-      const matchesRarity = !rarityFilters.length || rarityFilters.includes(hero.rarity);
-      const matchesType = !typeFilters.length || typeFilters.includes(hero.type);
-      const matchesSubtype = !subtypeFilters.length || (hero.typeSubtype ?? []).some((subtype) => subtypeFilters.includes(subtype));
-      const matchesMilestones = !milestoneTypeFilters.length || (hero.milestones ?? []).some((milestone) => milestoneTypeFilters.includes(milestone.type));
-      const matchesSynergies = !synergyTypeFilters.length || (hero.synergies ?? []).some((synergy) => synergyTypeFilters.includes(synergy.type));
-
-      return matchesSearch && matchesExactName && matchesPlacement && matchesClass && matchesRarity && matchesType && matchesSubtype && matchesMilestones && matchesSynergies;
+    return filterHeroes({
+      heroes: upgradedHeroes,
+      heroSearchIndex,
+      filters: heroFilters,
+      sortHeroes,
+      placementCounts: heroPlacementCounts,
+      includePlacementFilter: true,
+      maxPlacementCount: MAX_DUPLICATE_HEROES,
     });
+  }, [
+    heroFilters.classFilters,
+    heroFilters.milestoneTypeFilters,
+    heroFilters.placementFilter,
+    heroFilters.rarityFilters,
+    heroFilters.searchScopes,
+    heroFilters.searchValue,
+    heroFilters.sortMode,
+    heroFilters.subtypeFilters,
+    heroFilters.synergyTypeFilters,
+    heroFilters.typeFilters,
+    heroPlacementCounts,
+    heroSearchIndex,
+    upgradedHeroes,
+  ]);
 
-    return sortHeroes(nextHeroes, sortMode);
-  }, [upgradedHeroes, deferredSearch, heroSearchIndex, heroPlacementCounts, placementFilter, classFilters, rarityFilters, typeFilters, subtypeFilters, milestoneTypeFilters, synergyTypeFilters, sortMode, searchScopes]);
+  useEffect(() => {
+    if (builderMode !== "hero") {
+      heroFilters.setIsFiltersExpanded(false);
+    }
+  }, [builderMode, heroFilters]);
 
   const placedEntries = useMemo(() => {
     if (!selectedMap) {
@@ -1791,15 +1758,15 @@ export function LoadoutBuilderPage({
     ?? null;
 
   const filterContext = {
-    searchValue,
-    searchScopes,
-    placementFilter,
-    classFilters,
-    rarityFilters,
-    typeFilters,
-    subtypeFilters,
-    milestoneTypeFilters,
-    synergyTypeFilters,
+    searchValue: heroFilters.searchValue,
+    searchScopes: heroFilters.searchScopes,
+    placementFilter: heroFilters.placementFilter,
+    classFilters: heroFilters.classFilters,
+    rarityFilters: heroFilters.rarityFilters,
+    typeFilters: heroFilters.typeFilters,
+    subtypeFilters: heroFilters.subtypeFilters,
+    milestoneTypeFilters: heroFilters.milestoneTypeFilters,
+    synergyTypeFilters: heroFilters.synergyTypeFilters,
   };
 
   const hoveredMapHeroEntry = useMemo(
@@ -1998,25 +1965,6 @@ export function LoadoutBuilderPage({
     }));
   }
 
-  function resetFilters() {
-    setSearchValue("");
-    setSearchScopes({
-      name: true,
-      skills: true,
-      mastery: true,
-      milestones: true,
-      synergies: true,
-    });
-    setPlacementFilter("all");
-    setSortMode("order");
-    setClassFilters([]);
-    setRarityFilters([]);
-    setTypeFilters([]);
-    setSubtypeFilters([]);
-    setMilestoneTypeFilters([]);
-    setSynergyTypeFilters([]);
-  }
-
   function handleDragStart(event) {
     const data = event.active.data.current;
     if (!data) {
@@ -2158,113 +2106,31 @@ export function LoadoutBuilderPage({
                     {saveButton.label}
                   </button>
                 ) : null}
-                <button type="button" onClick={() => setIsFiltersExpanded((current) => !current)} style={{ background: isFiltersExpanded ? "rgba(68,136,238,0.16)" : colors.header, color: colors.text, border: `1px solid ${isFiltersExpanded ? colors.accent : colors.border}`, borderRadius: 10, padding: "10px 14px", fontWeight: 800, cursor: "pointer", minHeight: 44 }}>
-                  Filters
-                </button>
+                {builderMode === "hero" ? (
+                  <button type="button" onClick={() => heroFilters.setIsFiltersExpanded((current) => !current)} style={{ background: heroFilters.isFiltersExpanded ? "rgba(68,136,238,0.16)" : colors.header, color: colors.text, border: `1px solid ${heroFilters.isFiltersExpanded ? colors.accent : colors.border}`, borderRadius: 10, padding: "10px 14px", fontWeight: 800, cursor: "pointer", minHeight: 44 }}>
+                    Filters
+                  </button>
+                ) : null}
               </div>
             </div>
           </div>
 
-          {builderMode === "hero" && isFiltersExpanded && (
-            <div style={{ display: "grid", gap: 14, background: colors.panel, border: `1px solid ${colors.border}`, borderRadius: 14, padding: 14 }}>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                    {FILTER_TABS.map((tab) => (
-                      <FilterTabButton key={tab.id} active={activeFilterTab === tab.id} label={tab.label} onClick={() => setActiveFilterTab(tab.id)} colors={colors} />
-                    ))}
-                    <div style={{ marginLeft: "auto", color: colors.muted, fontSize: 12 }}>
-                      {filteredHeroes.length} of {heroes.length} heroes
-                    </div>
-                  </div>
-
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    {visibleSubtabs.map((subtab) => (
-                      <FilterSubTabButton
-                        key={subtab.id}
-                        active={activeSubtab === subtab.id}
-                        label={subtab.label}
-                        onClick={() => setActiveFilterSubtabs((current) => ({ ...current, [activeFilterTab]: subtab.id }))}
-                        colors={colors}
-                      />
-                    ))}
-                  </div>
-
-                  {activeFilterTab === "search" && activeSubtab === "query" && (
-                    <div style={{ display: "grid", gap: 12 }}>
-                      <label style={{ color: colors.muted, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Search Heroes</label>
-                      <input value={searchValue} onChange={(event) => setSearchValue(event.target.value)} placeholder="Search names, skills, mastery, milestones, synergies" style={{ background: "#0f2640", border: `1px solid ${colors.border}`, color: colors.text, borderRadius: 10, padding: "10px 12px", font: "inherit" }} />
-                      <div style={{ display: "grid", gap: 8 }}>
-                        <div style={{ color: colors.muted, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Search In</div>
-                        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                          {SEARCH_SCOPE_OPTIONS.map((option) => (
-                            <label key={option.id} style={{ display: "flex", alignItems: "center", gap: 6, color: colors.text, fontSize: 12 }}>
-                              <input type="checkbox" checked={searchScopes[option.id]} onChange={() => setSearchScopes((current) => ({ ...current, [option.id]: !current[option.id] }))} />
-                              {option.label}
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {activeFilterTab === "search" && activeSubtab === "state" && (
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
-                      <div style={{ display: "grid", gap: 8 }}>
-                        <div style={{ color: colors.muted, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Availability</div>
-                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                          {[
-                            { value: "all", label: "All Heroes" },
-                            { value: "available", label: "Available" },
-                            { value: "placed", label: "Placed" },
-                          ].map((option) => (
-                            <FilterChip key={option.value} active={placementFilter === option.value} label={option.label} onClick={() => setPlacementFilter(option.value)} colors={colors} />
-                          ))}
-                        </div>
-                      </div>
-                      <div style={{ display: "grid", gap: 8 }}>
-                        <label style={{ color: colors.muted, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Sort</label>
-                        <select value={sortMode} onChange={(event) => setSortMode(event.target.value)} style={{ background: "#0f2640", border: `1px solid ${colors.border}`, color: colors.text, borderRadius: 10, padding: "10px 12px", font: "inherit" }}>
-                          <option value="order">Default Order</option>
-                          <option value="name">Name</option>
-                          <option value="class">Class</option>
-                          <option value="rarity">Rarity</option>
-                          <option value="type">Hero Type</option>
-                        </select>
-                      </div>
-                    </div>
-                  )}
-
-                  {activeFilterTab === "identity" && activeSubtab === "class" && (
-                    <FilterChipGroup title="Class" options={classOptions} selected={classFilters} onToggle={(value) => setClassFilters((current) => toggleSelection(current, value))} colors={colors} />
-                  )}
-
-                  {activeFilterTab === "identity" && activeSubtab === "rarity" && (
-                    <FilterChipGroup title="Rarity" options={rarityOptions} selected={rarityFilters} onToggle={(value) => setRarityFilters((current) => toggleSelection(current, value))} colors={colors} />
-                  )}
-
-                  {activeFilterTab === "effects" && activeSubtab === "type" && (
-                    <FilterChipGroup title="Hero Type" options={typeOptions} selected={typeFilters} onToggle={(value) => setTypeFilters((current) => toggleSelection(current, value))} colors={colors} />
-                  )}
-
-                  {activeFilterTab === "effects" && activeSubtab === "subtype" && (
-                    <FilterChipGroup title="Buff / Debuff Subtype" options={subtypeOptions} selected={subtypeFilters} onToggle={(value) => setSubtypeFilters((current) => toggleSelection(current, value))} colors={colors} emptyLabel="Choose buff or debuff in the Type sub tab to unlock subtype filters." />
-                  )}
-
-                  {activeFilterTab === "progression" && activeSubtab === "milestones" && (
-                    <FilterChipGroup title="Milestone Bonus Type" options={milestoneTypeOptions} selected={milestoneTypeFilters} onToggle={(value) => setMilestoneTypeFilters((current) => toggleSelection(current, value))} colors={colors} />
-                  )}
-
-                  {activeFilterTab === "progression" && activeSubtab === "synergies" && (
-                    <FilterChipGroup title="Synergy Bonus Type" options={synergyTypeOptions} selected={synergyTypeFilters} onToggle={(value) => setSynergyTypeFilters((current) => toggleSelection(current, value))} colors={colors} />
-                  )}
-
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                    <div style={{ color: colors.muted, fontSize: 12 }}>
-                      Filters change both the hero list and the detail rows shown on each hero card.
-                    </div>
-                    <button type="button" onClick={resetFilters} style={{ background: colors.header, color: colors.text, border: `1px solid ${colors.border}`, borderRadius: 10, padding: "8px 12px", fontWeight: 700, cursor: "pointer" }}>Reset Filters</button>
-                  </div>
-            </div>
-          )}
+          {builderMode === "hero" ? (
+            <HeroFiltersPanel
+              colors={colors}
+              filters={heroFilters}
+              resultsCount={filteredHeroes.length}
+              totalCount={heroes.length}
+              classOptions={classOptions}
+              rarityOptions={rarityOptions}
+              typeOptions={typeOptions}
+              subtypeOptions={subtypeOptions}
+              milestoneTypeOptions={milestoneTypeOptions}
+              synergyTypeOptions={synergyTypeOptions}
+              includePlacementFilter
+              helperText="Filters change both the hero list and the detail rows shown on each hero card."
+            />
+          ) : null}
 
           {builderMode === "hero" ? (
             <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.5fr) minmax(320px, 440px)", gap: 20, alignItems: "start" }}>

@@ -12,6 +12,16 @@ import { buildStatBreakdown, formatSignedHeroBonus } from "../../lib/loadoutStat
 import { LOADOUT_RECORD_SCOPE_PLAYER } from "../../lib/loadoutScope";
 import { ScopedLoadoutPresetsPanel } from "./ScopedLoadoutPresetsPanel";
 
+function buildDefaultParentExpansion() {
+  return Object.fromEntries(PLAYER_LOADOUT_TABS.map((tab) => [tab.key, true]));
+}
+
+function buildDefaultGroupExpansion() {
+  return Object.fromEntries(
+    PLAYER_LOADOUT_TABS.flatMap((tab) => Object.keys(tab.data.groups ?? {}).map((groupKey) => [`${tab.key}:${groupKey}`, true]))
+  );
+}
+
 function TabButton({ tab, isActive, colors, getIconUrl, onSelect }) {
   return (
     <button
@@ -143,19 +153,41 @@ function PurchasedToggle({ isPurchased, colors, onToggle }) {
   );
 }
 
+function isAutoOwnedPlayerItem({ tabKey, groupEntries, groupKey, item }) {
+  const firstGroupKey = groupEntries[0]?.key ?? "";
+  const firstItemId = groupEntries[0]?.items?.[0]?.id ?? "";
+
+  if (groupKey !== firstGroupKey || item.id !== firstItemId) {
+    return false;
+  }
+
+  if (tabKey === "icons") {
+    return item.cost === 0;
+  }
+
+  if (tabKey === "backgrounds") {
+    return item.requirement == null;
+  }
+
+  return false;
+}
+
 function RewardLine({ item, colors, fmt }) {
   if (!item.rewardUnit || item.reward == null) {
     return <div style={{ fontSize: 13, color: colors.muted }}>Reward -</div>;
   }
 
+  const rewardValue = Number(item.reward) || 0;
+  const rewardText = `${rewardValue > 0 ? "+" : ""}${fmt(rewardValue)}${item.reward_type === "percent" ? "%" : ""}`;
+
   return (
     <div style={{ fontSize: 13, color: colors.muted }}>
-      Reward <span style={{ color: item.reward < 0 ? colors.positive : colors.accent, fontWeight: 700 }}>{formatSignedHeroBonus("damage", item.reward, fmt).replace("%", "")}</span> {item.rewardUnit}
+      Reward <span style={{ color: item.reward < 0 ? colors.positive : colors.accent, fontWeight: 700 }}>{rewardText}</span> {item.rewardUnit}
     </div>
   );
 }
 
-function IconCard({ item, isPurchased, colors, getIconUrl, fmt, onToggle }) {
+function IconCard({ item, isPurchased, colors, getIconUrl, fmt, onToggle, showToggle = true }) {
   return (
     <div style={{ background: `linear-gradient(180deg, #2a5c96 0%, ${colors.header} 100%)`, border: `1px solid ${isPurchased ? colors.accent : colors.border}`, borderRadius: 10, padding: 12, boxShadow: "0 2px 6px rgba(0,0,0,0.2)", display: "grid", gap: 12 }}>
       <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
@@ -173,18 +205,19 @@ function IconCard({ item, isPurchased, colors, getIconUrl, fmt, onToggle }) {
           <div style={{ fontSize: 13, color: colors.muted, marginBottom: 2 }}>
             Cost <span style={{ color: item.cost === 0 ? colors.positive : colors.gold, fontWeight: 700 }}>{item.cost === 0 ? "Free" : fmt(item.cost)}</span>
           </div>
-          <RewardLine item={item} colors={colors} fmt={fmt} />
         </div>
         <img src={getIconUrl(item.icon)} alt={item.name} style={{ width: 52, height: 52, flexShrink: 0, borderRadius: 6, objectFit: "contain" }} />
       </div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <PurchasedToggle isPurchased={isPurchased} colors={colors} onToggle={onToggle} />
-      </div>
+      {showToggle ? (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <PurchasedToggle isPurchased={isPurchased} colors={colors} onToggle={onToggle} />
+        </div>
+      ) : null}
     </div>
   );
 }
 
-function BackgroundCard({ item, isPurchased, colors, getIconUrl, fmt, onToggle }) {
+function BackgroundCard({ item, isPurchased, colors, getIconUrl, fmt, onToggle, showToggle = true }) {
   return (
     <div style={{ position: "relative", backgroundImage: item.background ? `url(${getIconUrl(item.background)})` : "none", backgroundSize: "cover", backgroundPosition: "center", border: `1px solid ${isPurchased ? colors.accent : colors.border}`, borderRadius: 10, padding: 12, boxShadow: "0 2px 6px rgba(0,0,0,0.2)", overflow: "hidden", minHeight: 132 }}>
       {item.background && <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.58)" }} />}
@@ -207,9 +240,11 @@ function BackgroundCard({ item, isPurchased, colors, getIconUrl, fmt, onToggle }
             <RewardLine item={item} colors={colors} fmt={fmt} />
           </div>
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginTop: "auto" }}>
-          <PurchasedToggle isPurchased={isPurchased} colors={colors} onToggle={onToggle} />
-        </div>
+        {showToggle ? (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginTop: "auto" }}>
+            <PurchasedToggle isPurchased={isPurchased} colors={colors} onToggle={onToggle} />
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -244,11 +279,97 @@ function StatSummaryList({ entries, colors, fmt }) {
   );
 }
 
+function CollapseButton({ label, meta, isExpanded, colors, onToggle }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      style={{
+        width: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 12,
+        padding: "10px 12px",
+        borderRadius: 12,
+        border: `1px solid ${colors.border}`,
+        background: colors.header,
+        color: colors.text,
+        cursor: "pointer",
+        fontFamily: "inherit",
+        textAlign: "left",
+      }}
+    >
+      <div style={{ minWidth: 0, display: "grid", gap: 3 }}>
+        <div style={{ fontSize: 13, fontWeight: 900 }}>{label}</div>
+        {meta ? <div style={{ fontSize: 11, color: colors.muted }}>{meta}</div> : null}
+      </div>
+      <div style={{ flexShrink: 0, fontSize: 13, fontWeight: 900, color: colors.accent }}>{isExpanded ? "Hide" : "Show"}</div>
+    </button>
+  );
+}
+
+function PlayerStatSummaryTree({ sections, expandedParents, expandedGroups, colors, fmt, onToggleParent, onToggleGroup }) {
+  const visibleSections = sections.filter((section) => section.entries.length > 0);
+  const hasAnyStats = visibleSections.length > 0;
+
+  if (!hasAnyStats) {
+    return <div style={{ color: colors.muted, fontSize: 13 }}>No purchased cosmetic rewards are contributing stats yet.</div>;
+  }
+
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
+      {visibleSections.map((section) => {
+        const isParentExpanded = expandedParents[section.key] ?? true;
+
+        return (
+          <div key={section.key} style={{ display: "grid", gap: 10, background: `linear-gradient(180deg, ${colors.header} 0%, ${colors.panel} 100%)`, border: `1px solid ${colors.border}`, borderRadius: 14, padding: 12 }}>
+            <CollapseButton
+              label={section.label}
+              meta={null}
+              isExpanded={isParentExpanded}
+              colors={colors}
+              onToggle={() => onToggleParent(section.key)}
+            />
+
+            {isParentExpanded ? (
+              <>
+                <div style={{ display: "grid", gap: 10 }}>
+                  {section.groups.filter((group) => group.entries.length > 0).map((group) => {
+                    const groupExpansionKey = `${section.key}:${group.key}`;
+                    const isGroupExpanded = expandedGroups[groupExpansionKey] ?? true;
+
+                    return (
+                      <div key={groupExpansionKey} style={{ display: "grid", gap: 8, padding: 10, borderRadius: 12, background: colors.panel, border: `1px solid ${colors.border}` }}>
+                        <CollapseButton
+                          label={group.label}
+                          meta={null}
+                          isExpanded={isGroupExpanded}
+                          colors={colors}
+                          onToggle={() => onToggleGroup(groupExpansionKey)}
+                        />
+                        {isGroupExpanded ? <StatSummaryList entries={group.entries} colors={colors} fmt={fmt} /> : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function PlayerLoadoutPage({ colors, getIconUrl, fmt, savedLoadouts = [], currentSavedLoadoutId = "", onLoadSave, onDeleteSave, onImportComplete, saveButton }) {
   const initialState = useMemo(() => readPlayerLoadoutState(localStorage), []);
   const [selectedTab, setSelectedTab] = useState(initialState.selectedTab);
   const [selectedGroupByTab, setSelectedGroupByTab] = useState(initialState.selectedGroupByTab);
   const [purchasedByTab, setPurchasedByTab] = useState(initialState.purchasedByTab);
+  const [expandedSummaryParents, setExpandedSummaryParents] = useState(() => buildDefaultParentExpansion());
+  const [expandedSummaryGroups, setExpandedSummaryGroups] = useState(() => buildDefaultGroupExpansion());
+  const [summaryViewMode, setSummaryViewMode] = useState("split");
 
   useEffect(() => {
     writePlayerLoadoutState({ selectedTab, selectedGroupByTab, purchasedByTab }, localStorage);
@@ -267,11 +388,27 @@ export function PlayerLoadoutPage({ colors, getIconUrl, fmt, savedLoadouts = [],
     () => getPlayerLoadoutPurchasedEntries({ selectedTab, purchasedByTab }),
     [selectedTab, purchasedByTab]
   );
-  const activeItemIds = useMemo(() => new Set(activeItems.map((item) => item.id)), [activeItems]);
-  const activeEntries = useMemo(
-    () => allEntries.filter((entry) => entry.sourceType === activeTab.key && activeItemIds.has(entry.sourceId)),
-    [activeItemIds, activeTab.key, allEntries]
-  );
+  const allSummarySections = useMemo(() => {
+    return PLAYER_LOADOUT_TABS.map((tab) => {
+      const groupDefinitions = Object.entries(tab.data.groups ?? {}).map(([groupKey, items]) => {
+        const itemIds = new Set(items.map((item) => item.id));
+        const entries = allEntries.filter((entry) => entry.sourceType === tab.key && itemIds.has(entry.sourceId));
+
+        return {
+          key: groupKey,
+          label: groupKey,
+          entries,
+        };
+      });
+
+      return {
+        key: tab.key,
+        label: tab.label,
+        entries: allEntries.filter((entry) => entry.sourceType === tab.key),
+        groups: groupDefinitions,
+      };
+    });
+  }, [allEntries]);
   const playerPresets = useMemo(
     () => savedLoadouts.filter((save) => save.scopeId === LOADOUT_RECORD_SCOPE_PLAYER),
     [savedLoadouts]
@@ -306,6 +443,20 @@ export function PlayerLoadoutPage({ colors, getIconUrl, fmt, savedLoadouts = [],
     setSelectedGroupByTab((current) => ({
       ...current,
       [activeTab.key]: groupKey,
+    }));
+  }
+
+  function handleToggleSummaryParent(tabKey) {
+    setExpandedSummaryParents((current) => ({
+      ...current,
+      [tabKey]: !(current[tabKey] ?? true),
+    }));
+  }
+
+  function handleToggleSummaryGroup(groupKey) {
+    setExpandedSummaryGroups((current) => ({
+      ...current,
+      [groupKey]: !(current[groupKey] ?? true),
     }));
   }
 
@@ -352,10 +503,42 @@ export function PlayerLoadoutPage({ colors, getIconUrl, fmt, savedLoadouts = [],
       <div style={{ display: "flex", flexWrap: "wrap", gap: 20, alignItems: "start" }}>
         <aside style={{ flex: "0 0 260px", width: "100%", maxWidth: 320, display: "grid", gap: 14, position: "sticky", top: 0 }}>
           <div style={{ background: `linear-gradient(180deg, ${colors.header} 0%, ${colors.panel} 100%)`, border: `1px solid ${colors.border}`, borderRadius: 16, padding: 16, display: "grid", gap: 12 }}>
-            <div style={{ fontSize: 14, fontWeight: 900, color: colors.accent, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-              {activeGroup?.label ?? activeTab.label} Stat Summary
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ fontSize: 14, fontWeight: 900, color: colors.accent, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                All Player Stats
+              </div>
+              <button
+                type="button"
+                onClick={() => setSummaryViewMode((current) => (current === "split" ? "combined" : "split"))}
+                style={{
+                  background: colors.header,
+                  border: `1px solid ${colors.accent}`,
+                  borderRadius: 999,
+                  color: colors.text,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  fontSize: 12,
+                  fontWeight: 800,
+                  padding: "8px 12px",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {summaryViewMode === "split" ? "Combine" : "Split"}
+              </button>
             </div>
-            <StatSummaryList entries={activeEntries} colors={colors} fmt={fmt} />
+            {summaryViewMode === "combined" ? (
+              <StatSummaryList entries={allEntries} colors={colors} fmt={fmt} />
+            ) : (
+              <PlayerStatSummaryTree
+                sections={allSummarySections}
+                expandedParents={expandedSummaryParents}
+                expandedGroups={expandedSummaryGroups}
+                colors={colors}
+                fmt={fmt}
+                onToggleParent={handleToggleSummaryParent}
+                onToggleGroup={handleToggleSummaryGroup}
+              />
+            )}
           </div>
         </aside>
 
@@ -388,7 +571,8 @@ export function PlayerLoadoutPage({ colors, getIconUrl, fmt, savedLoadouts = [],
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 14 }}>
             {activeItems.map((item) => {
-              const isPurchased = Boolean(activePurchased[item.id]);
+              const isAutoOwned = isAutoOwnedPlayerItem({ tabKey: activeTab.key, groupEntries, groupKey: activeGroup?.key, item });
+              const isPurchased = isAutoOwned || Boolean(activePurchased[item.id]);
 
               if (activeTab.key === "backgrounds") {
                 return (
@@ -399,6 +583,7 @@ export function PlayerLoadoutPage({ colors, getIconUrl, fmt, savedLoadouts = [],
                     colors={colors}
                     getIconUrl={getIconUrl}
                     onToggle={(checked) => handlePurchasedChange(activeTab.key, item.id, checked)}
+                    showToggle={!isAutoOwned}
                     fmt={fmt}
                   />
                 );
@@ -412,6 +597,7 @@ export function PlayerLoadoutPage({ colors, getIconUrl, fmt, savedLoadouts = [],
                   colors={colors}
                   getIconUrl={getIconUrl}
                   fmt={fmt}
+                  showToggle={!isAutoOwned}
                   onToggle={(checked) => handlePurchasedChange(activeTab.key, item.id, checked)}
                 />
               );

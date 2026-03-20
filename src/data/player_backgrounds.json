@@ -14,7 +14,8 @@
         "reward": null,
         "icon": null,
         "bgColor": null,
-        "borderColor": null
+        "borderColor": null,
+        "reward_type": null
       },
       {
         "id": "1_timePlayed",
@@ -25,7 +26,8 @@
         "reward": 5,
         "icon": "_dps.png",
         "bgColor": "#960000",
-        "borderColor": "#FF0000"
+        "borderColor": "#FF0000",
+        "reward_type": "percent"
       },
       {
         "id": "islandHideout1",
@@ -36,7 +38,8 @@
         "reward": 10,
         "icon": "_coin.png",
         "bgColor": "#999900",
-        "borderColor": "#FFFF00"
+        "borderColor": "#FFFF00",
+        "reward_type": "percent"
       },
       {
         "id": "snow1",
@@ -47,7 +50,8 @@
         "reward": -5,
         "icon": "_moveSpeed.png",
         "bgColor": "#4C0000",
-        "borderColor": "#800000"
+        "borderColor": "#800000",
+        "reward_type": "percent"
       },
       {
         "id": "desert1",
@@ -58,7 +62,8 @@
         "reward": 5,
         "icon": "_exp.png",
         "bgColor": "#0A6899",
-        "borderColor": "#19AFFF"
+        "borderColor": "#19AFFF",
+        "reward_type": "flat"
       },
       {
         "id": "cemetery1",
@@ -69,7 +74,8 @@
         "reward": 25,
         "icon": "_planet.png",
         "bgColor": "#6E00A2",
-        "borderColor": "#AF00FF"
+        "borderColor": "#AF00FF",
+        "reward_type": "percent"
       },
       {
         "id": "lavaDungeon1",
@@ -80,7 +86,8 @@
         "reward": 35,
         "icon": "_dps.png",
         "bgColor": "#960000",
-        "borderColor": "#FF0000"
+        "borderColor": "#FF0000",
+        "reward_type": "percent"
       },
       {
         "id": "sunnyFarms1",
@@ -91,7 +98,8 @@
         "reward": 3,
         "icon": "_energy2.png",
         "bgColor": "#00A300",
-        "borderColor": "#00FF00"
+        "borderColor": "#00FF00",
+        "reward_type": "flat"
       },
       {
         "id": "islandHideout2",
@@ -102,7 +110,8 @@
         "reward": 50,
         "icon": "_coin.png",
         "bgColor": "#999900",
-        "borderColor": "#FFFF00"
+        "borderColor": "#FFFF00",
+        "reward_type": "percent"
       },
       {
         "id": "snow2",
@@ -113,7 +122,8 @@
         "reward": 75,
         "icon": "_dps.png",
         "bgColor": "#960000",
-        "borderColor": "#FF0000"
+        "borderColor": "#FF0000",
+        "reward_type": "percent"
       },
       {
         "id": "desert2",
@@ -124,7 +134,8 @@
         "reward": 10,
         "icon": "_range_2.png",
         "bgColor": "#9F9E00",
-        "borderColor": "#FFFF00"
+        "borderColor": "#FFFF00",
+        "reward_type": "percent"
       },
       {
         "id": "cemetery2",
@@ -135,7 +146,8 @@
         "reward": 5,
         "icon": "_battlepassExp.png",
         "bgColor": "#007700",
-        "borderColor": "#00C800"
+        "borderColor": "#00C800",
+        "reward_type": "flat"
       },
       {
         "id": "lavaDungeon2",
@@ -146,7 +158,8 @@
         "reward": 100,
         "icon": "_coin.png",
         "bgColor": "#999900",
-        "borderColor": "#FFFF00"
+        "borderColor": "#FFFF00",
+        "reward_type": "percent"
       },
       {
         "id": "sunnyFarms2",
@@ -157,7 +170,8 @@
         "reward": 10,
         "icon": "_energy2.png",
         "bgColor": "#00A300",
-        "borderColor": "#00FF00"
+        "borderColor": "#00FF00",
+        "reward_type": "flat"
       }
     ],
     "Prestiges": [
@@ -170,7 +184,8 @@
         "reward": 10,
         "icon": "_planet.png",
         "bgColor": "#6E00A2",
-        "borderColor": "#AF00FF"
+        "borderColor": "#AF00FF",
+        "reward_type": "percent"
       },
       {
         "id": "prestige2",
@@ -181,7 +196,8 @@
         "reward": 25,
         "icon": "_dps.png",
         "bgColor": "#960000",
-        "borderColor": "#FF0000"
+        "borderColor": "#FF0000",
+        "reward_type": "percent"
       },
       {
         "id": "prestige3",
@@ -192,7 +208,8 @@
         "reward": 50,
         "icon": "_coin.png",
         "bgColor": "#999900",
-        "borderColor": "#FFFF00"
+        "borderColor": "#FFFF00",
+        "reward_type": "percent"
       },
       {
         "id": "prestige4",
@@ -203,7 +220,8 @@
         "reward": 5,
         "icon": "_energy2.png",
         "bgColor": "#00A300",
-        "borderColor": "#00FF00"
+        "borderColor": "#00FF00",
+        "reward_type": "flat"
       }
     ],
     "Enemies Killed": [
@@ -216,7 +234,8 @@
         "reward": 10,
         "icon": "_coin.png",
         "bgColor": "#999900",
-        "borderColor": "#FFFF00"
+        "borderColor": "#FFFF00",
+        "reward_type": "percent"
       },
       {
         "id": "killsBosses",
@@ -227,7 +246,8 @@
         "reward": 15,
         "icon": "_dps.png",
         "bgColor": "#960000",
-        "borderColor": "#FF0000"
+        "borderColor": "#FF0000",
+        "reward_type": "percent"
       },
       {
         "id": "killsGoblins",
@@ -238,7 +258,8 @@
         "reward": 50,
         "icon": "_hoarderGold.png",
         "bgColor": "#878600",
-        "borderColor": "#DEDE00"
+        "borderColor": "#DEDE00",
+        "reward_type": "percent"
       },
       {
         "id": "killsPowerMages",
@@ -249,7 +270,8 @@
         "reward": 50,
         "icon": "_energy_2.png",
         "bgColor": "#008200",
-        "borderColor": "#00DE00"
+        "borderColor": "#00DE00",
+        "reward_type": "percent"
       },
       {
         "id": "killsTrainers",
@@ -260,7 +282,8 @@
         "reward": 25,
         "icon": "_trainerExp2.png",
         "bgColor": "#005987",
-        "borderColor": "#0096E1"
+        "borderColor": "#0096E1",
+        "reward_type": "percent"
       },
       {
         "id": "killsShadows",
@@ -271,7 +294,8 @@
         "reward": 1,
         "icon": "_rune2.png",
         "bgColor": "#770000",
-        "borderColor": "#C80000"
+        "borderColor": "#C80000",
+        "reward_type": "flat"
       },
       {
         "id": "killsAliens",
@@ -282,7 +306,8 @@
         "reward": 3,
         "icon": "_techPts.png",
         "bgColor": "#4A3B79",
-        "borderColor": "#7D64C8"
+        "borderColor": "#7D64C8",
+        "reward_type": "flat"
       },
       {
         "id": "killsUltimus",
@@ -293,7 +318,8 @@
         "reward": 25,
         "icon": "_token_2.png",
         "bgColor": "#1A1A9B",
-        "borderColor": "#3232FF"
+        "borderColor": "#3232FF",
+        "reward_type": "percent"
       }
     ],
     "Best Hero": [
@@ -306,7 +332,8 @@
         "reward": 10,
         "icon": "_planet.png",
         "bgColor": "#6E00A2",
-        "borderColor": "#AF00FF"
+        "borderColor": "#AF00FF",
+        "reward_type": "percent"
       },
       {
         "id": "heroRanks2",
@@ -317,7 +344,8 @@
         "reward": 25,
         "icon": "_coin.png",
         "bgColor": "#999900",
-        "borderColor": "#FFFF00"
+        "borderColor": "#FFFF00",
+        "reward_type": "percent"
       },
       {
         "id": "heroRanks3",
@@ -328,7 +356,8 @@
         "reward": 50,
         "icon": "_dps.png",
         "bgColor": "#960000",
-        "borderColor": "#FF0000"
+        "borderColor": "#FF0000",
+        "reward_type": "percent"
       },
       {
         "id": "heroRanks4",
@@ -339,7 +368,8 @@
         "reward": 75,
         "icon": "_planet.png",
         "bgColor": "#6E00A2",
-        "borderColor": "#AF00FF"
+        "borderColor": "#AF00FF",
+        "reward_type": "percent"
       },
       {
         "id": "heroRanks5",
@@ -350,7 +380,8 @@
         "reward": 100,
         "icon": "_coin.png",
         "bgColor": "#999900",
-        "borderColor": "#FFFF00"
+        "borderColor": "#FFFF00",
+        "reward_type": "percent"
       },
       {
         "id": "heroRanks6",
@@ -361,7 +392,8 @@
         "reward": 125,
         "icon": "_dps.png",
         "bgColor": "#960000",
-        "borderColor": "#FF0000"
+        "borderColor": "#FF0000",
+        "reward_type": "percent"
       }
     ],
     "All Heroes": [
@@ -374,7 +406,8 @@
         "reward": 25,
         "icon": "_dps.png",
         "bgColor": "#960000",
-        "borderColor": "#FF0000"
+        "borderColor": "#FF0000",
+        "reward_type": "percent"
       },
       {
         "id": "allRanks2",
@@ -385,7 +418,8 @@
         "reward": 50,
         "icon": "_coin.png",
         "bgColor": "#999900",
-        "borderColor": "#FFFF00"
+        "borderColor": "#FFFF00",
+        "reward_type": "percent"
       },
       {
         "id": "allRanks3",
@@ -396,7 +430,8 @@
         "reward": 75,
         "icon": "_dps.png",
         "bgColor": "#960000",
-        "borderColor": "#FF0000"
+        "borderColor": "#FF0000",
+        "reward_type": "percent"
       },
       {
         "id": "allRanks4",
@@ -407,7 +442,8 @@
         "reward": 100,
         "icon": "_coin.png",
         "bgColor": "#999900",
-        "borderColor": "#FFFF00"
+        "borderColor": "#FFFF00",
+        "reward_type": "percent"
       }
     ],
     "Super & Ultras": [
@@ -420,7 +456,8 @@
         "reward": 25,
         "icon": "_goldSuper.png",
         "bgColor": "#8E8D04",
-        "borderColor": "#E9E90C"
+        "borderColor": "#E9E90C",
+        "reward_type": "percent"
       },
       {
         "id": "goldProcs2",
@@ -431,7 +468,8 @@
         "reward": 50,
         "icon": "_goldUltra.png",
         "bgColor": "#848305",
-        "borderColor": "#DDDD10"
+        "borderColor": "#DDDD10",
+        "reward_type": "percent"
       },
       {
         "id": "exp1",
@@ -442,7 +480,8 @@
         "reward": 25,
         "icon": "_expSuper.png",
         "bgColor": "#0B5F8C",
-        "borderColor": "#199FE7"
+        "borderColor": "#199FE7",
+        "reward_type": "percent"
       },
       {
         "id": "exp2",
@@ -453,7 +492,8 @@
         "reward": 50,
         "icon": "_expUltra.png",
         "bgColor": "#00517F",
-        "borderColor": "#008DD9"
+        "borderColor": "#008DD9",
+        "reward_type": "percent"
       },
       {
         "id": "energy1",
@@ -464,7 +504,8 @@
         "reward": 25,
         "icon": "_energy_2.png",
         "bgColor": "#048B04",
-        "borderColor": "#0CE70C"
+        "borderColor": "#0CE70C",
+        "reward_type": "percent"
       },
       {
         "id": "energy2",
@@ -475,7 +516,8 @@
         "reward": 50,
         "icon": "_energyUltra.png",
         "bgColor": "#038003",
-        "borderColor": "#09D109"
+        "borderColor": "#09D109",
+        "reward_type": "percent"
       }
     ],
     "Achievements": [
@@ -488,7 +530,8 @@
         "reward": 3,
         "icon": "_exp.png",
         "bgColor": "#0A6899",
-        "borderColor": "#19AFFF"
+        "borderColor": "#19AFFF",
+        "reward_type": "flat"
       },
       {
         "id": "achievements2",
@@ -499,7 +542,8 @@
         "reward": 2,
         "icon": "_energy2.png",
         "bgColor": "#00A300",
-        "borderColor": "#00FF00"
+        "borderColor": "#00FF00",
+        "reward_type": "flat"
       },
       {
         "id": "achievements3",
@@ -510,7 +554,8 @@
         "reward": 100,
         "icon": "_coin.png",
         "bgColor": "#999900",
-        "borderColor": "#FFFF00"
+        "borderColor": "#FFFF00",
+        "reward_type": "percent"
       },
       {
         "id": "achievements4",
@@ -521,7 +566,8 @@
         "reward": 150,
         "icon": "_dps.png",
         "bgColor": "#960000",
-        "borderColor": "#FF0000"
+        "borderColor": "#FF0000",
+        "reward_type": "percent"
       }
     ]
   }

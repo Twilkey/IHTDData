@@ -15,7 +15,8 @@
         "reward": null,
         "rewardIcon": null,
         "rewardBgColor": null,
-        "rewardBorderColor": null
+        "rewardBorderColor": null,
+        "reward_type": null
       },
       {
         "id": "equipArrows",
@@ -27,7 +28,8 @@
         "reward": 10,
         "rewardIcon": "_dps.png",
         "rewardBgColor": "#960000",
-        "rewardBorderColor": "#FF0000"
+        "rewardBorderColor": "#FF0000",
+        "reward_type": "percent"
       },
       {
         "id": "coin1",
@@ -39,7 +41,8 @@
         "reward": 20,
         "rewardIcon": "_planet.png",
         "rewardBgColor": "#6E00A2",
-        "rewardBorderColor": "#AF00FF"
+        "rewardBorderColor": "#AF00FF",
+        "reward_type": "percent"
       },
       {
         "id": "equipBow",
@@ -51,7 +54,8 @@
         "reward": 20,
         "rewardIcon": "_dps.png",
         "rewardBgColor": "#960000",
-        "rewardBorderColor": "#FF0000"
+        "rewardBorderColor": "#FF0000",
+        "reward_type": "percent"
       },
       {
         "id": "coin2",
@@ -63,7 +67,8 @@
         "reward": 30,
         "rewardIcon": "_planet.png",
         "rewardBgColor": "#6E00A2",
-        "rewardBorderColor": "#AF00FF"
+        "rewardBorderColor": "#AF00FF",
+        "reward_type": "percent"
       },
       {
         "id": "equipAxe",
@@ -75,7 +80,8 @@
         "reward": 30,
         "rewardIcon": "_dps.png",
         "rewardBgColor": "#960000",
-        "rewardBorderColor": "#FF0000"
+        "rewardBorderColor": "#FF0000",
+        "reward_type": "percent"
       },
       {
         "id": "coin3",
@@ -87,7 +93,8 @@
         "reward": 40,
         "rewardIcon": "_planet.png",
         "rewardBgColor": "#6E00A2",
-        "rewardBorderColor": "#AF00FF"
+        "rewardBorderColor": "#AF00FF",
+        "reward_type": "percent"
       },
       {
         "id": "equipTorso",
@@ -99,7 +106,8 @@
         "reward": 40,
         "rewardIcon": "_dps.png",
         "rewardBgColor": "#960000",
-        "rewardBorderColor": "#FF0000"
+        "rewardBorderColor": "#FF0000",
+        "reward_type": "percent"
       },
       {
         "id": "coin4",
@@ -111,7 +119,8 @@
         "reward": 50,
         "rewardIcon": "_planet.png",
         "rewardBgColor": "#6E00A2",
-        "rewardBorderColor": "#AF00FF"
+        "rewardBorderColor": "#AF00FF",
+        "reward_type": "percent"
       },
       {
         "id": "equipHelm",
@@ -123,7 +132,8 @@
         "reward": 50,
         "rewardIcon": "_dps.png",
         "rewardBgColor": "#960000",
-        "rewardBorderColor": "#FF0000"
+        "rewardBorderColor": "#FF0000",
+        "reward_type": "percent"
       },
       {
         "id": "coin5",
@@ -135,7 +145,8 @@
         "reward": 75,
         "rewardIcon": "_planet.png",
         "rewardBgColor": "#6E00A2",
-        "rewardBorderColor": "#AF00FF"
+        "rewardBorderColor": "#AF00FF",
+        "reward_type": "percent"
       },
       {
         "id": "equipShield",
@@ -147,7 +158,8 @@
         "reward": 75,
         "rewardIcon": "_dps.png",
         "rewardBgColor": "#960000",
-        "rewardBorderColor": "#FF0000"
+        "rewardBorderColor": "#FF0000",
+        "reward_type": "percent"
       },
       {
         "id": "coin6",
@@ -159,7 +171,8 @@
         "reward": 100,
         "rewardIcon": "_planet.png",
         "rewardBgColor": "#6E00A2",
-        "rewardBorderColor": "#AF00FF"
+        "rewardBorderColor": "#AF00FF",
+        "reward_type": "percent"
       },
       {
         "id": "equipSword",
@@ -171,7 +184,8 @@
         "reward": 100,
         "rewardIcon": "_dps.png",
         "rewardBgColor": "#960000",
-        "rewardBorderColor": "#FF0000"
+        "rewardBorderColor": "#FF0000",
+        "reward_type": "percent"
       }
     ],
     "Energy": [
@@ -185,7 +199,8 @@
         "reward": 10,
         "rewardIcon": "_dps.png",
         "rewardBgColor": "#960000",
-        "rewardBorderColor": "#FF0000"
+        "rewardBorderColor": "#FF0000",
+        "reward_type": "percent"
       },
       {
         "id": "char2",
@@ -197,7 +212,8 @@
         "reward": 10,
         "rewardIcon": "_coin.png",
         "rewardBgColor": "#999900",
-        "rewardBorderColor": "#FFFF00"
+        "rewardBorderColor": "#FFFF00",
+        "reward_type": "percent"
       },
       {
         "id": "char4",
@@ -209,7 +225,8 @@
         "reward": 20,
         "rewardIcon": "_dps.png",
         "rewardBgColor": "#960000",
-        "rewardBorderColor": "#FF0000"
+        "rewardBorderColor": "#FF0000",
+        "reward_type": "percent"
       },
       {
         "id": "char5",
@@ -221,7 +238,8 @@
         "reward": 20,
         "rewardIcon": "_coin.png",
         "rewardBgColor": "#999900",
-        "rewardBorderColor": "#FFFF00"
+        "rewardBorderColor": "#FFFF00",
+        "reward_type": "percent"
       },
       {
         "id": "char6",
@@ -233,7 +251,8 @@
         "reward": 30,
         "rewardIcon": "_dps.png",
         "rewardBgColor": "#960000",
-        "rewardBorderColor": "#FF0000"
+        "rewardBorderColor": "#FF0000",
+        "reward_type": "percent"
       },
       {
         "id": "char7",
@@ -245,7 +264,8 @@
         "reward": 30,
         "rewardIcon": "_coin.png",
         "rewardBgColor": "#999900",
-        "rewardBorderColor": "#FFFF00"
+        "rewardBorderColor": "#FFFF00",
+        "reward_type": "percent"
       },
       {
         "id": "char8",
@@ -257,7 +277,8 @@
         "reward": 40,
         "rewardIcon": "_dps.png",
         "rewardBgColor": "#960000",
-        "rewardBorderColor": "#FF0000"
+        "rewardBorderColor": "#FF0000",
+        "reward_type": "percent"
       },
       {
         "id": "char9",
@@ -269,7 +290,8 @@
         "reward": 40,
         "rewardIcon": "_coin.png",
         "rewardBgColor": "#999900",
-        "rewardBorderColor": "#FFFF00"
+        "rewardBorderColor": "#FFFF00",
+        "reward_type": "percent"
       },
       {
         "id": "char10",
@@ -281,7 +303,8 @@
         "reward": 50,
         "rewardIcon": "_dps.png",
         "rewardBgColor": "#960000",
-        "rewardBorderColor": "#FF0000"
+        "rewardBorderColor": "#FF0000",
+        "reward_type": "percent"
       },
       {
         "id": "char11",
@@ -293,7 +316,8 @@
         "reward": 50,
         "rewardIcon": "_coin.png",
         "rewardBgColor": "#999900",
-        "rewardBorderColor": "#FFFF00"
+        "rewardBorderColor": "#FFFF00",
+        "reward_type": "percent"
       },
       {
         "id": "char12",
@@ -305,7 +329,8 @@
         "reward": 75,
         "rewardIcon": "_dps.png",
         "rewardBgColor": "#960000",
-        "rewardBorderColor": "#FF0000"
+        "rewardBorderColor": "#FF0000",
+        "reward_type": "percent"
       },
       {
         "id": "char14",
@@ -317,7 +342,8 @@
         "reward": 75,
         "rewardIcon": "_coin.png",
         "rewardBgColor": "#999900",
-        "rewardBorderColor": "#FFFF00"
+        "rewardBorderColor": "#FFFF00",
+        "reward_type": "percent"
       },
       {
         "id": "char15",
@@ -329,7 +355,8 @@
         "reward": 100,
         "rewardIcon": "_dps.png",
         "rewardBgColor": "#960000",
-        "rewardBorderColor": "#FF0000"
+        "rewardBorderColor": "#FF0000",
+        "reward_type": "percent"
       },
       {
         "id": "char16",
@@ -341,7 +368,8 @@
         "reward": 100,
         "rewardIcon": "_coin.png",
         "rewardBgColor": "#999900",
-        "rewardBorderColor": "#FFFF00"
+        "rewardBorderColor": "#FFFF00",
+        "reward_type": "percent"
       }
     ],
     "Gems": [
@@ -355,7 +383,8 @@
         "reward": 25,
         "rewardIcon": "_dps.png",
         "rewardBgColor": "#960000",
-        "rewardBorderColor": "#FF0000"
+        "rewardBorderColor": "#FF0000",
+        "reward_type": "percent"
       },
       {
         "id": "equipNecklace",
@@ -367,7 +396,8 @@
         "reward": 1,
         "rewardIcon": "_energy2.png",
         "rewardBgColor": "#00A300",
-        "rewardBorderColor": "#00FF00"
+        "rewardBorderColor": "#00FF00",
+        "reward_type": "flat"
       },
       {
         "id": "gems2",
@@ -379,7 +409,8 @@
         "reward": -10,
         "rewardIcon": "_enemyHp.png",
         "rewardBgColor": "#4C0000",
-        "rewardBorderColor": "#800000"
+        "rewardBorderColor": "#800000",
+        "reward_type": "percent"
       },
       {
         "id": "equipRing",
@@ -391,7 +422,8 @@
         "reward": 1,
         "rewardIcon": "_energy2.png",
         "rewardBgColor": "#00A300",
-        "rewardBorderColor": "#00FF00"
+        "rewardBorderColor": "#00FF00",
+        "reward_type": "flat"
       },
       {
         "id": "gems3",
@@ -403,7 +435,8 @@
         "reward": 3,
         "rewardIcon": "_skillPower_2.png",
         "rewardBgColor": "#009F9F",
-        "rewardBorderColor": "#00DEE0"
+        "rewardBorderColor": "#00DEE0",
+        "reward_type": "flat"
       },
       {
         "id": "gems9",
@@ -415,7 +448,8 @@
         "reward": 2,
         "rewardIcon": "_energy2.png",
         "rewardBgColor": "#00A300",
-        "rewardBorderColor": "#00FF00"
+        "rewardBorderColor": "#00FF00",
+        "reward_type": "flat"
       },
       {
         "id": "gems4",
@@ -427,7 +461,8 @@
         "reward": 3,
         "rewardIcon": "_techPts.png",
         "rewardBgColor": "#4A3B79",
-        "rewardBorderColor": "#7D64C8"
+        "rewardBorderColor": "#7D64C8",
+        "reward_type": "flat"
       },
       {
         "id": "gems10",
@@ -439,7 +474,8 @@
         "reward": 3,
         "rewardIcon": "_energy2.png",
         "rewardBgColor": "#00A300",
-        "rewardBorderColor": "#00FF00"
+        "rewardBorderColor": "#00FF00",
+        "reward_type": "flat"
       },
       {
         "id": "gems5",
@@ -451,7 +487,8 @@
         "reward": 25,
         "rewardIcon": "_trophy.png",
         "rewardBgColor": "#956E12",
-        "rewardBorderColor": "#F9BA26"
+        "rewardBorderColor": "#F9BA26",
+        "reward_type": "percent"
       },
       {
         "id": "gems11",
@@ -463,7 +500,8 @@
         "reward": 5,
         "rewardIcon": "_energy2.png",
         "rewardBgColor": "#00A300",
-        "rewardBorderColor": "#00FF00"
+        "rewardBorderColor": "#00FF00",
+        "reward_type": "flat"
       },
       {
         "id": "gems6",
@@ -475,7 +513,8 @@
         "reward": 10,
         "rewardIcon": "_chest1.png",
         "rewardBgColor": "#9F009F",
-        "rewardBorderColor": "#FF00FF"
+        "rewardBorderColor": "#FF00FF",
+        "reward_type": "percent"
       },
       {
         "id": "gems12",
@@ -487,7 +526,8 @@
         "reward": 10,
         "rewardIcon": "_energy2.png",
         "rewardBgColor": "#00A300",
-        "rewardBorderColor": "#00FF00"
+        "rewardBorderColor": "#00FF00",
+        "reward_type": "flat"
       }
     ],
     "Prestige Power": [
@@ -501,7 +541,8 @@
         "reward": 10,
         "rewardIcon": "_coin.png",
         "rewardBgColor": "#999900",
-        "rewardBorderColor": "#FFFF00"
+        "rewardBorderColor": "#FFFF00",
+        "reward_type": "percent"
       },
       {
         "id": "flag1",
@@ -513,7 +554,8 @@
         "reward": 2,
         "rewardIcon": "_exp.png",
         "rewardBgColor": "#0A6899",
-        "rewardBorderColor": "#19AFFF"
+        "rewardBorderColor": "#19AFFF",
+        "reward_type": "flat"
       },
       {
         "id": "key1",
@@ -525,7 +567,8 @@
         "reward": 20,
         "rewardIcon": "_coin.png",
         "rewardBgColor": "#999900",
-        "rewardBorderColor": "#FFFF00"
+        "rewardBorderColor": "#FFFF00",
+        "reward_type": "percent"
       },
       {
         "id": "flag2",
@@ -537,7 +580,8 @@
         "reward": 5,
         "rewardIcon": "_exp.png",
         "rewardBgColor": "#0A6899",
-        "rewardBorderColor": "#19AFFF"
+        "rewardBorderColor": "#19AFFF",
+        "reward_type": "flat"
       },
       {
         "id": "door2",
@@ -549,7 +593,8 @@
         "reward": 30,
         "rewardIcon": "_coin.png",
         "rewardBgColor": "#999900",
-        "rewardBorderColor": "#FFFF00"
+        "rewardBorderColor": "#FFFF00",
+        "reward_type": "percent"
       },
       {
         "id": "flag3",
@@ -561,7 +606,8 @@
         "reward": 10,
         "rewardIcon": "_exp.png",
         "rewardBgColor": "#0A6899",
-        "rewardBorderColor": "#19AFFF"
+        "rewardBorderColor": "#19AFFF",
+        "reward_type": "flat"
       },
       {
         "id": "key2",
@@ -573,7 +619,8 @@
         "reward": 40,
         "rewardIcon": "_coin.png",
         "rewardBgColor": "#999900",
-        "rewardBorderColor": "#FFFF00"
+        "rewardBorderColor": "#FFFF00",
+        "reward_type": "percent"
       },
       {
         "id": "flag4",
@@ -585,7 +632,8 @@
         "reward": 25,
         "rewardIcon": "_exp.png",
         "rewardBgColor": "#0A6899",
-        "rewardBorderColor": "#19AFFF"
+        "rewardBorderColor": "#19AFFF",
+        "reward_type": "flat"
       },
       {
         "id": "door3",
@@ -597,7 +645,8 @@
         "reward": 50,
         "rewardIcon": "_coin.png",
         "rewardBgColor": "#999900",
-        "rewardBorderColor": "#FFFF00"
+        "rewardBorderColor": "#FFFF00",
+        "reward_type": "percent"
       },
       {
         "id": "flagSword",
@@ -609,7 +658,8 @@
         "reward": 100,
         "rewardIcon": "_exp.png",
         "rewardBgColor": "#0A6899",
-        "rewardBorderColor": "#19AFFF"
+        "rewardBorderColor": "#19AFFF",
+        "reward_type": "flat"
       },
       {
         "id": "key3",
@@ -621,7 +671,8 @@
         "reward": 75,
         "rewardIcon": "_coin.png",
         "rewardBgColor": "#999900",
-        "rewardBorderColor": "#FFFF00"
+        "rewardBorderColor": "#FFFF00",
+        "reward_type": "percent"
       },
       {
         "id": "flag5",
@@ -633,7 +684,8 @@
         "reward": 1,
         "rewardIcon": "_exp.png",
         "rewardBgColor": "#0A6899",
-        "rewardBorderColor": "#19AFFF"
+        "rewardBorderColor": "#19AFFF",
+        "reward_type": "percent"
       },
       {
         "id": "door4",
@@ -645,7 +697,8 @@
         "reward": 100,
         "rewardIcon": "_coin.png",
         "rewardBgColor": "#999900",
-        "rewardBorderColor": "#FFFF00"
+        "rewardBorderColor": "#FFFF00",
+        "reward_type": "percent"
       },
       {
         "id": "tower2",
@@ -657,7 +710,8 @@
         "reward": 2,
         "rewardIcon": "_exp.png",
         "rewardBgColor": "#0A6899",
-        "rewardBorderColor": "#19AFFF"
+        "rewardBorderColor": "#19AFFF",
+        "reward_type": "percent"
       }
     ],
     "Technology": [
@@ -671,7 +725,8 @@
         "reward": 10,
         "rewardIcon": "_coin.png",
         "rewardBgColor": "#999900",
-        "rewardBorderColor": "#FFFF00"
+        "rewardBorderColor": "#FFFF00",
+        "reward_type": "percent"
       },
       {
         "id": "helm2",
@@ -683,7 +738,8 @@
         "reward": 10,
         "rewardIcon": "_hoarderGold.png",
         "rewardBgColor": "#878600",
-        "rewardBorderColor": "#DEDE00"
+        "rewardBorderColor": "#DEDE00",
+        "reward_type": "percent"
       },
       {
         "id": "scroll1",
@@ -695,7 +751,8 @@
         "reward": 20,
         "rewardIcon": "_coin.png",
         "rewardBgColor": "#999900",
-        "rewardBorderColor": "#FFFF00"
+        "rewardBorderColor": "#FFFF00",
+        "reward_type": "percent"
       },
       {
         "id": "tech5",
@@ -707,7 +764,8 @@
         "reward": -10,
         "rewardIcon": "_skillCd.png",
         "rewardBgColor": "#7C7B7C",
-        "rewardBorderColor": "#C8C8C8"
+        "rewardBorderColor": "#C8C8C8",
+        "reward_type": "percent"
       },
       {
         "id": "tech1",
@@ -719,7 +777,8 @@
         "reward": 30,
         "rewardIcon": "_coin.png",
         "rewardBgColor": "#999900",
-        "rewardBorderColor": "#FFFF00"
+        "rewardBorderColor": "#FFFF00",
+        "reward_type": "percent"
       },
       {
         "id": "helm4",
@@ -731,7 +790,8 @@
         "reward": 15,
         "rewardIcon": "_energy_2.png",
         "rewardBgColor": "#008200",
-        "rewardBorderColor": "#00DE00"
+        "rewardBorderColor": "#00DE00",
+        "reward_type": "percent"
       },
       {
         "id": "Icon_Bomb_Bomb",
@@ -743,7 +803,8 @@
         "reward": 40,
         "rewardIcon": "_coin.png",
         "rewardBgColor": "#999900",
-        "rewardBorderColor": "#FFFF00"
+        "rewardBorderColor": "#FFFF00",
+        "reward_type": "percent"
       },
       {
         "id": "potion2",
@@ -755,7 +816,8 @@
         "reward": -10,
         "rewardIcon": "_skillCd.png",
         "rewardBgColor": "#7C7B7C",
-        "rewardBorderColor": "#C8C8C8"
+        "rewardBorderColor": "#C8C8C8",
+        "reward_type": "percent"
       },
       {
         "id": "tech3",
@@ -767,7 +829,8 @@
         "reward": 50,
         "rewardIcon": "_coin.png",
         "rewardBgColor": "#999900",
-        "rewardBorderColor": "#FFFF00"
+        "rewardBorderColor": "#FFFF00",
+        "reward_type": "percent"
       },
       {
         "id": "helm3",
@@ -779,7 +842,8 @@
         "reward": 15,
         "rewardIcon": "_trainerExp2.png",
         "rewardBgColor": "#005987",
-        "rewardBorderColor": "#0096E1"
+        "rewardBorderColor": "#0096E1",
+        "reward_type": "percent"
       },
       {
         "id": "icon_dyno",
@@ -791,7 +855,8 @@
         "reward": 75,
         "rewardIcon": "_coin.png",
         "rewardBgColor": "#999900",
-        "rewardBorderColor": "#FFFF00"
+        "rewardBorderColor": "#FFFF00",
+        "reward_type": "percent"
       },
       {
         "id": "potion3",
@@ -803,7 +868,8 @@
         "reward": 50,
         "rewardIcon": "_rune.png",
         "rewardBgColor": "#473875",
-        "rewardBorderColor": "#7D64C8"
+        "rewardBorderColor": "#7D64C8",
+        "reward_type": "percent"
       },
       {
         "id": "tech2",
@@ -815,7 +881,8 @@
         "reward": 100,
         "rewardIcon": "_coin.png",
         "rewardBgColor": "#999900",
-        "rewardBorderColor": "#FFFF00"
+        "rewardBorderColor": "#FFFF00",
+        "reward_type": "percent"
       },
       {
         "id": "icon_eye",
@@ -827,7 +894,8 @@
         "reward": 25,
         "rewardIcon": "_token_2.png",
         "rewardBgColor": "#1A1A9B",
-        "rewardBorderColor": "#3232FF"
+        "rewardBorderColor": "#3232FF",
+        "reward_type": "percent"
       }
     ],
     "Tournament": [
@@ -841,7 +909,8 @@
         "reward": 25,
         "rewardIcon": "_dps.png",
         "rewardBgColor": "#960000",
-        "rewardBorderColor": "#FF0000"
+        "rewardBorderColor": "#FF0000",
+        "reward_type": "percent"
       },
       {
         "id": "tourn2",
@@ -853,7 +922,8 @@
         "reward": 1,
         "rewardIcon": "_boss.png",
         "rewardBgColor": "#868500",
-        "rewardBorderColor": "#DEDE00"
+        "rewardBorderColor": "#DEDE00",
+        "reward_type": "flat"
       },
       {
         "id": "tourn4",
@@ -865,7 +935,8 @@
         "reward": 50,
         "rewardIcon": "_dps.png",
         "rewardBgColor": "#960000",
-        "rewardBorderColor": "#FF0000"
+        "rewardBorderColor": "#FF0000",
+        "reward_type": "percent"
       },
       {
         "id": "tourn3",
@@ -877,7 +948,8 @@
         "reward": 2,
         "rewardIcon": "_boss.png",
         "rewardBgColor": "#691A1A",
-        "rewardBorderColor": "#AF3232"
+        "rewardBorderColor": "#AF3232",
+        "reward_type": "flat"
       },
       {
         "id": "tourn8",
@@ -889,7 +961,8 @@
         "reward": 75,
         "rewardIcon": "_dps.png",
         "rewardBgColor": "#960000",
-        "rewardBorderColor": "#FF0000"
+        "rewardBorderColor": "#FF0000",
+        "reward_type": "percent"
       },
       {
         "id": "tourn5",
@@ -901,7 +974,8 @@
         "reward": 10,
         "rewardIcon": "_skillDuration.png",
         "rewardBgColor": "#9F009F",
-        "rewardBorderColor": "#FF00FF"
+        "rewardBorderColor": "#FF00FF",
+        "reward_type": "flat"
       },
       {
         "id": "tourn6",
@@ -913,7 +987,8 @@
         "reward": 100,
         "rewardIcon": "_dps.png",
         "rewardBgColor": "#960000",
-        "rewardBorderColor": "#FF0000"
+        "rewardBorderColor": "#FF0000",
+        "reward_type": "percent"
       },
       {
         "id": "tourn7",
@@ -925,7 +1000,8 @@
         "reward": 250,
         "rewardIcon": "_coin.png",
         "rewardBgColor": "#999900",
-        "rewardBorderColor": "#FFFF00"
+        "rewardBorderColor": "#FFFF00",
+        "reward_type": "percent"
       }
     ]
   }

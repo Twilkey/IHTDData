@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 
 import {
   getHeroMasteryExpCost,
@@ -8,6 +8,13 @@ import {
   writeHeroLoadoutState,
 } from "../../lib/heroLoadout";
 import { LOADOUT_RECORD_SCOPE_HERO } from "../../lib/loadoutScope";
+import {
+  buildHeroSearchIndex as buildSharedHeroSearchIndex,
+  filterHeroes,
+  getHeroSubtypeOptions,
+  HeroFiltersPanel,
+  useHeroFilters,
+} from "./HeroFiltersPanel";
 import { ScopedLoadoutPresetsPanel } from "./ScopedLoadoutPresetsPanel";
 
 const RARITY_SORT_ORDER = ["Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic", "Supreme", "Ascended"];
@@ -20,6 +27,7 @@ const HERO_DETAIL_TABS = [
   { id: "rankAttributes", label: "Rank & Attributes" },
   { id: "synergies", label: "Synergies" },
 ];
+const SYNERGY_TIER_ORDER = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
 const FILTER_TABS = [
   { id: "search", label: "Search" },
   { id: "identity", label: "Identity" },
@@ -428,61 +436,98 @@ function AttributeCard({ attribute, currentLevel, previewLevels, colors, fmt, ge
   );
 
   return (
-    <div style={{ background: `linear-gradient(180deg, ${colors.header} 0%, ${colors.panel} 100%)`, border: `1px solid ${colors.border}`, borderRadius: 14, padding: 14, display: "grid", gap: 12, boxShadow: "0 10px 24px rgba(0,0,0,0.18)" }}>
-      <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-        <div style={{ width: 56, height: 56, borderRadius: 12, background: attribute.bgColor ?? colors.panel, border: `2px solid ${attribute.borderColor ?? colors.border}`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
-          {attribute.icon ? <img src={getIconUrl(attribute.icon)} alt="" style={{ width: 36, height: 36, objectFit: "contain" }} /> : null}
+    <div style={{ background: `linear-gradient(180deg, ${colors.header} 0%, ${colors.panel} 100%)`, border: `1px solid ${colors.border}`, borderRadius: 14, padding: 12, display: "grid", gridTemplateColumns: "78px minmax(0, 1fr)", gap: 12, alignItems: "start", boxShadow: "0 8px 20px rgba(0,0,0,0.18)" }}>
+      <div style={{ display: "grid", gap: 8, justifyItems: "center" }}>
+        <div style={{ width: 56, height: 56, borderRadius: 12, background: attribute.bgColor ?? "rgba(8,17,29,0.72)", border: `2px solid ${attribute.borderColor ?? colors.border}`, padding: 7, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+          {attribute.icon ? <img src={getIconUrl(attribute.icon)} alt="" style={{ width: 38, height: 38, objectFit: "contain" }} /> : null}
         </div>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ fontSize: 16, fontWeight: 800, color: colors.text }}>{attribute.name}</div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
-            <span style={{ fontSize: 12, color: colors.muted }}>{formatLabel(attribute.scope)}</span>
-            <span style={{ fontSize: 12, color: colors.muted }}>Rank {fmt(attribute.rankReq ?? 0)}+</span>
-            <span style={{ fontSize: 12, color: colors.accent }}>{formatAttributeValue(attribute, attribute.statAmt ?? 0, fmt)} / level</span>
-          </div>
-        </div>
-        <label style={{ display: "grid", gap: 4, minWidth: 108 }}>
-          <span style={{ fontSize: 11, color: colors.muted, letterSpacing: "0.06em", textTransform: "uppercase" }}>Current Level</span>
-          <input
-            type="number"
-            min={0}
-            max={attribute.maxLevel ?? Number.MAX_SAFE_INTEGER}
-            value={currentLevel}
-            onChange={(event) => onLevelChange(event.target.value)}
-            style={{
-              width: "100%",
-              background: "#0f2640",
-              border: `1px solid ${colors.border}`,
-              borderRadius: 8,
-              color: colors.text,
-              fontSize: 14,
-              fontWeight: 700,
-              padding: "8px 10px",
-              fontFamily: "inherit",
-            }}
-          />
-        </label>
+        <div style={{ fontSize: 11, color: colors.muted, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" }}>Level</div>
+        <input
+          type="number"
+          min={0}
+          max={attribute.maxLevel ?? Number.MAX_SAFE_INTEGER}
+          value={currentLevel}
+          onChange={(event) => onLevelChange(event.target.value)}
+          style={{ width: 64, background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 8, color: colors.text, fontSize: 13, fontWeight: 700, padding: "6px 8px", fontFamily: "inherit", textAlign: "center" }}
+        />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
+      <div style={{ minWidth: 0, display: "grid", gap: 6 }}>
         <div style={{ display: "grid", gap: 4 }}>
-          <div style={{ fontSize: 11, color: colors.muted, letterSpacing: "0.06em", textTransform: "uppercase" }}>Current Bonus</div>
-            <div style={{ fontSize: 14, fontWeight: 800, color: colors.positive }}>{formatAttributeValue(attribute, preview.currentValue, fmt)}</div>
+          <div style={{ fontSize: 15, fontWeight: 900, color: colors.text, minWidth: 0 }}>
+            {attribute.name} <span style={{ color: colors.muted, fontWeight: 700 }}>(Lv. {fmt(currentLevel)})</span>
+          </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <span style={{ fontSize: 12, color: colors.muted }}>{formatLabel(attribute.scope)}</span>
+            <span style={{ fontSize: 12, color: colors.muted }}>Rank {fmt(attribute.rankReq ?? 0)}+</span>
+            <span style={{ fontSize: 12, color: colors.accent, fontWeight: 800 }}>{formatAttributeValue(attribute, attribute.statAmt ?? 0, fmt)} / level</span>
+          </div>
         </div>
-        <div style={{ display: "grid", gap: 4 }}>
-          <div style={{ fontSize: 11, color: colors.muted, letterSpacing: "0.06em", textTransform: "uppercase" }}>Projected Level</div>
-          <div style={{ fontSize: 14, fontWeight: 800, color: colors.accent }}>{fmt(preview.currentLevel)} -&gt; {fmt(preview.projectedLevel)}</div>
+
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <span style={{ fontSize: 14, fontWeight: 800, color: colors.text }}>{formatAttributeValue(attribute, preview.currentValue, fmt)}</span>
+          {preview.projectedLevel > preview.currentLevel ? <span style={{ fontSize: 13, fontWeight: 800, color: colors.positive }}>{formatAttributeValue(attribute, preview.projectedValue - preview.currentValue, fmt)}</span> : null}
         </div>
+
         <div style={{ display: "grid", gap: 4 }}>
-          <div style={{ fontSize: 11, color: colors.muted, letterSpacing: "0.06em", textTransform: "uppercase" }}>Projected Bonus</div>
-            <div style={{ fontSize: 14, fontWeight: 800, color: colors.positive }}>{formatAttributeValue(attribute, preview.projectedValue, fmt)}</div>
-        </div>
-        <div style={{ display: "grid", gap: 4 }}>
-          <div style={{ fontSize: 11, color: colors.muted, letterSpacing: "0.06em", textTransform: "uppercase" }}>Preview Cost</div>
-          <div style={{ fontSize: 14, fontWeight: 800, color: colors.gold }}>{fmt(preview.previewCost)}</div>
+          <span style={{ fontSize: 12, color: colors.muted }}>Max {fmt(attribute.maxLevel ?? 0)}</span>
+          <span style={{ fontSize: 12, color: colors.muted }}>Cost {fmt(preview.previewCost)}</span>
         </div>
       </div>
     </div>
+  );
+}
+
+function SwitchToggle({ checked, onChange, colors, checkedLabel, uncheckedLabel }) {
+  const label = checked ? checkedLabel : uncheckedLabel;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      style={{
+        background: colors.header,
+        border: `1px solid ${checked ? colors.accent : colors.border}`,
+        borderRadius: 999,
+        color: colors.text,
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        minHeight: 40,
+        padding: "6px 12px 6px 8px",
+        fontFamily: "inherit",
+        fontWeight: 800,
+      }}
+    >
+      <span
+        aria-hidden="true"
+        style={{
+          width: 38,
+          height: 22,
+          borderRadius: 999,
+          background: checked ? colors.accent : "#0f2640",
+          border: `1px solid ${checked ? colors.accent : colors.border}`,
+          position: "relative",
+          transition: "background 120ms ease",
+          flexShrink: 0,
+        }}
+      >
+        <span
+          style={{
+            position: "absolute",
+            top: 2,
+            left: checked ? 18 : 2,
+            width: 16,
+            height: 16,
+            borderRadius: "50%",
+            background: checked ? "#08111d" : colors.text,
+            transition: "left 120ms ease",
+          }}
+        />
+      </span>
+      <span style={{ fontSize: 13 }}>{label}</span>
+    </button>
   );
 }
 
@@ -508,6 +553,97 @@ function HeaderFieldCard({ label, value, colors, helper, valueColor, min = 0, ma
   );
 }
 
+function getSynergyTierSortValue(tier) {
+  const index = SYNERGY_TIER_ORDER.indexOf(String(tier ?? "").toUpperCase());
+  return index === -1 ? SYNERGY_TIER_ORDER.length : index;
+}
+
+function buildSynergyTeamIds(ownerHeroId, synergy) {
+  return [...new Set([ownerHeroId, synergy.hero1, synergy.hero2, synergy.hero3].filter(Boolean))];
+}
+
+function buildSynergyTeamKey({ ownerHeroId, synergy }) {
+  const tier = String(synergy.tier ?? "?").toUpperCase();
+  const rankRequired = synergy.rankRequired ?? 0;
+  const teamIds = buildSynergyTeamIds(ownerHeroId, synergy).sort();
+
+  return `${tier}::${rankRequired}::${teamIds.join("|")}`;
+}
+
+function SynergyHeroBadge({ hero, rank, isFocused, colors, getIconUrl, fmt }) {
+  return (
+    <div style={{ position: "relative", width: 86, paddingBottom: 18, display: "flex", justifyContent: "center" }}>
+      <div style={{ position: "relative", width: 72, height: 72, borderRadius: 16, background: isFocused ? "rgba(230, 190, 86, 0.28)" : colors.header, border: `1px solid ${isFocused ? "rgba(230, 190, 86, 0.75)" : colors.border}`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", boxShadow: isFocused ? "0 0 0 2px rgba(230, 190, 86, 0.22)" : "none" }}>
+        {hero?.heroIcon ? <img src={getIconUrl(hero.heroIcon)} alt={hero.name} style={{ width: 56, height: 56, objectFit: "contain" }} /> : null}
+        <div style={{ position: "absolute", top: 6, left: 6, minWidth: 24, height: 24, padding: "0 6px", borderRadius: 999, background: "rgba(8,17,29,0.92)", border: `1px solid ${isFocused ? "rgba(230, 190, 86, 0.75)" : colors.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900, color: colors.text }}>
+          {fmt(rank)}
+        </div>
+      </div>
+      <div style={{ position: "absolute", left: "50%", bottom: 0, transform: "translateX(-50%)", minWidth: "max-content", maxWidth: 120, borderRadius: 999, padding: "4px 10px", background: isFocused ? "rgba(230, 190, 86, 0.88)" : "rgba(8,17,29,0.94)", border: `1px solid ${isFocused ? "rgba(230, 190, 86, 0.9)" : colors.border}`, fontSize: 11, fontWeight: 800, color: isFocused ? "#2b2107" : colors.text, whiteSpace: "normal", lineHeight: 1.2, textAlign: "center" }}>
+        {hero?.name ?? "Unknown"}
+      </div>
+    </div>
+  );
+}
+
+function SynergyHeroDescription({ hero, heroSynergy, rank, isFocused, colors, getIconUrl, fmt }) {
+  const scopeColor = heroSynergy?.scope === "personal" ? "#f5921e" : heroSynergy?.scope ? colors.positive : colors.muted;
+
+  return (
+    <div className="hero-synergy-lane">
+      <SynergyHeroBadge hero={hero} rank={rank} isFocused={isFocused} colors={colors} getIconUrl={getIconUrl} fmt={fmt} />
+      <img src={getIconUrl("_arrowDown.png")} alt="down arrow" style={{ width: 20, height: 20, objectFit: "contain", opacity: 0.85 }} />
+      <div style={{ width: "100%", background: isFocused ? "rgba(230, 190, 86, 0.16)" : colors.header, border: `1px solid ${isFocused ? "rgba(230, 190, 86, 0.45)" : colors.border}`, borderRadius: 12, padding: 12, display: "grid", gap: 8, alignContent: "start", textAlign: "center" }}>
+        <div style={{ fontSize: 13, fontWeight: 800, color: colors.text, lineHeight: 1.6 }}>
+          {heroSynergy?.description ?? "No synergy description available."}
+        </div>
+        {heroSynergy?.scope ? (
+          <div style={{ fontSize: 12, fontWeight: 900, color: scopeColor, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+            {formatLabel(heroSynergy.scope)}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function SynergyTeamCard({ synergyTeam, selectedHeroId, heroesById, rankByHero, colors, getIconUrl, fmt }) {
+  const teamHeroIds = synergyTeam.teamHeroIds;
+  const isActive = teamHeroIds.every((heroId) => (rankByHero[heroId] ?? 0) >= (synergyTeam.rankRequired ?? 0));
+  const teamSize = teamHeroIds.length;
+  const gridColumns = teamHeroIds.flatMap((_, index) => (
+    index < teamHeroIds.length - 1
+      ? ["minmax(0, 1fr)", "20px"]
+      : ["minmax(0, 1fr)"]
+  )).join(" ");
+  const flexGrow = Math.max(1, teamSize);
+  const flexBasis = Math.max(320, 180 + (teamSize * 120));
+
+  return (
+    <div style={{ flex: `${flexGrow} 1 ${flexBasis}px`, minWidth: 320, maxWidth: "100%", background: isActive ? "rgba(46,204,113,0.10)" : colors.header, border: `1px solid ${isActive ? colors.positive : colors.border}`, borderRadius: 16, padding: 14 }}>
+      <div className="hero-synergy-team" style={{ "--hero-synergy-columns": gridColumns }}>
+        {teamHeroIds.map((heroId, index) => {
+          const teamHero = heroesById[heroId] ?? null;
+          const currentRank = rankByHero[heroId] ?? 0;
+          const isFocused = heroId === selectedHeroId;
+          const heroSynergy = synergyTeam.heroEntries.find((entry) => entry.heroId === heroId)?.synergy ?? null;
+
+          return (
+            <Fragment key={`${synergyTeam.key}-${heroId}`}>
+              <SynergyHeroDescription hero={teamHero} heroSynergy={heroSynergy} rank={currentRank} isFocused={isFocused} colors={colors} getIconUrl={getIconUrl} fmt={fmt} />
+              {index < teamHeroIds.length - 1 ? (
+                <div className="hero-synergy-plus">
+                  <img src={getIconUrl("_plus.png")} alt="+" style={{ width: 18, height: 18, objectFit: "contain", opacity: 0.9, flexShrink: 0 }} />
+                </div>
+              ) : null}
+            </Fragment>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts = [], currentSavedLoadoutId = "", onLoadSave, onDeleteSave, onImportComplete, saveButton }) {
   const initialState = useMemo(() => readHeroLoadoutState(localStorage), []);
   const [selectedHeroId, setSelectedHeroId] = useState(initialState.selectedHeroId);
@@ -518,28 +654,11 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts
   const [masteryLevelByHero, setMasteryLevelByHero] = useState(initialState.masteryLevelByHero);
   const [attributeLevelsByHero, setAttributeLevelsByHero] = useState(initialState.attributeLevelsByHero);
   const [activeHeroTab, setActiveHeroTab] = useState("information");
-  const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
-  const [activeFilterTab, setActiveFilterTab] = useState("search");
-  const [activeFilterSubtabs, setActiveFilterSubtabs] = useState(DEFAULT_FILTER_SUBTABS);
   const heroPresets = useMemo(
     () => savedLoadouts.filter((save) => save.scopeId === LOADOUT_RECORD_SCOPE_HERO),
     [savedLoadouts]
   );
-  const [searchValue, setSearchValue] = useState("");
-  const [searchScopes, setSearchScopes] = useState({
-    name: true,
-    skills: true,
-    mastery: true,
-    milestones: true,
-    synergies: true,
-  });
-  const [sortMode, setSortMode] = useState("order");
-  const [classFilters, setClassFilters] = useState([]);
-  const [rarityFilters, setRarityFilters] = useState([]);
-  const [typeFilters, setTypeFilters] = useState([]);
-  const [subtypeFilters, setSubtypeFilters] = useState([]);
-  const [milestoneTypeFilters, setMilestoneTypeFilters] = useState([]);
-  const [synergyTypeFilters, setSynergyTypeFilters] = useState([]);
+  const heroFilters = useHeroFilters();
 
   useEffect(() => {
     writeHeroLoadoutState({
@@ -555,7 +674,7 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts
 
   const heroesById = useMemo(() => Object.fromEntries(heroes.map((hero) => [hero.id, hero])), [heroes]);
   const heroSearchIndex = useMemo(
-    () => Object.fromEntries(heroes.map((hero) => [hero.id, buildHeroSearchIndex(hero)])),
+    () => Object.fromEntries(heroes.map((hero) => [hero.id, buildSharedHeroSearchIndex(hero)])),
     [heroes]
   );
   const classOptions = useMemo(() => [...new Set(heroes.map((hero) => hero.class).filter(Boolean))], [heroes]);
@@ -569,56 +688,28 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts
     () => [...new Set(heroes.flatMap((hero) => (hero.synergies ?? []).map((synergy) => synergy.type)).filter(Boolean))],
     [heroes]
   );
-  const subtypeOptions = useMemo(() => {
-    const relevantTypes = typeFilters.filter((type) => type === "buff" || type === "debuff");
-    if (!relevantTypes.length) {
-      return [];
-    }
-
-    return [...new Set(
-      heroes
-        .filter((hero) => relevantTypes.includes(hero.type))
-        .flatMap((hero) => hero.typeSubtype ?? [])
-        .filter(Boolean)
-    )];
-  }, [heroes, typeFilters]);
+  const subtypeOptions = useMemo(() => getHeroSubtypeOptions(heroes, heroFilters.typeFilters), [heroes, heroFilters.typeFilters]);
 
   const sortedHeroes = useMemo(() => {
-    const normalizedQuery = searchValue.trim().toLowerCase();
-    const searchTerms = searchValue
-      .trim()
-      .toLowerCase()
-      .split(/\s+/)
-      .filter(Boolean);
-    const enabledSearchScopes = getEnabledSearchScopes(searchScopes);
-    const shouldRestrictToExactNameMatches = searchScopes.name && Object.entries(searchScopes).every(([scope, isEnabled]) => (scope === "name" ? isEnabled : !isEnabled));
-    const exactNameMatches = shouldRestrictToExactNameMatches && normalizedQuery
-      ? new Set(
-        heroes
-          .filter((hero) => {
-            const normalizedName = normalizeText(hero.name);
-            const normalizedId = normalizeText(hero.id);
-            return normalizedName === normalizedQuery || normalizedId === normalizedQuery;
-          })
-          .map((hero) => hero.id)
-      )
-      : null;
-
-    const nextHeroes = heroes.filter((hero) => {
-      const matchesSearch = !searchTerms.length || searchTerms.every((term) => enabledSearchScopes.some((scope) => heroSearchIndex[hero.id]?.[scope]?.includes(term)));
-      const matchesExactName = !exactNameMatches?.size || exactNameMatches.has(hero.id);
-      const matchesClass = !classFilters.length || classFilters.includes(hero.class);
-      const matchesRarity = !rarityFilters.length || rarityFilters.includes(hero.rarity);
-      const matchesType = !typeFilters.length || typeFilters.includes(hero.type);
-      const matchesSubtype = !subtypeFilters.length || (hero.typeSubtype ?? []).some((subtype) => subtypeFilters.includes(subtype));
-      const matchesMilestones = !milestoneTypeFilters.length || (hero.milestones ?? []).some((milestone) => milestoneTypeFilters.includes(milestone.type));
-      const matchesSynergies = !synergyTypeFilters.length || (hero.synergies ?? []).some((synergy) => synergyTypeFilters.includes(synergy.type));
-
-      return matchesSearch && matchesExactName && matchesClass && matchesRarity && matchesType && matchesSubtype && matchesMilestones && matchesSynergies;
+    return filterHeroes({
+      heroes,
+      heroSearchIndex,
+      filters: heroFilters,
+      sortHeroes,
     });
-
-    return sortHeroes(nextHeroes, sortMode);
-  }, [classFilters, heroSearchIndex, heroes, milestoneTypeFilters, rarityFilters, searchScopes, searchValue, sortMode, subtypeFilters, synergyTypeFilters, typeFilters]);
+  }, [
+    heroFilters.classFilters,
+    heroFilters.milestoneTypeFilters,
+    heroFilters.rarityFilters,
+    heroFilters.searchScopes,
+    heroFilters.searchValue,
+    heroFilters.sortMode,
+    heroFilters.subtypeFilters,
+    heroFilters.synergyTypeFilters,
+    heroFilters.typeFilters,
+    heroSearchIndex,
+    heroes,
+  ]);
 
   const groupedHeroes = useMemo(() => {
     const rarityGroups = RARITY_SORT_ORDER
@@ -644,20 +735,6 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts
     }
   }, [selectedHeroId, sortedHeroes]);
 
-  useEffect(() => {
-    const hasSubtypeType = typeFilters.some((type) => type === "buff" || type === "debuff");
-    if (!hasSubtypeType && subtypeFilters.length) {
-      setSubtypeFilters([]);
-    }
-  }, [subtypeFilters, typeFilters]);
-
-  useEffect(() => {
-    const supportsSubtype = typeFilters.some((type) => type === "buff" || type === "debuff");
-    if (!supportsSubtype && activeFilterSubtabs.effects === "subtype") {
-      setActiveFilterSubtabs((current) => ({ ...current, effects: "type" }));
-    }
-  }, [activeFilterSubtabs.effects, typeFilters]);
-
   const selectedHero = sortedHeroes.find((hero) => hero.id === selectedHeroId) ?? sortedHeroes[0] ?? null;
   const activePreviewLevels = selectedHero ? (previewLevelsByHero[selectedHero.id] ?? 1) : 1;
   const hideMaxed = selectedHero ? (hideMaxedByHero[selectedHero.id] ?? false) : false;
@@ -665,25 +742,44 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts
   const selectedHeroLevel = selectedHero ? (levelByHero[selectedHero.id] ?? 0) : 0;
   const selectedHeroMasteryLevel = selectedHero ? (masteryLevelByHero[selectedHero.id] ?? 0) : 0;
   const activeAttributeLevels = selectedHero ? (attributeLevelsByHero[selectedHero.id] ?? {}) : {};
-  const effectSubtabs = typeFilters.some((type) => type === "buff" || type === "debuff")
-    ? FILTER_SUBTABS.effects
-    : FILTER_SUBTABS.effects.filter((subtab) => subtab.id !== "subtype");
-  const visibleSubtabs = activeFilterTab === "effects" ? effectSubtabs : FILTER_SUBTABS[activeFilterTab];
-  const activeSubtab = activeFilterSubtabs[activeFilterTab] ?? DEFAULT_FILTER_SUBTABS[activeFilterTab];
   const visibleGroups = useMemo(() => ATTRIBUTE_GROUPS.map((group) => ({
     ...group,
     attributes: HERO_ATTRIBUTE_DEFINITIONS
       .filter((attribute) => attribute.groupKey === group.key)
       .filter((attribute) => !hideMaxed || (activeAttributeLevels[attribute.id] ?? 0) < (attribute.maxLevel ?? Number.MAX_SAFE_INTEGER)),
   })), [activeAttributeLevels, hideMaxed]);
+  const synergiesByTier = useMemo(() => {
+    const groups = new Map();
 
-  const milestoneProgress = useMemo(() => {
-    const milestones = selectedHero?.milestones ?? [];
-    return {
-      completed: milestones.filter((milestone) => selectedHeroLevel >= (milestone.requirement ?? 0)).length,
-      next: milestones.find((milestone) => selectedHeroLevel < (milestone.requirement ?? 0)) ?? null,
-    };
-  }, [selectedHero, selectedHeroLevel]);
+    (selectedHero?.synergies ?? []).forEach((synergy) => {
+      const tierKey = String(synergy.tier ?? "?").toUpperCase();
+      const teamKey = buildSynergyTeamKey({ ownerHeroId: selectedHero.id, synergy });
+      const teamHeroIds = buildSynergyTeamIds(selectedHero.id, synergy);
+      const current = groups.get(tierKey) ?? { tier: tierKey, rankRequired: synergy.rankRequired ?? 0, synergies: [] };
+
+      if (!current.synergies.some((entry) => entry.key === teamKey)) {
+        current.synergies.push({
+          key: teamKey,
+          rankRequired: synergy.rankRequired ?? 0,
+          teamHeroIds,
+          heroEntries: teamHeroIds.map((heroId) => {
+            const matchedHeroSynergy = (heroesById[heroId]?.synergies ?? []).find((candidate) => (
+              buildSynergyTeamKey({ ownerHeroId: heroId, synergy: candidate }) === teamKey
+            ));
+
+            return {
+              heroId,
+              synergy: matchedHeroSynergy ?? (heroId === selectedHero.id ? synergy : null),
+            };
+          }),
+        });
+      }
+
+      groups.set(tierKey, current);
+    });
+
+    return Array.from(groups.values()).sort((left, right) => getSynergyTierSortValue(left.tier) - getSynergyTierSortValue(right.tier));
+  }, [heroesById, selectedHero]);
 
   const nextMasteryLevel = selectedHero
     ? Math.min((selectedHero.masteryExp?.maxLevel ?? 0), selectedHeroMasteryLevel + 1)
@@ -784,30 +880,11 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts
     });
   }
 
-  function resetFilters() {
-    setSearchValue("");
-    setSearchScopes({
-      name: true,
-      skills: true,
-      mastery: true,
-      milestones: true,
-      synergies: true,
-    });
-    setSortMode("order");
-    setClassFilters([]);
-    setRarityFilters([]);
-    setTypeFilters([]);
-    setSubtypeFilters([]);
-    setMilestoneTypeFilters([]);
-    setSynergyTypeFilters([]);
-  }
-
   return (
     <div style={{ display: "grid", gap: 20 }}>
       <div style={{ background: `linear-gradient(180deg, ${colors.header} 0%, ${colors.panel} 100%)`, border: `1px solid ${colors.border}`, borderRadius: 16, padding: 18, display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 22, fontWeight: 900, color: colors.text }}>Hero Loadout</div>
-          <div style={{ fontSize: 13, color: colors.muted, marginTop: 4 }}>Configure hero-wide rank, level, mastery, and attribute levels shared by every copy of the same hero.</div>
         </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <ScopedLoadoutPresetsPanel
@@ -840,97 +917,25 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts
               {saveButton.label}
             </button>
           ) : null}
-          <button type="button" onClick={() => setIsFiltersExpanded((current) => !current)} style={{ background: isFiltersExpanded ? "rgba(68,136,238,0.16)" : colors.header, color: colors.text, border: `1px solid ${isFiltersExpanded ? colors.accent : colors.border}`, borderRadius: 10, padding: "10px 14px", fontWeight: 800, cursor: "pointer", minHeight: 44 }}>
+          <button type="button" onClick={() => heroFilters.setIsFiltersExpanded((current) => !current)} style={{ background: heroFilters.isFiltersExpanded ? "rgba(68,136,238,0.16)" : colors.header, color: colors.text, border: `1px solid ${heroFilters.isFiltersExpanded ? colors.accent : colors.border}`, borderRadius: 10, padding: "10px 14px", fontWeight: 800, cursor: "pointer", minHeight: 44 }}>
             Filters
           </button>
         </div>
       </div>
 
-      {isFiltersExpanded && (
-        <div style={{ display: "grid", gap: 14, background: colors.panel, border: `1px solid ${colors.border}`, borderRadius: 14, padding: 14 }}>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            {FILTER_TABS.map((tab) => (
-              <FilterTabButton key={tab.id} active={activeFilterTab === tab.id} label={tab.label} onClick={() => setActiveFilterTab(tab.id)} colors={colors} />
-            ))}
-          </div>
-
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {visibleSubtabs.map((subtab) => (
-              <FilterSubTabButton
-                key={subtab.id}
-                active={activeSubtab === subtab.id}
-                label={subtab.label}
-                onClick={() => setActiveFilterSubtabs((current) => ({ ...current, [activeFilterTab]: subtab.id }))}
-                colors={colors}
-              />
-            ))}
-          </div>
-
-          {activeFilterTab === "search" && activeSubtab === "query" && (
-            <div style={{ display: "grid", gap: 12 }}>
-              <label style={{ color: colors.muted, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Search Heroes</label>
-              <input value={searchValue} onChange={(event) => setSearchValue(event.target.value)} placeholder="Search names, skills, mastery, milestones, synergies" style={{ background: "#0f2640", border: `1px solid ${colors.border}`, color: colors.text, borderRadius: 10, padding: "10px 12px", font: "inherit" }} />
-              <div style={{ display: "grid", gap: 8 }}>
-                <div style={{ color: colors.muted, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Search In</div>
-                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                  {SEARCH_SCOPE_OPTIONS.map((option) => (
-                    <label key={option.id} style={{ display: "flex", alignItems: "center", gap: 6, color: colors.text, fontSize: 12 }}>
-                      <input type="checkbox" checked={searchScopes[option.id]} onChange={() => setSearchScopes((current) => ({ ...current, [option.id]: !current[option.id] }))} />
-                      {option.label}
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeFilterTab === "search" && activeSubtab === "state" && (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
-              <div style={{ display: "grid", gap: 8 }}>
-                <label style={{ color: colors.muted, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Sort</label>
-                <select value={sortMode} onChange={(event) => setSortMode(event.target.value)} style={{ background: "#0f2640", border: `1px solid ${colors.border}`, color: colors.text, borderRadius: 10, padding: "10px 12px", font: "inherit" }}>
-                  <option value="order">Default Order</option>
-                  <option value="name">Name</option>
-                  <option value="class">Class</option>
-                  <option value="rarity">Rarity</option>
-                  <option value="type">Hero Type</option>
-                </select>
-              </div>
-            </div>
-          )}
-
-          {activeFilterTab === "identity" && activeSubtab === "class" && (
-            <FilterChipGroup title="Class" options={classOptions} selected={classFilters} onToggle={(value) => setClassFilters((current) => toggleSelection(current, value))} colors={colors} />
-          )}
-
-          {activeFilterTab === "identity" && activeSubtab === "rarity" && (
-            <FilterChipGroup title="Rarity" options={rarityOptions} selected={rarityFilters} onToggle={(value) => setRarityFilters((current) => toggleSelection(current, value))} colors={colors} />
-          )}
-
-          {activeFilterTab === "effects" && activeSubtab === "type" && (
-            <FilterChipGroup title="Hero Type" options={typeOptions} selected={typeFilters} onToggle={(value) => setTypeFilters((current) => toggleSelection(current, value))} colors={colors} />
-          )}
-
-          {activeFilterTab === "effects" && activeSubtab === "subtype" && (
-            <FilterChipGroup title="Buff / Debuff Subtype" options={subtypeOptions} selected={subtypeFilters} onToggle={(value) => setSubtypeFilters((current) => toggleSelection(current, value))} colors={colors} emptyLabel="Choose buff or debuff in the Type sub tab to unlock subtype filters." />
-          )}
-
-          {activeFilterTab === "progression" && activeSubtab === "milestones" && (
-            <FilterChipGroup title="Milestone Bonus Type" options={milestoneTypeOptions} selected={milestoneTypeFilters} onToggle={(value) => setMilestoneTypeFilters((current) => toggleSelection(current, value))} colors={colors} />
-          )}
-
-          {activeFilterTab === "progression" && activeSubtab === "synergies" && (
-            <FilterChipGroup title="Synergy Bonus Type" options={synergyTypeOptions} selected={synergyTypeFilters} onToggle={(value) => setSynergyTypeFilters((current) => toggleSelection(current, value))} colors={colors} />
-          )}
-
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-            <div style={{ color: colors.muted, fontSize: 12 }}>
-              Filters update the hero list in the sidebar and which hero is available to inspect.
-            </div>
-            <button type="button" onClick={resetFilters} style={{ background: colors.header, color: colors.text, border: `1px solid ${colors.border}`, borderRadius: 10, padding: "8px 12px", fontWeight: 700, cursor: "pointer" }}>Reset Filters</button>
-          </div>
-        </div>
-      )}
+      <HeroFiltersPanel
+        colors={colors}
+        filters={heroFilters}
+        resultsCount={sortedHeroes.length}
+        totalCount={heroes.length}
+        classOptions={classOptions}
+        rarityOptions={rarityOptions}
+        typeOptions={typeOptions}
+        subtypeOptions={subtypeOptions}
+        milestoneTypeOptions={milestoneTypeOptions}
+        synergyTypeOptions={synergyTypeOptions}
+        helperText="Filters update the hero list in the sidebar and which hero is available to inspect."
+      />
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 20, alignItems: "flex-start" }}>
         <aside style={{ flex: "0 0 300px", width: "100%", maxWidth: 340, display: "grid", gap: 14, alignSelf: "flex-start" }}>
@@ -999,20 +1004,6 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts
                     <div style={{ fontSize: 13, color: colors.muted, marginTop: 4 }}>{formatLabel(selectedHero.class)} · {selectedHero.rarity} · {formatLabel(selectedHero.type)}</div>
                   </div>
                 </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
-                  {[
-                    { label: "Hero", value: selectedHero.name },
-                    { label: "Class", value: formatLabel(selectedHero.class) },
-                    { label: "Rarity", value: selectedHero.rarity },
-                    { label: "Type", value: formatLabel(selectedHero.type) },
-                  ].map((item) => (
-                    <div key={item.label} style={{ background: colors.header, border: `1px solid ${colors.border}`, borderRadius: 12, padding: 14, display: "grid", gap: 6, minWidth: 0 }}>
-                      <div style={{ fontSize: 11, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 800 }}>{item.label}</div>
-                      <div style={{ fontSize: 15, fontWeight: 800, color: colors.text, minWidth: 0 }}>{item.value}</div>
-                    </div>
-                  ))}
-                </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(0, 1fr))", gap: 12 }}>
                   <HeaderFieldCard
                     label="Current Rank"
@@ -1037,13 +1028,6 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts
                     disabled={!selectedHero.masteryExp}
                     colors={colors}
                     helper={selectedHero.masteryExp ? `Max ${fmt(selectedHero.masteryLevel?.maxLevel ?? selectedHero.masteryExp?.maxLevel ?? 0)}` : "Mastery is unavailable for this hero."}
-                  />
-                  <HeaderFieldCard
-                    label="Next Mastery Cost"
-                    value={selectedHero.masteryExp ? (selectedHeroMasteryLevel >= (selectedHero.masteryExp.maxLevel ?? 0) ? "Maxed" : `${fmt(nextMasteryCost)} exp`) : "Unavailable"}
-                    valueColor={colors.accent}
-                    colors={colors}
-                    helper={selectedHero.masteryExp ? (selectedHeroMasteryLevel >= (selectedHero.masteryExp.maxLevel ?? 0) ? "Mastery is fully maxed." : `Next level ${fmt(nextMasteryLevel)}`) : "No mastery table is available."}
                   />
                 </div>
               </div>
@@ -1190,36 +1174,13 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts
               {activeHeroTab === "rankAttributes" && (
                 <div style={{ display: "grid", gap: 16 }}>
                   <div style={{ background: colors.panel, border: `1px solid ${colors.border}`, borderRadius: 16, padding: 16, display: "grid", gap: 16 }}>
-                    <div>
-                      <div style={{ fontSize: 18, fontWeight: 900, color: colors.text }}>Progress</div>
-                      <div style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>Adjust rank, level, and mastery from the hero header. This section keeps the milestone progress view focused.</div>
-                    </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
-                      <div style={{ background: colors.header, border: `1px solid ${colors.border}`, borderRadius: 12, padding: 14, display: "grid", gap: 8 }}>
-                        <div style={{ fontSize: 11, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 800 }}>Milestones Reached</div>
-                        <div style={{ fontSize: 18, fontWeight: 900, color: colors.text }}>{fmt(milestoneProgress.completed)} / {fmt(selectedHero.milestones?.length ?? 0)}</div>
-                      </div>
-                      <div style={{ background: colors.header, border: `1px solid ${colors.border}`, borderRadius: 12, padding: 14, display: "grid", gap: 8 }}>
-                        <div style={{ fontSize: 11, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 800 }}>Next Milestone</div>
-                        <div style={{ fontSize: 16, fontWeight: 900, color: colors.accent }}>{milestoneProgress.next ? `Level ${fmt(milestoneProgress.next.requirement)}` : "Completed"}</div>
-                        <div style={{ fontSize: 12, color: colors.muted }}>{milestoneProgress.next ? getHeroEffectLabel(milestoneProgress.next.type) : "All milestones unlocked"}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={{ background: colors.panel, border: `1px solid ${colors.border}`, borderRadius: 16, padding: 16, display: "grid", gap: 16 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
                       <div>
                         <div style={{ fontSize: 18, fontWeight: 900, color: colors.text }}>Attributes</div>
-                        <div style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>Preview future costs and set the shared attribute levels for this hero.</div>
                       </div>
                       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-                        <label style={{ display: "flex", alignItems: "center", gap: 8, color: colors.text, fontSize: 13, fontWeight: 700 }}>
-                          <input type="checkbox" checked={hideMaxed} onChange={(event) => handleHideMaxedChange(event.target.checked)} />
-                          Hide Maxed Attributes
-                        </label>
                         <label style={{ display: "grid", gap: 6, minWidth: 180 }}>
-                          <span style={{ fontSize: 11, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase" }}>Preview Additional Levels</span>
+                          <span style={{ fontSize: 11, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase" }}>Additional Levels</span>
                           <input
                             type="number"
                             min={1}
@@ -1228,9 +1189,17 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts
                             style={{ background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 10, color: colors.text, fontSize: 14, fontWeight: 700, padding: "10px 12px", fontFamily: "inherit" }}
                           />
                         </label>
+                        <SwitchToggle
+                          checked={hideMaxed}
+                          onChange={handleHideMaxedChange}
+                          colors={colors}
+                          checkedLabel="Hide Maxed"
+                          uncheckedLabel="Hide Maxed"
+                        />
                       </div>
                     </div>
 
+                    <div style={{ display: "grid", gap: 16 }}>
                     {visibleGroups.map((group) => (
                       <div key={group.key} style={{ display: "grid", gap: 14 }}>
                         <div style={{ background: `linear-gradient(180deg, ${colors.panel} 0%, ${colors.header} 100%)`, border: `1px solid ${colors.border}`, borderRadius: 14, padding: 14, display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
@@ -1241,7 +1210,7 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts
                           <div style={{ fontSize: 12, color: colors.muted }}>{group.attributes.length} attributes</div>
                         </div>
                         {group.attributes.length ? (
-                          <div style={{ display: "grid", gap: 14 }}>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
                             {group.attributes.map((attribute) => (
                               <AttributeCard
                                 key={attribute.id}
@@ -1262,6 +1231,7 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts
                         )}
                       </div>
                     ))}
+                    </div>
                   </div>
                 </div>
               )}
@@ -1270,62 +1240,35 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts
                 <div style={{ background: colors.panel, border: `1px solid ${colors.border}`, borderRadius: 16, padding: 16, display: "grid", gap: 16 }}>
                   <div>
                     <div style={{ fontSize: 18, fontWeight: 900, color: colors.text }}>Synergies</div>
-                    <div style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>Each path shows its tier, the rank requirement for every team member, and the stat bonus it grants.</div>
                   </div>
 
                   {(selectedHero.synergies ?? []).length ? (
                     <div style={{ display: "grid", gap: 14 }}>
-                      {(selectedHero.synergies ?? []).map((synergy) => {
-                        const teamHeroIds = [selectedHero.id, synergy.hero1, synergy.hero2, synergy.hero3].filter(Boolean);
-                        const uniqueTeamHeroIds = [...new Set(teamHeroIds)];
-                        const isActive = uniqueTeamHeroIds.every((heroId) => (rankByHero[heroId] ?? 0) >= (synergy.rankRequired ?? 0));
-
-                        return (
-                          <div key={synergy.synergyLevel} style={{ background: isActive ? "rgba(46,204,113,0.10)" : colors.header, border: `1px solid ${isActive ? colors.positive : colors.border}`, borderRadius: 14, padding: 14, display: "grid", gap: 14 }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "start", flexWrap: "wrap" }}>
-                              <div>
-                                <div style={{ fontSize: 11, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 800 }}>Tier {synergy.tier} · Path {synergy.synergyLevel}</div>
-                                <div style={{ fontSize: 18, fontWeight: 900, color: colors.text, marginTop: 4 }}>{synergy.name}</div>
-                                <div style={{ fontSize: 12, color: colors.muted, marginTop: 6 }}>Required rank for all heroes: {fmt(synergy.rankRequired ?? 0)}</div>
-                              </div>
-                              <div style={{ background: isActive ? "rgba(46,204,113,0.18)" : colors.panel, border: `1px solid ${isActive ? colors.positive : colors.border}`, borderRadius: 999, padding: "6px 10px", fontSize: 11, fontWeight: 800, color: isActive ? colors.positive : colors.muted }}>{isActive ? "Active" : "Inactive"}</div>
-                            </div>
-
-                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
-                              {uniqueTeamHeroIds.map((heroId) => {
-                                const teamHero = heroesById[heroId];
-                                const currentRank = rankByHero[heroId] ?? 0;
-                                const meetsRank = currentRank >= (synergy.rankRequired ?? 0);
-                                return (
-                                  <div key={heroId} style={{ background: colors.panel, border: `1px solid ${meetsRank ? colors.positive : colors.border}`, borderRadius: 12, padding: 12, display: "flex", gap: 10, alignItems: "center" }}>
-                                    <div style={{ width: 44, height: 44, borderRadius: 10, background: colors.header, border: `1px solid ${colors.border}`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
-                                      {teamHero?.heroIcon ? <img src={getIconUrl(teamHero.heroIcon)} alt={teamHero.name} style={{ width: 30, height: 30, objectFit: "contain" }} /> : null}
-                                    </div>
-                                    <div style={{ minWidth: 0, flex: 1 }}>
-                                      <div style={{ fontSize: 13, fontWeight: 800, color: colors.text }}>{teamHero?.name ?? formatLabel(heroId)}</div>
-                                      <div style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>Current Rank {fmt(currentRank)}</div>
-                                      <div style={{ fontSize: 11, color: meetsRank ? colors.positive : colors.accent, marginTop: 2 }}>{meetsRank ? "Requirement met" : `Needs ${fmt(Math.max((synergy.rankRequired ?? 0) - currentRank, 0))} more rank`}</div>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-
-                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
-                              <div style={{ background: colors.panel, border: `1px solid ${colors.border}`, borderRadius: 12, padding: 14, display: "grid", gap: 6 }}>
-                                <div style={{ fontSize: 11, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 800 }}>Stat Increase</div>
-                                <div style={{ fontSize: 16, fontWeight: 900, color: colors.text }}>{getHeroEffectLabel(synergy.type)}</div>
-                                <div style={{ fontSize: 12, color: colors.accent, fontWeight: 800 }}>{formatHeroEffectAmount(synergy.type, synergy.amount, fmt)}</div>
-                              </div>
-                              <div style={{ background: colors.panel, border: `1px solid ${colors.border}`, borderRadius: 12, padding: 14, display: "grid", gap: 6 }}>
-                                <div style={{ fontSize: 11, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 800 }}>Scope</div>
-                                <div style={{ fontSize: 16, fontWeight: 900, color: colors.text }}>{formatLabel(synergy.scope)}</div>
-                                <div style={{ fontSize: 12, color: colors.muted }}>{synergy.description}</div>
-                              </div>
+                      {synergiesByTier.map((tierGroup) => (
+                        <div key={`tier-${tierGroup.tier}`} style={{ display: "grid", gap: 12 }}>
+                          <div style={{ background: `linear-gradient(180deg, ${colors.panel} 0%, ${colors.header} 100%)`, border: `1px solid ${colors.border}`, borderRadius: 14, padding: 14, display: "grid", gap: 6 }}>
+                            <div style={{ fontSize: 16, fontWeight: 900, color: colors.text }}>Tier {tierGroup.tier}</div>
+                            <div style={{ fontSize: 12, color: colors.muted, lineHeight: 1.6 }}>
+                              The following heroes must be Rank {fmt(tierGroup.rankRequired ?? 0)}+ to activate these synergies.
                             </div>
                           </div>
-                        );
-                      })}
+
+                          <div style={{ display: "flex", gap: 12, width: "100%", flexWrap: "wrap", alignItems: "stretch" }}>
+                            {tierGroup.synergies.map((synergyTeam) => (
+                              <SynergyTeamCard
+                                key={synergyTeam.key}
+                                synergyTeam={synergyTeam}
+                                selectedHeroId={selectedHero.id}
+                                heroesById={heroesById}
+                                rankByHero={rankByHero}
+                                colors={colors}
+                                getIconUrl={getIconUrl}
+                                fmt={fmt}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   ) : (
                     <div style={{ background: colors.header, border: `1px solid ${colors.border}`, borderRadius: 12, padding: 14, fontSize: 13, color: colors.muted }}>No synergy paths are available for this hero.</div>

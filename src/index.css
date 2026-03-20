@@ -70,6 +70,65 @@ body { margin: 0; padding: 0; }
   .card-grid { grid-template-columns: 1fr; }
 }
 
+.spell-loadout-layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  align-items: start;
+}
+
+.spell-loadout-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.hero-synergy-team {
+  display: grid;
+  grid-template-columns: var(--hero-synergy-columns);
+  gap: 12px 8px;
+  width: 100%;
+  align-items: start;
+}
+
+.hero-synergy-lane {
+  min-width: 108px;
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  align-content: start;
+}
+
+.hero-synergy-plus {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  min-width: 0;
+  padding-top: 28px;
+}
+
+@media (max-width: 980px) {
+  .spell-loadout-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .hero-synergy-team {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hero-synergy-plus {
+    display: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .spell-loadout-card-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* Hero grid — 3 col desktop, 1 col mobile */
 .hero-grid {
   display: grid;
