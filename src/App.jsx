@@ -4821,12 +4821,11 @@ function Sidebar({ activeKey, onSelect, isOpen, onClose, navGroups }) {
 // MAIN APP
 // ─────────────────────────────────────────────
 export default function App() {
-  const [activeKey,    setActiveKey]    = useState(
-    () => {
-      const storedActiveKey = localStorage.getItem("activeKey") ?? "home";
-      return storedActiveKey === "loadoutBuilder" ? "loadoutBuilderPlacement" : storedActiveKey;
-    }
-  );
+  const [activeKey,    setActiveKey]    = useState(() => {
+    const hash = window.location.hash.slice(1);
+    const initialKey = hash || localStorage.getItem("activeKey") || "home";
+    return initialKey === "loadoutBuilder" ? "loadoutBuilderPlacement" : initialKey;
+  });
   const [modalItem,    setModalItem]    = useState(null);
   const [modalFormula, setModalFormula] = useState(null);
   const [drawerOpen,   setDrawerOpen]   = useState(false);
@@ -5009,6 +5008,24 @@ export default function App() {
     setCurrentSavedLoadoutSelections(getCurrentSavedLoadoutSelections(localStorage));
   }
 
+  function navigate(key) {
+    setActiveKey(key);
+    localStorage.setItem("activeKey", key);
+    history.pushState({ key }, "", `#${key}`);
+  }
+
+  useEffect(() => {
+    function onPopState(e) {
+      const key = e.state?.key ?? window.location.hash.slice(1) ?? "home";
+      setActiveKey(key);
+      localStorage.setItem("activeKey", key);
+    }
+    window.addEventListener("popstate", onPopState);
+    // Seed the initial history entry so back works from first page
+    history.replaceState({ key: activeKey }, "", `#${activeKey}`);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   function handleNotation(val) {
     setNotation(val);
     localStorage.setItem("notation", val);
@@ -5166,7 +5183,7 @@ export default function App() {
             ☰
           </button>
         )}
-        <div className="app-header-shell__brand" onClick={() => { setActiveKey("home"); localStorage.setItem("activeKey", "home"); }}>
+  <div className="app-header-shell__brand" style={{ padding: "14px 0" }} onClick={() => navigate("home")}>
           <div style={{ fontSize: 17, fontWeight: 900, color: colors.accent, letterSpacing: "0.06em", textTransform: "uppercase", textShadow: "0 0 12px rgba(245,146,30,0.4)" }}>Idle Hero TD</div>
           <div style={{ fontSize: 11, color: colors.muted, marginTop: 1, letterSpacing: "0.04em" }}>Game Data Reference · v15.04</div>
         </div>
@@ -5244,7 +5261,7 @@ export default function App() {
 
         <Sidebar
           activeKey={activeKey}
-          onSelect={key => { setActiveKey(key); localStorage.setItem("activeKey", key); }}
+          onSelect={key => navigate(key)}
           isOpen={drawerOpen}
           onClose={() => setDrawerOpen(false)}
           navGroups={visibleNavGroups}
