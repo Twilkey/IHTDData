@@ -91,19 +91,6 @@ function CategoryTabButton({ label, isActive, colors, onSelect }) {
   );
 }
 
-function getGroupBucket(groupName) {
-  return /supreme/i.test(groupName) ? "supreme" : "normal";
-}
-
-function getDisplayedGroups(groupBuckets, bucketKey) {
-  const groups = groupBuckets[bucketKey] ?? [];
-  if (groups.length) {
-    return groups;
-  }
-
-  return bucketKey === "supreme" ? (groupBuckets.normal ?? []) : (groupBuckets.supreme ?? []);
-}
-
 function formatCostSummary(preview, fmt) {
   if (preview.levelsToBuy <= 0) {
     return "No additional cost";
@@ -254,19 +241,9 @@ export function StatsLoadoutPage({ colors, getIconUrl, fmt, savedLoadouts = [], 
   const activeLevels = levelsByTab[activeTab.key] ?? {};
   const hideMaxed = hideMaxedByTab[activeTab.key] ?? false;
   const activeGroups = Object.entries(activeTab.data.groups);
-  const activeGroupBuckets = activeGroups.reduce(
-    (buckets, entry) => {
-      buckets[getGroupBucket(entry[0])].push(entry);
-      return buckets;
-    },
-    { normal: [], supreme: [] }
-  );
   const activeGroupName = selectedGroupByTab[activeTab.key] && activeTab.data.groups[selectedGroupByTab[activeTab.key]]
     ? selectedGroupByTab[activeTab.key]
     : activeGroups[0]?.[0] ?? "";
-  const activeParentGroup = getGroupBucket(activeGroupName);
-  const visibleGroups = getDisplayedGroups(activeGroupBuckets, activeParentGroup);
-  const shouldShowParentGroups = activeGroupBuckets.normal.length > 0 && activeGroupBuckets.supreme.length > 0;
   const activeGroupItems = (activeTab.data.groups[activeGroupName] ?? []).filter((item) => !hideMaxed || (activeLevels[item.id] ?? 0) < (item.maxLevel ?? 999999));
   const statsPresets = useMemo(
     () => savedLoadouts.filter((save) => save.scopeId === LOADOUT_RECORD_SCOPE_STATS),
@@ -291,15 +268,6 @@ export function StatsLoadoutPage({ colors, getIconUrl, fmt, savedLoadouts = [], 
       ...current,
       [activeTab.key]: groupName,
     }));
-  }
-
-  function handleParentGroupChange(bucketKey) {
-    const nextGroupName = getDisplayedGroups(activeGroupBuckets, bucketKey)[0]?.[0];
-    if (!nextGroupName) {
-      return;
-    }
-
-    handleGroupChange(nextGroupName);
   }
 
   function handlePreviewChange(rawValue) {
@@ -416,23 +384,7 @@ export function StatsLoadoutPage({ colors, getIconUrl, fmt, savedLoadouts = [], 
         <section style={{ flex: "1 1 760px", minWidth: 0, display: "grid", gap: 16, width: "100%" }}>
           <div style={{ background: `linear-gradient(180deg, ${colors.header} 0%, ${colors.panel} 100%)`, border: `1px solid ${colors.border}`, borderRadius: 16, padding: 14, display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              {shouldShowParentGroups ? (
-                <>
-                  <CategoryTabButton
-                    label="Normal"
-                    isActive={activeParentGroup === "normal"}
-                    colors={colors}
-                    onSelect={() => handleParentGroupChange("normal")}
-                  />
-                  <CategoryTabButton
-                    label="Supreme"
-                    isActive={activeParentGroup === "supreme"}
-                    colors={colors}
-                    onSelect={() => handleParentGroupChange("supreme")}
-                  />
-                </>
-              ) : null}
-              {visibleGroups.map(([groupName]) => (
+              {activeGroups.map(([groupName]) => (
                 <CategoryTabButton
                   key={groupName}
                   label={groupName}

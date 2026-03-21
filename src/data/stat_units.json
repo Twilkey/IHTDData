@@ -45,12 +45,12 @@
     "negate": true
   },
   "skill_cooldown": {
-    "unit": "s",
+    "unit": "%",
     "label": "Skill Cooldown",
     "negate": true
   },
   "spell_cooldown": {
-    "unit": "s",
+    "unit": "%",
     "label": "Spell Cooldown",
     "negate": true
   },
@@ -368,5 +368,254 @@
   "auto_upgrade_times": {
     "unit": "%",
     "label": "Auto Upgrade Times"
+  },
+  "mimic_gold": {
+    "unit": "%",
+    "label": "Mimic Gold"
+  },
+  "mimic_prestige_power": {
+    "unit": "%",
+    "label": "Mimic Prestige Power"
+  },
+  "freeze": {
+    "unit": "%",
+    "label": "Freeze"
+  },
+  "precision": {
+    "unit": "%",
+    "label": "Precision"
+  },
+  "accelerate": {
+    "unit": "%",
+    "label": "Accelerate",
+    "negate": true
+  },
+  "enchanted": {
+    "unit": "%",
+    "label": "Enchanted"
+  },
+  "rags_to_riches": {
+    "unit": "%",
+    "label": "Rags To Riches"
+  },
+  "trainee": {
+    "unit": "%",
+    "label": "Trainee"
+  },
+  "time_warp": {
+    "unit": "%",
+    "label": "Time Warp"
+  },
+  "power_plant": {
+    "unit": "%",
+    "label": "Power Plant"
+  },
+  "goblin_hoarder_spawns": {
+    "unit": "count",
+    "label": "Goblin Hoarder Spawns"
+  },
+  "power_mage_spawns": {
+    "unit": "count",
+    "label": "Power Mage Spawns"
+  },
+  "map_perks": {
+    "unit": "%",
+    "label": "Map Perks"
+  },
+  "wave_perk_effect": {
+    "unit": "%",
+    "label": "Wave Perk Effect"
+  },
+  "active_play_reward": {
+    "unit": "%",
+    "label": "Active Play Reward"
+  },
+  "ultra_exp_chance": {
+    "unit": "%",
+    "label": "Ultra Exp Chance"
+  },
+  "ultra_gold_chance": {
+    "unit": "%",
+    "label": "Ultra Gold Chance"
+  },
+  "ultra_energy_chance": {
+    "unit": "%",
+    "label": "Ultra Energy Chance"
+  },
+  "weekly_tickets": {
+    "unit": "count",
+    "label": "Weekly Tickets"
+  },
+  "ultimus_tokens": {
+    "unit": "count",
+    "label": "Ultimus Tokens"
+  },
+  "active_play_duration": {
+    "unit": "min",
+    "label": "Active Play Duration"
+  },
+  "mastery_skill_power": {
+    "unit": "%",
+    "label": "Mastery Skill Power"
+  },
+  "ad_ultra_gold_amount": {
+    "unit": "%",
+    "label": "Ad Ultra Gold Amount"
+  },
+  "ad_ultra_gold_chance": {
+    "unit": "%",
+    "label": "Ad Ultra Gold Chance"
+  },
+  "2x_tech_chance": {
+    "unit": "%",
+    "label": "2X Tech Chance"
+  },
+  "golden_goblin_chance": {
+    "unit": "%",
+    "label": "Golden Goblin Chance"
+  },
+  "golden_mage_chance": {
+    "unit": "%",
+    "label": "Golden Mage Chance"
+  },
+  "wave_perk_rerolls": {
+    "unit": "count",
+    "label": "Wave Perk Rerolls"
+  },
+  "supreme_shadow_chance": {
+    "unit": "%",
+    "label": "Supreme Shadow Chance"
+  },
+  "damage_i_bonus": {
+    "unit": "%",
+    "label": "Damage I Bonus"
+  },
+  "kill_gold_i_bonus": {
+    "unit": "%",
+    "label": "Kill Gold I Bonus"
+  },
+  "boss_gold_max": {
+    "unit": "%",
+    "label": "Boss Gold Max"
+  },
+  "enemy_shield_reduction": {
+    "unit": "%",
+    "label": "Enemy Shield Reduction"
+  },
+  "prestige_i_bonus": {
+    "unit": "%",
+    "label": "Prestige I Bonus"
+  },
+  "enemy_weakness_bonus": {
+    "unit": "%",
+    "label": "Enemy Weakness Bonus"
+  },
+  "rank_exp_bonus": {
+    "unit": "%",
+    "label": "Rank Exp Bonus"
+  },
+  "enemy_hp_max": {
+    "unit": "%",
+    "label": "Enemy Hp Max"
+  },
+  "crit_damage_max": {
+    "unit": "%",
+    "label": "Crit Damage Max"
+  },
+  "boss_exp_max": {
+    "unit": "%",
+    "label": "Boss Exp Max"
+  },
+  "damage_ii_bonus": {
+    "unit": "%",
+    "label": "Damage Ii Bonus"
+  },
+  "intro_skip": {
+    "unit": "waves",
+    "label": "Intro Skip"
+  },
+  "kill_gold_ii_bonus": {
+    "unit": "%",
+    "label": "Kill Gold Ii Bonus"
+  },
+  "supreme_alien_chance": {
+    "unit": "%",
+    "label": "Supreme Alien Chance"
+  },
+  "mimic_energy": {
+    "unit": "%",
+    "label": "Mimic Energy"
+  },
+  "max_boss_rush": {
+    "unit": "waves",
+    "label": "Max Boss Rush"
+  },
+  "2x_supreme_runes_chance": {
+    "unit": "%",
+    "label": "2X Supreme Runes Chance"
+  },
+  "extra_boss_chance": {
+    "unit": "%",
+    "label": "Extra Boss Chance"
+  },
+  "ad_bonus_gems": {
+    "unit": "gems",
+    "label": "Ad Bonus Gems"
+  },
+  "shadow_alien_hp_skip": {
+    "unit": "%",
+    "label": "Shadow Alien Hp Skip"
+  },
+  "ad_ultra_income_amount": {
+    "unit": "%",
+    "label": "Ad Ultra Income Amount"
+  },
+  "ad_ultra_income_chance": {
+    "unit": "%",
+    "label": "Ad Ultra Income Chance"
+  },
+  "supreme_tech": {
+    "unit": "count",
+    "label": "Supreme Tech"
+  },
+  "mimic_exp": {
+    "unit": "%",
+    "label": "Mimic Exp"
+  },
+  "ad_ultra_exp_chance": {
+    "unit": "%",
+    "label": "Ad Ultra Exp Chance"
+  },
+  "ad_ultra_exp_amount": {
+    "unit": "%",
+    "label": "Ad Ultra Exp Amount"
+  },
+  "enemy_spawn_speed": {
+    "unit": "%",
+    "label": "Enemy Spawn Speed"
+  },
+  "mimic_boss_chance": {
+    "unit": "%",
+    "label": "Mimic Boss Chance"
+  },
+  "starting_gold": {
+    "unit": "%",
+    "label": "Starting Gold"
+  },
+  "supreme_runes": {
+    "unit": "%",
+    "label": "Supreme Runes"
+  },
+  "tier_1_2_synergy": {
+    "unit": "%",
+    "label": "Tier 1 2 Synergy"
+  },
+  "tier_3_4_synergy": {
+    "unit": "%",
+    "label": "Tier 3 4 Synergy"
+  },
+  "ultra_exp_amount": {
+    "unit": "%",
+    "label": "Ultra Exp Amount"
   }
 }

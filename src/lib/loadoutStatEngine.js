@@ -40,15 +40,21 @@ export const HERO_EFFECT_KEY_MAP = Object.freeze({
   progressiveRankExp: "rankExpBonus",
   superCritChance: "superCritChance",
   superCritDmg: "superCritDamage",
-  ultraCritChance: "ultraCritChance",
+  damage_i_bonus: "damage",
+  damage_ii_bonus: "damage",
+  crit_damage_max: "critDamage",
   ultraCritDmg: "ultraCritDamage",
   goldSuperAmount: "superGoldAmount",
   superGoldAmt: "superGoldAmount",
   goldSuperChance: "superGoldChance",
   superGoldChance: "superGoldChance",
   expSuperChance: "superExpChance",
+  kill_gold_i_bonus: "killGold",
+  kill_gold_ii_bonus: "killGold",
   superExpChance: "superExpChance",
   expSuperAmount: "superExpAmount",
+  rank_exp_pct: "rankExpBonus",
+  rank_exp_bonus: "rankExpBonus",
   superExpAmt: "superExpAmount",
   energySuperChance: "superEnergyChance",
   superEnergyChance: "superEnergyChance",
@@ -57,35 +63,57 @@ export const HERO_EFFECT_KEY_MAP = Object.freeze({
   goldUltraChance: "ultraGoldChance",
   ultraGoldChance: "ultraGoldChance",
   goldUltraAmount: "ultraGoldAmount",
+  battlepass_exp: "battlepassExp",
   ultraGoldAmt: "ultraGoldAmount",
+  boss_exp: "bossExp",
+  boss_exp_max: "bossExp",
   expUltraChance: "ultraExpChance",
+  boss_gold: "bossGold",
+  boss_gold_max: "bossGold",
   ultraExpChance: "ultraExpChance",
   expUltraAmount: "ultraExpAmount",
   energyUltraChance: "ultraEnergyChance",
   ultraEnergyChance: "ultraEnergyChance",
   energyUltraAmount: "ultraEnergyAmount",
   energyIncome: "energyIncome",
+  goblin_hoarder_gold: "goblinHoarderGold",
   battlepassExp: "battlepassExp",
+  power_mage_energy: "powerMageEnergy",
   bossExp: "bossExp",
+  training_dummy_exp: "trainingDummyExp",
   bossGold: "bossGold",
   bossDmg: "bossDamage",
   bossDamage: "bossDamage",
+  prestige_power: "prestigePower",
+  prestige_i_bonus: "prestigePower",
   ultraBossDmg: "ultraBossDamage",
+  extra_boss_chance: "extraBossChance",
   ultraBossDamage: "ultraBossDamage",
   instantSkillChance: "instantSkillChance",
   instantSpell_powerPlant: "instantSpellPowerPlant",
+  power_mage_spawns: "powerMageSpawns",
   instantSpell_timeWarp: "instantSpellTimeWarp",
+  power_mage_cooldown: "powerMageCooldown",
   instantRagsToRiches: "instantRagsToRiches",
   goblinHoarderGold: "goblinHoarderGold",
   powerMageEnergy: "powerMageEnergy",
+  tournament_trophies: "tournamentTrophies",
   trainingDummyExp: "trainingDummyExp",
   alienTech: "alienTech",
+  rune_rarity_chance: "runeRarityChance",
+  enemy_hp: "enemyHp",
+  enemy_hp_max: "enemyHp",
   shadowRunes: "shadowRunes",
   extraBossChance: "extraBossChance",
+  active_play_duration: "activePlayDuration",
   mimicBossChance: "mimicBossChance",
+  active_play_reward: "activePlayBonus",
   trainerSpawns: "trainerSpawns",
+  wave_perk_effect: "wavePerkBonus",
   bossRushSkip: "bossRushSkip",
+  goblin_hoarder_spawns: "goblinHoarderSpawns",
   powerMageSpawns: "powerMageSpawns",
+  ultimus_tokens: "ultimusTokens",
   powerMageCooldown: "powerMageCooldown",
   powerMageGoldenChance: "powerMageGoldenChance",
   prestigePower: "prestigePower",
@@ -99,6 +127,10 @@ export const HERO_EFFECT_KEY_MAP = Object.freeze({
   goblinHoarderSpawns: "goblinHoarderSpawns",
   ultimusTokens: "ultimusTokens",
 });
+
+function snakeToCamelStatKey(statKey) {
+  return String(statKey ?? "").replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+}
 
 export const HERO_STAT_LABELS = Object.freeze({
   damage: "Damage",
@@ -295,7 +327,11 @@ export function mergeBonusTotals(...sources) {
 }
 
 export function normalizeHeroEffectBonusKey(statKey) {
-  return HERO_EFFECT_KEY_MAP[statKey] ?? statKey ?? null;
+  if (statKey == null) {
+    return null;
+  }
+
+  return HERO_EFFECT_KEY_MAP[statKey] ?? snakeToCamelStatKey(statKey);
 }
 
 export function addNormalizedBonusTotal(target, statKey, amount) {
