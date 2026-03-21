@@ -7,6 +7,14 @@ import {
   readHeroLoadoutState,
   writeHeroLoadoutState,
 } from "../../lib/heroLoadout";
+import {
+  COMBAT_STYLE_FALLBACK_ID,
+  COMBAT_STYLE_DEFINITIONS,
+  getCombatStyle,
+  getStoredDefaultCombatStyleId,
+  isCombatStyleUnlocked,
+  normalizeCombatStyleStatKey,
+} from "../../lib/combatStyles";
 import { LOADOUT_RECORD_SCOPE_HERO } from "../../lib/loadoutScope";
 import {
   buildHeroSearchIndex as buildSharedHeroSearchIndex,
@@ -26,6 +34,7 @@ const HERO_DETAIL_TABS = [
   { id: "information", label: "Information" },
   { id: "rankAttributes", label: "Rank & Attributes" },
   { id: "synergies", label: "Synergies" },
+  { id: "combatStyles", label: "Combat Styles" },
 ];
 const SYNERGY_TIER_ORDER = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
 const FILTER_TABS = [
@@ -346,6 +355,24 @@ function formatBaseStatValue(statKey, value, fmt) {
   return Number.isFinite(Number(value)) ? (typeof fmt === "function" ? fmt(Number(value)) : Number(value).toLocaleString()) : String(value);
 }
 
+function formatCombatStyleBonusAmount(entry, fmt) {
+  const numeric = Number(entry?.amount ?? 0);
+  if (!Number.isFinite(numeric)) {
+    return String(entry?.amount ?? "-");
+  }
+
+  const prefix = numeric > 0 ? "+" : "";
+  return `${prefix}${typeof fmt === "function" ? fmt(numeric) : numeric.toLocaleString()}${entry?.valueType === "percent" ? "%" : ""}`;
+}
+
+function getCombatStyleBonusTone(entry, colors) {
+  const numeric = Number(entry?.amount ?? 0);
+  const statKey = entry?.statKey;
+  const lowerIsBetter = new Set(["skillCooldown"]);
+
+  return (numeric >= 0) !== lowerIsBetter.has(statKey) ? colors.positive : "#e05555";
+}
+
 function FilterTabButton({ active, label, onClick, colors }) {
   return (
     <button
@@ -652,6 +679,7 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts
   const [rankByHero, setRankByHero] = useState(initialState.rankByHero);
   const [levelByHero, setLevelByHero] = useState(initialState.levelByHero);
   const [masteryLevelByHero, setMasteryLevelByHero] = useState(initialState.masteryLevelByHero);
+  const [defaultCombatStyleIdByHero, setDefaultCombatStyleIdByHero] = useState(initialState.defaultCombatStyleIdByHero);
   const [attributeLevelsByHero, setAttributeLevelsByHero] = useState(initialState.attributeLevelsByHero);
   const [activeHeroTab, setActiveHeroTab] = useState("information");
   const heroPresets = useMemo(
@@ -668,9 +696,10 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts
       rankByHero,
       levelByHero,
       masteryLevelByHero,
+      defaultCombatStyleIdByHero,
       attributeLevelsByHero,
     }, localStorage);
-  }, [attributeLevelsByHero, hideMaxedByHero, levelByHero, masteryLevelByHero, previewLevelsByHero, rankByHero, selectedHeroId]);
+  }, [attributeLevelsByHero, defaultCombatStyleIdByHero, hideMaxedByHero, levelByHero, masteryLevelByHero, previewLevelsByHero, rankByHero, selectedHeroId]);
 
   const heroesById = useMemo(() => Object.fromEntries(heroes.map((hero) => [hero.id, hero])), [heroes]);
   const heroSearchIndex = useMemo(
@@ -741,6 +770,9 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts
   const selectedHeroRank = selectedHero ? (rankByHero[selectedHero.id] ?? 0) : 0;
   const selectedHeroLevel = selectedHero ? (levelByHero[selectedHero.id] ?? 0) : 0;
   const selectedHeroMasteryLevel = selectedHero ? (masteryLevelByHero[selectedHero.id] ?? 0) : 0;
+  const selectedHeroDefaultCombatStyleId = selectedHero
+    ? getStoredDefaultCombatStyleId(defaultCombatStyleIdByHero, selectedHero.id)
+    : "";
   const activeAttributeLevels = selectedHero ? (attributeLevelsByHero[selectedHero.id] ?? {}) : {};
   const visibleGroups = useMemo(() => ATTRIBUTE_GROUPS.map((group) => ({
     ...group,
@@ -787,6 +819,29 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts
   const nextMasteryCost = selectedHero && selectedHero.masteryExp && selectedHeroMasteryLevel < (selectedHero.masteryExp.maxLevel ?? 0)
     ? getHeroMasteryExpCost(selectedHero, selectedHeroMasteryLevel + 1)
     : 0;
+  const selectedHeroCombatStyleEntries = selectedHero
+    ? COMBAT_STYLE_DEFINITIONS.map((style) => ({
+        style,
+        isUnlocked: isCombatStyleUnlocked(style, selectedHeroRank),
+        entries: (style.bonuses ?? [])
+          .map((bonus, index) => {
+            const statKey = normalizeCombatStyleStatKey(bonus?.stat);
+            const amount = Number(bonus?.amount);
+            if (!statKey || !Number.isFinite(amount) || amount === 0) {
+              return null;
+            }
+
+            return {
+              statKey,
+              amount,
+              valueType: bonus?.isPercent ? "percent" : "flat",
+              scope: bonus?.isGlobal ? "global" : "personal",
+              sourceId: `${style.id}:${index}`,
+            };
+          })
+          .filter(Boolean),
+      }))
+    : [];
 
   function handleHeroSelect(heroId) {
     setSelectedHeroId(heroId);
@@ -878,6 +933,17 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts
         [selectedHero.id]: nextHeroLevels,
       };
     });
+  }
+
+  function handleDefaultCombatStyleChange(styleId, isChecked) {
+    if (!selectedHero) {
+      return;
+    }
+
+    setDefaultCombatStyleIdByHero((current) => ({
+      ...current,
+      [selectedHero.id]: isChecked ? styleId : COMBAT_STYLE_FALLBACK_ID,
+    }));
   }
 
   return (
@@ -1231,6 +1297,77 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts
                         )}
                       </div>
                     ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeHeroTab === "combatStyles" && (
+                <div style={{ display: "grid", gap: 16 }}>
+                  <div style={{ background: colors.panel, border: `1px solid ${colors.border}`, borderRadius: 16, padding: 16, display: "grid", gap: 16 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "start" }}>
+                      <div>
+                        <div style={{ fontSize: 18, fontWeight: 900, color: colors.text }}>Combat Styles</div>
+                        <div style={{ fontSize: 12, color: colors.muted, marginTop: 4, lineHeight: 1.6 }}>
+                          Choose one default combat style for {selectedHero.name}. Newly placed copies will start with that style selected. If no default is set, placements fall back to Balanced.
+                        </div>
+                      </div>
+                      <div style={{ background: colors.header, border: `1px solid ${colors.border}`, borderRadius: 12, padding: "10px 12px", minWidth: 220 }}>
+                        <div style={{ fontSize: 11, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 800 }}>Current Default</div>
+                        <div style={{ fontSize: 15, fontWeight: 900, color: colors.text, marginTop: 6 }}>
+                          {getCombatStyle(selectedHeroDefaultCombatStyleId)?.name ?? "Balanced"}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
+                      {selectedHeroCombatStyleEntries.map(({ style, isUnlocked, entries }) => {
+                        const isDefault = selectedHeroDefaultCombatStyleId === style.id;
+
+                        return (
+                          <div key={style.id} style={{ background: `linear-gradient(180deg, ${colors.header} 0%, ${colors.panel} 100%)`, border: `1px solid ${isUnlocked ? colors.positive : isDefault ? colors.accent : colors.border}`, borderRadius: 14, padding: 14, display: "grid", gap: 12 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "start", flexWrap: "wrap" }}>
+                              <div>
+                                <div style={{ fontSize: 16, fontWeight: 900, color: colors.text }}>{style.name}</div>
+                                <div style={{ fontSize: 12, color: isUnlocked ? colors.positive : colors.muted, marginTop: 4 }}>
+                                  {style.rankReq > 0 ? `Requires Rank ${fmt(style.rankReq)}+` : "Available at any rank"}
+                                </div>
+                              </div>
+                              <SwitchToggle
+                                checked={isDefault}
+                                onChange={(nextChecked) => handleDefaultCombatStyleChange(style.id, nextChecked)}
+                                colors={colors}
+                                checkedLabel="Default Style"
+                                uncheckedLabel="Set Default"
+                              />
+                            </div>
+
+                            {isDefault && !isUnlocked ? (
+                              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                                <span style={{ background: colors.header, border: `1px solid ${colors.border}`, borderRadius: 999, color: colors.muted, fontSize: 11, fontWeight: 800, padding: "4px 10px" }}>
+                                  No bonuses until the rank requirement is met
+                                </span>
+                              </div>
+                            ) : null}
+
+                            {entries.length ? (
+                              <div style={{ display: "grid", gap: 8 }}>
+                                {entries.map((entry, index) => (
+                                  <div key={`${style.id}-${entry.statKey}-${index}`} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                    <span style={{ fontSize: 12, fontWeight: 800, color: getCombatStyleBonusTone(entry, colors), minWidth: 68 }}>
+                                      {formatCombatStyleBonusAmount(entry, fmt)}
+                                    </span>
+                                    <span style={{ fontSize: 12, color: colors.text, flex: 1 }}>{getHeroEffectLabel(entry.statKey)}</span>
+                                    <span style={{ fontSize: 10, color: colors.muted, background: colors.header, border: `1px solid ${colors.border}`, borderRadius: 999, padding: "2px 8px" }}>
+                                      {entry.scope === "global" ? "Global" : "Personal"}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>

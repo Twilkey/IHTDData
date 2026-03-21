@@ -1,9 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
 import { MapStage, OverlayAnchor, HeroToken } from "../map/MapStage";
+import {
+  collectCombatStyleEntries,
+  COMBAT_STYLE_DEFINITIONS,
+  getCombatStyle,
+  getDefaultPlacementCombatStyleId,
+  getStoredDefaultCombatStyleId,
+  isCombatStyleUnlocked,
+} from "../../lib/combatStyles";
 import { mapsData } from "../../lib/gameData";
 import { HERO_ATTRIBUTE_DEFINITIONS, getHeroAttributeTotalValue, readHeroLoadoutState } from "../../lib/heroLoadout";
 import {
+  LOADOUT_BUILDER_COMBAT_STYLES_STORAGE_KEY,
   LOADOUT_BUILDER_EXPANDED_MAPS_STORAGE_KEY,
   LOADOUT_BUILDER_LEVELS_STORAGE_KEY,
   LOADOUT_BUILDER_MASTERY_LEVELS_STORAGE_KEY,
@@ -16,6 +25,7 @@ import { getPerkCurrentBonus, getPlacementBonusValue, readMapLoadoutBuilderMode,
 import { readPlayerLoadoutState } from "../../lib/playerLoadout";
 import { readStatsLoadoutState } from "../../lib/statsLoadout";
 import { schedulePersistLoadoutRuntime } from "../../lib/loadoutRuntimeStore";
+import { HeroComparisonModal } from "./HeroComparisonModal";
 import { MapLoadoutPresetsPanel } from "./MapLoadoutPresetsPanel";
 import { MapPerksLoadoutBuilder } from "./MapPerksLoadoutBuilder";
 import { MapSpellLoadoutBuilder } from "./MapSpellLoadoutBuilder";
@@ -126,6 +136,7 @@ const HERO_STAT_LABELS = Object.freeze({
   superGoldAmount: "Super Gold Amount",
   superEnergyChance: "Super Energy Chance",
   superEnergyAmount: "Super Energy Amount",
+  masteryPower: "Mastery Power",
   activePlayBonus: "Active Play Bonus",
   wavePerkBonus: "Wave Perk Bonus",
   enemyMoveSpeed: "Enemy Move Speed",
@@ -335,6 +346,10 @@ function normalizeBonusTotals(source) {
   return totals;
 }
 
+function areSerializedStatesEqual(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
 function formatSignedHeroBonus(key, amount, fmt) {
   const numeric = Number(amount);
   if (!Number.isFinite(numeric)) {
@@ -364,6 +379,20 @@ function getHeroAttributeBonusTotals(levelsByAttributeId, scope) {
     });
 
   return totals;
+}
+
+function getCombatStyleBonusTotals(entries, scope) {
+  const totals = {};
+
+  (entries ?? [])
+    .filter((entry) => entry.scope === scope)
+    .forEach((entry) => addNormalizedBonusTotal(totals, entry.statKey, entry.amount));
+
+  return totals;
+}
+
+function formatCombatStyleOptionLabel(style) {
+  return style.rankReq > 0 ? `${style.name} (Rank ${style.rankReq}+)` : style.name;
 }
 
 function parseNonNegativeInteger(value, fallback = 0) {
@@ -434,6 +463,24 @@ function buildPlacementMasteryLevelsState(heroes, existingMasteries = {}) {
 function normalizePlacementMasteryLevelsByMap(maps, heroes, storedMasteries) {
   return Object.fromEntries(
     maps.map((map) => [map.id, buildPlacementMasteryLevelsState(heroes, storedMasteries?.[map.id])])
+  );
+}
+
+function buildPlacementCombatStylesState(spots, existingCombatStyles = {}) {
+  const nextCombatStyles = {};
+
+  spots.forEach((spot) => {
+    if (typeof existingCombatStyles?.[spot.id] === "string" && existingCombatStyles[spot.id].trim()) {
+      nextCombatStyles[spot.id] = existingCombatStyles[spot.id].trim();
+    }
+  });
+
+  return nextCombatStyles;
+}
+
+function normalizePlacementCombatStylesByMap(maps, storedCombatStyles) {
+  return Object.fromEntries(
+    maps.map((map) => [map.id, buildPlacementCombatStylesState(map.spots, storedCombatStyles?.[map.id])])
   );
 }
 
@@ -579,9 +626,9 @@ function buildHeroUpgradeStats(hero, bonusTotals, fmt) {
     label: formatFilterLabel(key),
     value: formatHeroStatValue(value, fmt),
     bonusLabel: (() => {
-      if (key === "damage" && damageBonus) return `+${formatHeroStatValue(damageBonus, fmt)}% from upgrades`;
-      if (key === "attackSpeed" && attackSpeedBonus) return `+${formatHeroStatValue(attackSpeedBonus, fmt)}% from upgrades`;
-      if (key === "range" && rangeBonus) return `+${formatHeroStatValue(rangeBonus, fmt)}% from upgrades`;
+      if (key === "damage" && damageBonus) return `${formatSignedHeroBonus(key, damageBonus, fmt)} from upgrades`;
+      if (key === "attackSpeed" && attackSpeedBonus) return `${formatSignedHeroBonus(key, attackSpeedBonus, fmt)} from upgrades`;
+      if (key === "range" && rangeBonus) return `${formatSignedHeroBonus(key, rangeBonus, fmt)} from upgrades`;
       if (key === "dps" && (damageBonus || attackSpeedBonus)) return `Damage + Attack Speed applied`;
       return null;
     })(),
@@ -1013,12 +1060,11 @@ function FilterChipGroup({ title, options, selected, onToggle, colors, emptyLabe
   );
 }
 
-function HeroSelectorCard({ hero, colors, getIconUrl, isSelected, isDisabled, placementCount, details, statHighlights, onSelect, onInspect }) {
+function HeroSelectorCard({ hero, colors, getIconUrl, isSelected, isDisabled, placementCount, details, statHighlights, onSelect }) {
   return (
     <button
       type="button"
       onClick={onSelect}
-      onMouseEnter={() => onInspect(hero.id)}
       disabled={isDisabled}
       style={{
         width: "100%",
@@ -1109,7 +1155,7 @@ function DroppableSpot({ spot, size, onClick }) {
   );
 }
 
-function PlacedHeroToken({ hero, spot, colors, getIconUrl, size, onSelect, onInspect, onHoverStart, onHoverEnd }) {
+function PlacedHeroToken({ hero, spot, colors, getIconUrl, size, onSelect, onHoverStart, onHoverEnd }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `placed:${spot.id}`,
     data: { type: "placed-hero", heroId: hero.id, sourceSpotId: spot.id },
@@ -1129,10 +1175,7 @@ function PlacedHeroToken({ hero, spot, colors, getIconUrl, size, onSelect, onIns
       <button
         type="button"
         onClick={() => onSelect(hero.id, spot.id)}
-        onMouseEnter={() => {
-          onInspect(hero.id);
-          onHoverStart?.(spot.id);
-        }}
+        onMouseEnter={() => onHoverStart?.(spot.id)}
         onMouseLeave={() => onHoverEnd?.(spot.id)}
         title={`Move ${hero.name}`}
         style={{ background: "transparent", border: "none", padding: 0, cursor: "grab" }}
@@ -1274,6 +1317,14 @@ export function LoadoutBuilderPage({
       return normalizePlacementMasteryLevelsByMap(maps, heroes, {});
     }
   });
+  const [placementCombatStylesByMap, setPlacementCombatStylesByMap] = useState(() => {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(LOADOUT_BUILDER_COMBAT_STYLES_STORAGE_KEY) ?? "null");
+      return normalizePlacementCombatStylesByMap(maps, parsed);
+    } catch {
+      return normalizePlacementCombatStylesByMap(maps, {});
+    }
+  });
   const [expandedMapsById, setExpandedMapsById] = useState(() => {
     try {
       const parsed = JSON.parse(localStorage.getItem(LOADOUT_BUILDER_EXPANDED_MAPS_STORAGE_KEY) ?? "null");
@@ -1292,6 +1343,10 @@ export function LoadoutBuilderPage({
   const [activeFocusedMilestoneTab, setActiveFocusedMilestoneTab] = useState("active");
   const [activeFocusedSynergyTab, setActiveFocusedSynergyTab] = useState("active");
   const [hoveredMapHeroSpotId, setHoveredMapHeroSpotId] = useState(null);
+  const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
+  const [compareEntries, setCompareEntries] = useState([]);
+  const [compareOverridesByEntryId, setCompareOverridesByEntryId] = useState({});
+  const [compareIncludeLoadoutStats, setCompareIncludeLoadoutStats] = useState(true);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
   const selectedMap = useMemo(
@@ -1343,7 +1398,25 @@ export function LoadoutBuilderPage({
       const heroAttributeLevels = heroLoadoutState.attributeLevelsByHero?.[hero.id] ?? {};
       const personalAttributeBonuses = getHeroAttributeBonusTotals(heroAttributeLevels, "personal");
       const globalAttributeBonuses = getHeroAttributeBonusTotals(heroAttributeLevels, "global");
-      const upgradeStats = buildHeroUpgradeStats(hero, mergeBonusTotals(statsLoadoutBonuses, selectedMapGlobalBonuses, personalAttributeBonuses, globalAttributeBonuses), fmt);
+      const currentRank = Number.parseInt(heroLoadoutState.rankByHero?.[hero.id], 10) || 0;
+      const defaultCombatStyleEntries = collectCombatStyleEntries(
+        getDefaultPlacementCombatStyleId(heroLoadoutState.defaultCombatStyleIdByHero, hero.id),
+        { currentRank, heroId: hero.id }
+      );
+      const personalCombatStyleBonuses = getCombatStyleBonusTotals(defaultCombatStyleEntries, "personal");
+      const globalCombatStyleBonuses = getCombatStyleBonusTotals(defaultCombatStyleEntries, "global");
+      const upgradeStats = buildHeroUpgradeStats(
+        hero,
+        mergeBonusTotals(
+          statsLoadoutBonuses,
+          selectedMapGlobalBonuses,
+          personalAttributeBonuses,
+          globalAttributeBonuses,
+          personalCombatStyleBonuses,
+          globalCombatStyleBonuses
+        ),
+        fmt
+      );
       return {
         ...hero,
         baseStats: upgradeStats.adjustedBaseStats,
@@ -1351,17 +1424,33 @@ export function LoadoutBuilderPage({
         skill: upgradeStats.adjustedSkill,
       };
     }),
-    [heroLoadoutState.attributeLevelsByHero, heroes, selectedMapGlobalBonuses, statsLoadoutBonuses]
+    [heroLoadoutState.attributeLevelsByHero, heroLoadoutState.defaultCombatStyleIdByHero, heroLoadoutState.rankByHero, heroes, selectedMapGlobalBonuses, statsLoadoutBonuses]
   );
 
   useEffect(() => {
     if (!selectedMap) {
       return;
     }
-    setPlacementsByMap((current) => normalizePlacementsByMap(maps, current));
-    setPlacementRanksByMap((current) => normalizePlacementRanksByMap(maps, heroes, current, placementsByMap));
-    setPlacementLevelsByMap((current) => normalizePlacementLevelsByMap(maps, current));
-    setPlacementMasteryLevelsByMap((current) => normalizePlacementMasteryLevelsByMap(maps, heroes, current));
+    setPlacementsByMap((current) => {
+      const next = normalizePlacementsByMap(maps, current);
+      return areSerializedStatesEqual(current, next) ? current : next;
+    });
+    setPlacementRanksByMap((current) => {
+      const next = normalizePlacementRanksByMap(maps, heroes, current, placementsByMap);
+      return areSerializedStatesEqual(current, next) ? current : next;
+    });
+    setPlacementLevelsByMap((current) => {
+      const next = normalizePlacementLevelsByMap(maps, current);
+      return areSerializedStatesEqual(current, next) ? current : next;
+    });
+    setPlacementMasteryLevelsByMap((current) => {
+      const next = normalizePlacementMasteryLevelsByMap(maps, heroes, current);
+      return areSerializedStatesEqual(current, next) ? current : next;
+    });
+    setPlacementCombatStylesByMap((current) => {
+      const next = normalizePlacementCombatStylesByMap(maps, current);
+      return areSerializedStatesEqual(current, next) ? current : next;
+    });
   }, [heroes, maps, placementsByMap, selectedMap]);
 
   useEffect(() => {
@@ -1402,6 +1491,11 @@ export function LoadoutBuilderPage({
   }, [placementMasteryLevelsByMap]);
 
   useEffect(() => {
+    localStorage.setItem(LOADOUT_BUILDER_COMBAT_STYLES_STORAGE_KEY, JSON.stringify(placementCombatStylesByMap));
+    schedulePersistLoadoutRuntime(localStorage);
+  }, [placementCombatStylesByMap]);
+
+  useEffect(() => {
     const validMapIds = new Set(maps.map((map) => map.id));
     setExpandedMapsById((current) => {
       const next = Object.fromEntries(Object.entries(current).filter(([mapId]) => validMapIds.has(mapId)));
@@ -1418,8 +1512,22 @@ export function LoadoutBuilderPage({
     if (builderMode !== "hero") {
       setSelectedHeroAction(null);
       setHoveredMapHeroSpotId(null);
+      setIsCompareModalOpen(false);
     }
   }, [builderMode]);
+
+  useEffect(() => {
+    const validHeroIds = new Set(heroes.map((hero) => hero.id));
+    setCompareEntries((current) => {
+      const next = current.filter((entry) => validHeroIds.has(entry.heroId));
+      return next.length === current.length ? current : next;
+    });
+    setCompareOverridesByEntryId((current) => {
+      const validEntryIds = new Set(compareEntries.filter((entry) => validHeroIds.has(entry.heroId)).map((entry) => entry.id));
+      const next = Object.fromEntries(Object.entries(current).filter(([entryId]) => validEntryIds.has(entryId)));
+      return areSerializedStatesEqual(current, next) ? current : next;
+    });
+  }, [compareEntries, heroes]);
 
   const placementBonusDefinitionsById = useMemo(
     () => Object.fromEntries((mapsData.placementBonuses ?? []).map((bonus) => [bonus.id, bonus])),
@@ -1429,6 +1537,7 @@ export function LoadoutBuilderPage({
   const placementRanks = selectedMap ? placementRanksByMap[selectedMap.id] ?? buildPlacementRanksState(heroes, selectedMap.spots, placements) : {};
   const placementLevels = selectedMap ? placementLevelsByMap[selectedMap.id] ?? buildPlacementLevelsState(selectedMap.spots) : {};
   const placementMasteryLevels = selectedMap ? placementMasteryLevelsByMap[selectedMap.id] ?? buildPlacementMasteryLevelsState(heroes) : {};
+  const placementCombatStyles = selectedMap ? placementCombatStylesByMap[selectedMap.id] ?? buildPlacementCombatStylesState(selectedMap.spots) : {};
   const isSelectedMapExpanded = selectedMap ? Boolean(expandedMapsById[selectedMap.id]) : false;
   const heroSearchIndex = useMemo(
     () => Object.fromEntries(upgradedHeroes.map((hero) => [hero.id, buildSharedHeroSearchIndex(hero)])),
@@ -1527,6 +1636,21 @@ export function LoadoutBuilderPage({
         const currentRank = Object.prototype.hasOwnProperty.call(placementRanks, heroId) ? parseNonNegativeInteger(placementRanks[heroId], defaultRank) : defaultRank;
         const currentLevel = Object.prototype.hasOwnProperty.call(placementLevels, spotId) ? parseNonNegativeInteger(placementLevels[spotId], defaultLevel) : defaultLevel;
         const currentMastery = Object.prototype.hasOwnProperty.call(placementMasteryLevels, heroId) ? parseNonNegativeInteger(placementMasteryLevels[heroId], defaultMastery) : defaultMastery;
+        const storedDefaultCombatStyleId = getStoredDefaultCombatStyleId(heroLoadoutState.defaultCombatStyleIdByHero, heroId);
+        const currentCombatStyleId = placementCombatStyles[spotId] ?? getDefaultPlacementCombatStyleId(heroLoadoutState.defaultCombatStyleIdByHero, heroId);
+        const combatStyle = getCombatStyle(currentCombatStyleId);
+        const combatStyleEntries = collectCombatStyleEntries(currentCombatStyleId, {
+          currentRank,
+          heroId,
+          system: "placementCombatStyle",
+          sourceType: "placementCombatStyle",
+          sourceId: spotId,
+          sourceLabel: `${baseHero.name}: ${combatStyle?.name ?? "Combat Style"}`,
+          personalGroupLabel: "Placement Combat Style Personal",
+          globalGroupLabel: "Placement Combat Style Global",
+        });
+        const personalCombatStyleBonuses = getCombatStyleBonusTotals(combatStyleEntries, "personal");
+        const globalCombatStyleBonuses = getCombatStyleBonusTotals(combatStyleEntries, "global");
 
         return {
           spotId,
@@ -1538,6 +1662,13 @@ export function LoadoutBuilderPage({
           defaultRank,
           defaultLevel,
           defaultMastery,
+          currentCombatStyleId,
+          storedDefaultCombatStyleId,
+          combatStyle,
+          combatStyleUnlocked: isCombatStyleUnlocked(combatStyle, currentRank),
+          combatStyleEntries,
+          personalCombatStyleBonuses,
+          globalCombatStyleBonuses,
           baseHero,
           placedBonus,
           placementTotals,
@@ -1576,6 +1707,7 @@ export function LoadoutBuilderPage({
     const globalBonusesWithoutSynergies = mergeBonusTotals(
       statsLoadoutBonuses,
       selectedMapGlobalBonuses,
+      ...rawEntries.map((entry) => entry.globalCombatStyleBonuses),
       ...Array.from(uniqueGlobalAttributeBonuses.values()),
       buildProgressionBonusTotals(Array.from(uniqueGlobalMilestones.values()), "global")
     );
@@ -1584,6 +1716,7 @@ export function LoadoutBuilderPage({
       const preSynergyBonuses = mergeBonusTotals(
         globalBonusesWithoutSynergies,
         entry.personalAttributeBonuses,
+        entry.personalCombatStyleBonuses,
         buildProgressionBonusTotals(entry.activeMilestones, "personal"),
         entry.placementTotals
       );
@@ -1682,6 +1815,7 @@ export function LoadoutBuilderPage({
       const bonusTotals = mergeBonusTotals(
         finalGlobalBonuses,
         entry.personalAttributeBonuses,
+        entry.personalCombatStyleBonuses,
         buildProgressionBonusTotals(entry.activeMilestones, "personal"),
         buildProgressionBonusTotals(entry.activeSynergies, "personal"),
         entry.placementTotals
@@ -1698,6 +1832,9 @@ export function LoadoutBuilderPage({
           currentRank: entry.currentRank,
           currentLevel: entry.currentLevel,
           currentMastery: entry.currentMastery,
+          combatStyle: entry.combatStyle,
+          combatStyleUnlocked: entry.combatStyleUnlocked,
+          storedDefaultCombatStyleId: entry.storedDefaultCombatStyleId,
           placementBonus: entry.placedBonus,
           activeMilestones: entry.activeMilestones,
           inactiveMilestones: entry.inactiveMilestones,
@@ -1706,7 +1843,7 @@ export function LoadoutBuilderPage({
         },
       };
     });
-  }, [heroLoadoutState.attributeLevelsByHero, heroLoadoutState.levelByHero, heroLoadoutState.masteryLevelByHero, heroLoadoutState.rankByHero, heroes, placementBonusDefinitionsById, placementLevels, placementMasteryLevels, placementRanks, placements, selectedMap, selectedMapGlobalBonuses, selectedMapPlacementBonuses, selectedMapPlacementBonusLevels, statsLoadoutBonuses]);
+  }, [heroLoadoutState.attributeLevelsByHero, heroLoadoutState.defaultCombatStyleIdByHero, heroLoadoutState.levelByHero, heroLoadoutState.masteryLevelByHero, heroLoadoutState.rankByHero, heroes, placementBonusDefinitionsById, placementCombatStyles, placementLevels, placementMasteryLevels, placementRanks, placements, selectedMap, selectedMapGlobalBonuses, selectedMapPlacementBonuses, selectedMapPlacementBonusLevels, statsLoadoutBonuses]);
 
   const previewFocusedHero = useMemo(() => {
     const baseHero = heroes.find((hero) => hero.id === inspectedHeroId) ?? null;
@@ -1714,19 +1851,38 @@ export function LoadoutBuilderPage({
       return null;
     }
 
+    const currentRank = Math.max(0, Number.parseInt(heroLoadoutState.rankByHero?.[baseHero.id], 10) || 0);
     const heroAttributeLevels = heroLoadoutState.attributeLevelsByHero?.[baseHero.id] ?? {};
     const personalAttributeBonuses = getHeroAttributeBonusTotals(heroAttributeLevels, "personal");
     const globalAttributeBonuses = getHeroAttributeBonusTotals(heroAttributeLevels, "global");
-    const upgradeStats = buildHeroUpgradeStats(baseHero, mergeBonusTotals(statsLoadoutBonuses, selectedMapGlobalBonuses, personalAttributeBonuses, globalAttributeBonuses), fmt);
+    const combatStyleId = getDefaultPlacementCombatStyleId(heroLoadoutState.defaultCombatStyleIdByHero, baseHero.id);
+    const combatStyle = getCombatStyle(combatStyleId);
+    const combatStyleEntries = collectCombatStyleEntries(combatStyleId, { currentRank, heroId: baseHero.id });
+    const personalCombatStyleBonuses = getCombatStyleBonusTotals(combatStyleEntries, "personal");
+    const globalCombatStyleBonuses = getCombatStyleBonusTotals(combatStyleEntries, "global");
+    const upgradeStats = buildHeroUpgradeStats(
+      baseHero,
+      mergeBonusTotals(
+        statsLoadoutBonuses,
+        selectedMapGlobalBonuses,
+        personalAttributeBonuses,
+        globalAttributeBonuses,
+        personalCombatStyleBonuses,
+        globalCombatStyleBonuses
+      ),
+      fmt
+    );
 
     return {
       ...baseHero,
       baseStats: upgradeStats.adjustedBaseStats,
       upgradeDisplayStats: upgradeStats.displayStats,
       skill: upgradeStats.adjustedSkill,
-      currentRank: Math.max(0, Number.parseInt(heroLoadoutState.rankByHero?.[baseHero.id], 10) || 0),
+      currentRank,
       currentLevel: Math.max(0, Number.parseInt(heroLoadoutState.levelByHero?.[baseHero.id], 10) || 0),
       currentMastery: Math.max(0, Number.parseInt(heroLoadoutState.masteryLevelByHero?.[baseHero.id], 10) || 0),
+      combatStyle,
+      combatStyleUnlocked: isCombatStyleUnlocked(combatStyle, currentRank),
       placementBonus: null,
       activeMilestones: (baseHero.milestones ?? [])
         .filter((milestone) => (milestone.requirement ?? 0) <= (Math.max(0, Number.parseInt(heroLoadoutState.levelByHero?.[baseHero.id], 10) || 0)))
@@ -1737,11 +1893,131 @@ export function LoadoutBuilderPage({
       activeSynergies: [],
       inactiveSynergies: (baseHero.synergies ?? []).map((synergy) => enrichProgressionEffect(synergy, "synergy", selectedMapGlobalBonuses.synergyBonus ?? 0, fmt)),
     };
-  }, [heroLoadoutState.attributeLevelsByHero, heroLoadoutState.levelByHero, heroLoadoutState.masteryLevelByHero, heroLoadoutState.rankByHero, heroes, inspectedHeroId, selectedMapGlobalBonuses, statsLoadoutBonuses]);
+  }, [heroLoadoutState.attributeLevelsByHero, heroLoadoutState.defaultCombatStyleIdByHero, heroLoadoutState.levelByHero, heroLoadoutState.masteryLevelByHero, heroLoadoutState.rankByHero, heroes, inspectedHeroId, selectedMapGlobalBonuses, statsLoadoutBonuses]);
 
   const focusedHero = placedEntries.find((entry) => entry.spotId === inspectedHeroSpotId)?.hero
     ?? previewFocusedHero
     ?? null;
+
+  const compareHeroModels = useMemo(() => {
+    const rawEntries = compareEntries
+      .map((entry) => {
+        const heroId = entry.heroId;
+        const baseHero = heroes.find((hero) => hero.id === heroId) ?? null;
+        if (!baseHero) {
+          return null;
+        }
+
+        const overrides = compareOverridesByEntryId[entry.id] ?? {};
+        const currentRank = parseNonNegativeInteger(overrides.rank, Math.max(0, Number.parseInt(heroLoadoutState.rankByHero?.[heroId], 10) || 0));
+        const currentLevel = parseNonNegativeInteger(overrides.level, Math.max(0, Number.parseInt(heroLoadoutState.levelByHero?.[heroId], 10) || 0));
+        const maxMasteryLevel = baseHero.masteryExp?.maxLevel ?? 0;
+        const currentMastery = Math.min(
+          parseNonNegativeInteger(overrides.mastery, Math.max(0, Number.parseInt(heroLoadoutState.masteryLevelByHero?.[heroId], 10) || 0)),
+          maxMasteryLevel
+        );
+        const requestedCombatStyleId = overrides.combatStyleId ?? getDefaultPlacementCombatStyleId(heroLoadoutState.defaultCombatStyleIdByHero, heroId);
+        const combatStyle = isCombatStyleUnlocked(requestedCombatStyleId, currentRank)
+          ? getCombatStyle(requestedCombatStyleId)
+          : getCombatStyle("balanced");
+        const heroAttributeLevels = heroLoadoutState.attributeLevelsByHero?.[heroId] ?? {};
+        const personalAttributeBonuses = compareIncludeLoadoutStats ? getHeroAttributeBonusTotals(heroAttributeLevels, "personal") : {};
+        const globalAttributeBonuses = compareIncludeLoadoutStats ? getHeroAttributeBonusTotals(heroAttributeLevels, "global") : {};
+        const combatStyleEntries = collectCombatStyleEntries(combatStyle?.id, { currentRank, heroId });
+        const personalCombatStyleBonuses = getCombatStyleBonusTotals(combatStyleEntries, "personal");
+        const globalCombatStyleBonuses = compareIncludeLoadoutStats ? getCombatStyleBonusTotals(combatStyleEntries, "global") : {};
+        const activeMilestones = (baseHero.milestones ?? [])
+          .filter((milestone) => (milestone.requirement ?? 0) <= currentLevel)
+          .map((milestone) => enrichProgressionEffect(milestone, "milestone", selectedMapGlobalBonuses.milestoneBonus ?? 0, fmt));
+        const inactiveMilestones = (baseHero.milestones ?? [])
+          .filter((milestone) => (milestone.requirement ?? 0) > currentLevel)
+          .map((milestone) => enrichProgressionEffect(milestone, "milestone", selectedMapGlobalBonuses.milestoneBonus ?? 0, fmt));
+
+        return {
+          id: entry.id,
+          hero: baseHero,
+          currentRank,
+          currentLevel,
+          currentMastery,
+          combatStyle,
+          combatStyleUnlocked: isCombatStyleUnlocked(requestedCombatStyleId, currentRank),
+          masteryDescription: baseHero.masteryDescription ?? "No mastery description available.",
+          personalAttributeBonuses,
+          globalAttributeBonuses,
+          personalCombatStyleBonuses,
+          globalCombatStyleBonuses,
+          activeMilestones,
+          inactiveMilestones,
+          activeSynergies: [],
+          inactiveSynergies: [],
+          includeLoadoutStats: compareIncludeLoadoutStats,
+        };
+      })
+      .filter(Boolean);
+
+    return rawEntries.map((entry) => {
+      const activeSynergyKeys = Array.isArray(compareOverridesByEntryId[entry.id]?.activeSynergyKeys)
+        ? compareOverridesByEntryId[entry.id].activeSynergyKeys
+        : [];
+
+      (entry.hero.synergies ?? []).forEach((synergy) => {
+        const enriched = enrichProgressionEffect(synergy, "synergy", compareIncludeLoadoutStats ? (selectedMapGlobalBonuses.synergyBonus ?? 0) : 0, fmt);
+        const synergyKey = getProgressionKey("synergy", entry.hero.id, synergy);
+        const isUnlocked = (synergy.rankRequired ?? 0) <= entry.currentRank;
+        const isActive = isUnlocked && activeSynergyKeys.includes(synergyKey);
+        const enrichedSynergy = {
+          ...enriched,
+          synergyKey,
+          isUnlocked,
+          partnerNames: [synergy.hero1, synergy.hero2, synergy.hero3].filter(Boolean).map(formatFilterLabel),
+        };
+
+        if (isActive) {
+          entry.activeSynergies.push({
+            ...enrichedSynergy,
+          });
+        } else {
+          entry.inactiveSynergies.push({
+            ...enrichedSynergy,
+          });
+        }
+      });
+
+      const bonusTotals = mergeBonusTotals(
+        compareIncludeLoadoutStats ? statsLoadoutBonuses : {},
+        compareIncludeLoadoutStats ? selectedMapGlobalBonuses : {},
+        entry.personalAttributeBonuses,
+        entry.globalAttributeBonuses,
+        entry.personalCombatStyleBonuses,
+        entry.globalCombatStyleBonuses,
+        buildProgressionBonusTotals(entry.activeMilestones, "personal"),
+        buildProgressionBonusTotals(entry.activeMilestones, "global"),
+        buildProgressionBonusTotals(entry.activeSynergies, "personal"),
+        buildProgressionBonusTotals(entry.activeSynergies, "global")
+      );
+      const upgradeStats = buildHeroUpgradeStats(entry.hero, bonusTotals, fmt);
+
+      return {
+        id: entry.id,
+        hero: entry.hero,
+        currentRank: entry.currentRank,
+        currentLevel: entry.currentLevel,
+        currentMastery: entry.currentMastery,
+        combatStyle: entry.combatStyle,
+        combatStyleUnlocked: entry.combatStyleUnlocked,
+        displayStats: upgradeStats.displayStats ?? [],
+        adjustedSkill: upgradeStats.adjustedSkill ?? entry.hero.skill,
+        masteryDescription: entry.masteryDescription,
+        activeMilestones: entry.activeMilestones,
+        inactiveMilestones: entry.inactiveMilestones,
+        activeSynergies: entry.activeSynergies,
+        inactiveSynergies: entry.inactiveSynergies,
+        includeLoadoutStats: entry.includeLoadoutStats,
+        skillCooldownLabel: upgradeStats.adjustedSkill?.cooldown != null ? `${formatHeroStatValue(upgradeStats.adjustedSkill.cooldown, fmt)}s` : "None",
+        displayStatsByKey: Object.fromEntries((upgradeStats.displayStats ?? []).map((stat) => [stat.key, stat])),
+      };
+    });
+  }, [compareEntries, compareIncludeLoadoutStats, compareOverridesByEntryId, fmt, heroLoadoutState.attributeLevelsByHero, heroLoadoutState.defaultCombatStyleIdByHero, heroLoadoutState.levelByHero, heroLoadoutState.masteryLevelByHero, heroLoadoutState.rankByHero, heroes, selectedMapGlobalBonuses, statsLoadoutBonuses]);
 
   const filterContext = {
     searchValue: heroFilters.searchValue,
@@ -1801,6 +2077,21 @@ export function LoadoutBuilderPage({
       ...current,
       [selectedMap.id]: updater(buildPlacementMasteryLevelsState(heroes, current[selectedMap.id])),
     }));
+  }
+
+  function updatePlacementCombatStyles(updater) {
+    if (!selectedMap) {
+      return;
+    }
+
+    setPlacementCombatStylesByMap((current) => ({
+      ...current,
+      [selectedMap.id]: updater(buildPlacementCombatStylesState(selectedMap.spots, current[selectedMap.id])),
+    }));
+  }
+
+  function getInitialPlacementCombatStyleId(heroId) {
+    return getDefaultPlacementCombatStyleId(heroLoadoutState.defaultCombatStyleIdByHero, heroId);
   }
 
   function canAddAnotherHeroCopy(heroId, targetSpotId) {
@@ -1873,6 +2164,31 @@ export function LoadoutBuilderPage({
       delete next[targetSpotId];
       return next;
     });
+
+    updatePlacementCombatStyles((current) => {
+      const next = { ...current };
+      const targetStyleId = next[targetSpotId] ?? (displacedHeroId ? getInitialPlacementCombatStyleId(displacedHeroId) : "");
+
+      if (sourceSpotId) {
+        if (sourceSpotId === targetSpotId) {
+          return next;
+        }
+
+        const sourceStyleId = next[sourceSpotId] ?? getInitialPlacementCombatStyleId(heroId);
+
+        if (displacedHeroId) {
+          next[sourceSpotId] = targetStyleId || getInitialPlacementCombatStyleId(displacedHeroId);
+        } else {
+          delete next[sourceSpotId];
+        }
+
+        next[targetSpotId] = sourceStyleId;
+        return next;
+      }
+
+      next[targetSpotId] = getInitialPlacementCombatStyleId(heroId);
+      return next;
+    });
   }
 
   function clearSpot(spotId) {
@@ -1885,6 +2201,11 @@ export function LoadoutBuilderPage({
       delete next[spotId];
       return next;
     });
+    updatePlacementCombatStyles((current) => {
+      const next = { ...current };
+      delete next[spotId];
+      return next;
+    });
   }
 
   function clearSelectedMap() {
@@ -1892,6 +2213,7 @@ export function LoadoutBuilderPage({
     updatePlacementRanks(() => ({}));
     updatePlacementLevels(() => ({}));
     updatePlacementMasteries(() => ({}));
+    updatePlacementCombatStyles(() => ({}));
     setSelectedHeroAction(null);
     setHoveredMapHeroSpotId(null);
     setInspectedHeroSpotId(null);
@@ -1938,6 +2260,13 @@ export function LoadoutBuilderPage({
       }
       return next;
     });
+  }
+
+  function setSpotCombatStyle(spotId, styleId) {
+    updatePlacementCombatStyles((current) => ({
+      ...current,
+      [spotId]: styleId,
+    }));
   }
 
   function toggleMapExpansion() {
@@ -2006,6 +2335,82 @@ export function LoadoutBuilderPage({
     setInspectedHeroSpotId(null);
   }
 
+  function createCompareEntry(heroId) {
+    return {
+      id: `compare-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      heroId,
+    };
+  }
+
+  function handleCompareAddHero(heroId) {
+    setCompareEntries((current) => [...current, createCompareEntry(heroId)]);
+  }
+
+  function handleCompareRemoveHero(entryId) {
+    setCompareEntries((current) => current.filter((entry) => entry.id !== entryId));
+    setCompareOverridesByEntryId((current) => {
+      const next = { ...current };
+      delete next[entryId];
+      return next;
+    });
+  }
+
+  function handleCompareUpdateOverride(entryId, field, rawValue) {
+    setCompareOverridesByEntryId((current) => {
+      const compareEntry = compareEntries.find((entry) => entry.id === entryId) ?? null;
+      const heroId = compareEntry?.heroId ?? null;
+      const nextOverrides = {
+        ...(current[entryId] ?? {}),
+        [field]: field === "combatStyleId" ? rawValue : parseNonNegativeInteger(rawValue === "" ? 0 : rawValue, 0),
+      };
+
+      if (heroId && field === "rank") {
+        const nextRank = nextOverrides.rank;
+        const activeCombatStyleId = nextOverrides.combatStyleId ?? getDefaultPlacementCombatStyleId(heroLoadoutState.defaultCombatStyleIdByHero, heroId);
+        if (!isCombatStyleUnlocked(activeCombatStyleId, nextRank)) {
+          nextOverrides.combatStyleId = "balanced";
+        }
+      }
+
+      return {
+        ...current,
+        [entryId]: nextOverrides,
+      };
+    });
+  }
+
+  function handleCompareToggleSynergy(entryId, synergyKey) {
+    if (!synergyKey) {
+      return;
+    }
+
+    setCompareOverridesByEntryId((current) => {
+      const existingOverrides = current[entryId] ?? {};
+      const activeSynergyKeys = Array.isArray(existingOverrides.activeSynergyKeys)
+        ? existingOverrides.activeSynergyKeys
+        : [];
+      const nextActiveSynergyKeys = activeSynergyKeys.includes(synergyKey)
+        ? activeSynergyKeys.filter((key) => key !== synergyKey)
+        : [...activeSynergyKeys, synergyKey];
+
+      return {
+        ...current,
+        [entryId]: {
+          ...existingOverrides,
+          activeSynergyKeys: nextActiveSynergyKeys,
+        },
+      };
+    });
+  }
+
+  function openCompareModal() {
+    setIsCompareModalOpen(true);
+  }
+
+  function closeCompareModal() {
+    setIsCompareModalOpen(false);
+  }
+
   const mapHasSpots = Boolean(selectedMap?.spots.length);
   const placedCount = placedEntries.length;
   const totalSpotCount = selectedMap?.spots?.length ?? 10;
@@ -2020,8 +2425,6 @@ export function LoadoutBuilderPage({
 
   function handleCurrentPlacementHoverStart(entry) {
     setHoveredMapHeroSpotId(entry.spotId);
-    setInspectedHeroId(entry.heroId);
-    setInspectedHeroSpotId(entry.spotId);
   }
 
   function handleCurrentPlacementHoverEnd(spotId) {
@@ -2173,8 +2576,8 @@ export function LoadoutBuilderPage({
                               colors={colors}
                               getIconUrl={getIconUrl}
                               size={tokenSize}
-                              onSelect={(heroId, sourceSpotId) => setSelectedHeroAction({ heroId, sourceSpotId })}
-                              onInspect={(heroId) => {
+                              onSelect={(heroId, sourceSpotId) => {
+                                setSelectedHeroAction({ heroId, sourceSpotId });
                                 setInspectedHeroId(heroId);
                                 setInspectedHeroSpotId(spot.id);
                               }}
@@ -2250,17 +2653,22 @@ export function LoadoutBuilderPage({
                     {placedEntries.map((entry) => (
                       <div
                         key={entry.spotId}
+                        onClick={() => {
+                          setInspectedHeroId(entry.heroId);
+                          setInspectedHeroSpotId(entry.spotId);
+                        }}
                         onMouseEnter={() => handleCurrentPlacementHoverStart(entry)}
                         onMouseLeave={() => handleCurrentPlacementHoverEnd(entry.spotId)}
                         style={{
                           background: hoveredMapHeroSpotId === entry.spotId ? "rgba(245,146,30,0.14)" : colors.header,
-                          border: `1px solid ${hoveredMapHeroSpotId === entry.spotId ? colors.accent : colors.border}`,
+                          border: `1px solid ${inspectedHeroSpotId === entry.spotId ? colors.accent : hoveredMapHeroSpotId === entry.spotId ? colors.accent : colors.border}`,
                           borderRadius: 10,
                           padding: 10,
                           display: "grid",
                           gap: 10,
-                          boxShadow: hoveredMapHeroSpotId === entry.spotId ? "0 0 0 2px rgba(245,146,30,0.12)" : "none",
+                          boxShadow: hoveredMapHeroSpotId === entry.spotId || inspectedHeroSpotId === entry.spotId ? "0 0 0 2px rgba(245,146,30,0.12)" : "none",
                           transition: "background 0.15s, border-color 0.15s, box-shadow 0.15s",
+                          cursor: "pointer",
                         }}
                       >
                         <div style={{ display: "flex", alignItems: "start", justifyContent: "space-between", gap: 10 }}>
@@ -2268,6 +2676,9 @@ export function LoadoutBuilderPage({
                             <HeroToken hero={entry.hero} getIconUrl={getIconUrl} colors={colors} size={40} label={entry.hero.name} />
                             <div style={{ minWidth: 0, flex: 1 }}>
                               <div style={{ fontWeight: 800, color: colors.text, fontSize: 13 }}>{entry.hero.name}</div>
+                              <div style={{ fontSize: 11, color: entry.combatStyleUnlocked ? colors.text : colors.muted, marginTop: 4 }}>
+                                Combat Style: {entry.combatStyle?.name ?? "Balanced"}{entry.combatStyleUnlocked ? "" : ` (Locked until Rank ${fmt(entry.combatStyle?.rankReq ?? 0)})`}
+                              </div>
                               {entry.placedBonus ? (
                                 <div style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>
                                   {entry.placedBonus.name} {formatSignedHeroBonus(normalizeMapPlacementBonusKey(entry.placedBonus.statKey), getPlacementBonusValue(entry.placedBonus, selectedMapPlacementBonusLevels[entry.placedBonus.id] ?? 0), fmt)}
@@ -2277,7 +2688,7 @@ export function LoadoutBuilderPage({
                           </div>
                           <button type="button" onClick={() => clearSpot(entry.spotId)} style={{ background: "transparent", color: colors.accent, border: `1px solid ${colors.border}`, borderRadius: 8, padding: "8px 10px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>Remove</button>
                         </div>
-                        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 8 }}>
                           <label style={{ display: "grid", gap: 4 }}>
                             <span style={{ fontSize: 10, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase" }}>Hero Level</span>
                             <input
@@ -2319,6 +2730,30 @@ export function LoadoutBuilderPage({
                             />
                           </label>
                           <label style={{ display: "grid", gap: 4 }}>
+                            <span style={{ fontSize: 10, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase" }}>Combat Style</span>
+                            <select
+                              value={entry.currentCombatStyleId}
+                              onChange={(event) => setSpotCombatStyle(entry.spotId, event.target.value)}
+                              style={{
+                                width: "100%",
+                                background: "#0f2640",
+                                border: `1px solid ${colors.border}`,
+                                borderRadius: 8,
+                                color: colors.text,
+                                fontSize: 13,
+                                fontWeight: 700,
+                                padding: "8px 10px",
+                                fontFamily: "inherit",
+                              }}
+                            >
+                              {COMBAT_STYLE_DEFINITIONS.map((style) => (
+                                <option key={style.id} value={style.id}>
+                                  {formatCombatStyleOptionLabel(style)}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label style={{ display: "grid", gap: 4 }}>
                             <span style={{ fontSize: 10, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase" }}>Mastery Level</span>
                             <input
                               type="number"
@@ -2356,9 +2791,12 @@ export function LoadoutBuilderPage({
                     <div style={{ fontSize: 11, color: colors.muted, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Hero Selector</div>
                     <div style={{ fontSize: 18, fontWeight: 900, color: colors.text }}>Choose a Hero</div>
                   </div>
-                  {selectedHeroAction?.sourceSpotId == null && selectedHeroAction?.heroId && (
-                    <button type="button" onClick={() => setSelectedHeroAction(null)} style={{ background: colors.header, color: colors.text, border: `1px solid ${colors.border}`, borderRadius: 10, padding: "8px 12px", fontWeight: 700, cursor: "pointer" }}>Cancel Selection</button>
-                  )}
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                    <button type="button" onClick={openCompareModal} style={{ background: "rgba(68,136,238,0.16)", color: colors.text, border: `1px solid ${colors.accent}`, borderRadius: 10, padding: "8px 12px", fontWeight: 700, cursor: "pointer" }}>Compare Heroes</button>
+                    {selectedHeroAction?.sourceSpotId == null && selectedHeroAction?.heroId && (
+                      <button type="button" onClick={() => setSelectedHeroAction(null)} style={{ background: colors.header, color: colors.text, border: `1px solid ${colors.border}`, borderRadius: 10, padding: "8px 12px", fontWeight: 700, cursor: "pointer" }}>Cancel Selection</button>
+                    )}
+                  </div>
                 </div>
 
                 <div style={{ display: "grid", gap: 8, maxHeight: 440, overflowY: "auto", paddingRight: 4 }}>
@@ -2376,10 +2814,6 @@ export function LoadoutBuilderPage({
                         details={getHeroCardDetails(hero, filterContext, placementCount)}
                         statHighlights={getHeroSelectorStatHighlights(hero)}
                         onSelect={() => handleHeroSelectorClick(hero)}
-                        onInspect={(heroId) => {
-                          setInspectedHeroId(heroId);
-                          setInspectedHeroSpotId(null);
-                        }}
                       />
                     );
                   }) : (
@@ -2418,6 +2852,9 @@ export function LoadoutBuilderPage({
                         <div style={{ fontSize: 12, color: colors.muted }}>Current Rank {fmt(focusedHero.currentRank ?? 0)}</div>
                         <div style={{ fontSize: 12, color: colors.muted }}>Current Level {fmt(focusedHero.currentLevel ?? 0)}</div>
                         <div style={{ fontSize: 12, color: colors.muted }}>Mastery Level {fmt(focusedHero.currentMastery ?? 0)}</div>
+                        <div style={{ fontSize: 12, color: colors.muted }}>
+                          Combat Style: {focusedHero.combatStyle?.name ?? "Balanced"}{focusedHero.combatStyleUnlocked ? "" : ` (Locked until Rank ${fmt(focusedHero.combatStyle?.rankReq ?? 0)})`}
+                        </div>
                         <div style={{ fontSize: 12, color: colors.muted }}>{focusedHero.placementBonus ? `Placement Bonus: ${focusedHero.placementBonus.name}` : "Placement Bonus: None"}</div>
                         <div style={{ fontSize: 13, color: colors.text, lineHeight: 1.6 }}>{focusedHero.skill?.description ?? "No skill description available."}</div>
                       </div>
@@ -2509,7 +2946,7 @@ export function LoadoutBuilderPage({
                     )}
                   </>
                 ) : (
-                  <div style={{ color: colors.muted, fontSize: 13 }}>Hover or select a hero to inspect details here.</div>
+                  <div style={{ color: colors.muted, fontSize: 13 }}>Select a hero from the map, placements list, or selector to inspect details here.</div>
                 )}
                 </div>
               </div>
@@ -2537,6 +2974,25 @@ export function LoadoutBuilderPage({
           {dragState?.hero ? <HeroToken hero={dragState.hero} getIconUrl={getIconUrl} colors={colors} size={58} label={dragState.hero.name} /> : null}
         </DragOverlay>
       </DndContext>
+
+      {isCompareModalOpen ? (
+        <HeroComparisonModal
+          colors={colors}
+          getIconUrl={getIconUrl}
+          fmt={fmt}
+          heroes={upgradedHeroes}
+          compareEntries={compareEntries}
+          models={compareHeroModels}
+          combatStyles={COMBAT_STYLE_DEFINITIONS}
+          includeLoadoutStats={compareIncludeLoadoutStats}
+          onToggleIncludeLoadoutStats={() => setCompareIncludeLoadoutStats((current) => !current)}
+          onAddHero={handleCompareAddHero}
+          onRemoveHero={handleCompareRemoveHero}
+          onClose={closeCompareModal}
+          onUpdateOverride={handleCompareUpdateOverride}
+          onToggleSynergy={handleCompareToggleSynergy}
+        />
+      ) : null}
     </div>
   );
 }

@@ -14,6 +14,7 @@ const LOADOUT_RUNTIME_STORAGE_KEYS = Object.freeze([
   "ihtddata.loadoutBuilder.ranks.v1",
   "ihtddata.loadoutBuilder.levels.v1",
   "ihtddata.loadoutBuilder.masteryLevels.v1",
+  "ihtddata.loadoutBuilder.combatStyles.v1",
   "ihtddata.loadoutBuilder.expandedMaps.v1",
   "ihtddata.statsLoadout.selectedTab",
   "ihtddata.statsLoadout.previewLevelsByTab.v1",
