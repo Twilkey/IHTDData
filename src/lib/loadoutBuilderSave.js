@@ -3,8 +3,9 @@ export const LOADOUT_BUILDER_PLACEMENTS_STORAGE_KEY = "ihtddata.loadoutBuilder.p
 export const LOADOUT_BUILDER_RANKS_STORAGE_KEY = "ihtddata.loadoutBuilder.ranks.v1";
 export const LOADOUT_BUILDER_LEVELS_STORAGE_KEY = "ihtddata.loadoutBuilder.levels.v1";
 export const LOADOUT_BUILDER_MASTERY_LEVELS_STORAGE_KEY = "ihtddata.loadoutBuilder.masteryLevels.v1";
+export const LOADOUT_BUILDER_COMBAT_STYLES_STORAGE_KEY = "ihtddata.loadoutBuilder.combatStyles.v1";
 export const LOADOUT_BUILDER_EXPANDED_MAPS_STORAGE_KEY = "ihtddata.loadoutBuilder.expandedMaps.v1";
-export const APP_SAVE_VERSION = 11;
+export const APP_SAVE_VERSION = 12;
 
 import { normalizeStatsLoadoutState, readStatsLoadoutState, writeStatsLoadoutState } from "./statsLoadout";
 import { normalizeMapLoadoutState, readMapLoadoutState, writeMapLoadoutState } from "./mapLoadout";
@@ -20,6 +21,7 @@ export function readLoadoutBuilderState(storage = localStorage) {
   let placementRanksByMap = {};
   let placementLevelsByMap = {};
   let placementMasteryLevelsByMap = {};
+  let placementCombatStylesByMap = {};
   let expandedMapsById = {};
 
   try {
@@ -59,6 +61,15 @@ export function readLoadoutBuilderState(storage = localStorage) {
   }
 
   try {
+    const parsedCombatStyles = JSON.parse(storage.getItem(LOADOUT_BUILDER_COMBAT_STYLES_STORAGE_KEY) ?? "{}");
+    if (isObject(parsedCombatStyles)) {
+      placementCombatStylesByMap = parsedCombatStyles;
+    }
+  } catch {
+    placementCombatStylesByMap = {};
+  }
+
+  try {
     const parsedExpandedMaps = JSON.parse(storage.getItem(LOADOUT_BUILDER_EXPANDED_MAPS_STORAGE_KEY) ?? "{}");
     if (isObject(parsedExpandedMaps)) {
       expandedMapsById = parsedExpandedMaps;
@@ -73,6 +84,7 @@ export function readLoadoutBuilderState(storage = localStorage) {
     placementRanksByMap,
     placementLevelsByMap,
     placementMasteryLevelsByMap,
+    placementCombatStylesByMap,
     expandedMapsById,
   };
 }
@@ -144,6 +156,10 @@ export function createComparableAppSavePayload(payload) {
             return JSON.stringify(payload?.sections?.loadoutBuilder?.placementMasteryLevelsByMap ?? {});
           }
 
+          if (key === LOADOUT_BUILDER_COMBAT_STYLES_STORAGE_KEY) {
+            return JSON.stringify(payload?.sections?.loadoutBuilder?.placementCombatStylesByMap ?? {});
+          }
+
           if (key === LOADOUT_BUILDER_EXPANDED_MAPS_STORAGE_KEY) {
             return JSON.stringify(payload?.sections?.loadoutBuilder?.expandedMapsById ?? {});
           }
@@ -205,6 +221,10 @@ export function validateAppSavePayload(payload) {
     return { ok: false, message: "Loadout builder placement mastery levels must be an object when provided." };
   }
 
+  if (loadoutBuilder.placementCombatStylesByMap !== undefined && !isObject(loadoutBuilder.placementCombatStylesByMap)) {
+    return { ok: false, message: "Loadout builder placement combat styles must be an object when provided." };
+  }
+
   if (loadoutBuilder.expandedMapsById !== undefined && !isObject(loadoutBuilder.expandedMapsById)) {
     return { ok: false, message: "Loadout builder expanded map states must be an object when provided." };
   }
@@ -249,6 +269,7 @@ export function applyAppSavePayload(payload, storage = localStorage) {
   storage.setItem(LOADOUT_BUILDER_RANKS_STORAGE_KEY, JSON.stringify(loadoutBuilder.placementRanksByMap ?? {}));
   storage.setItem(LOADOUT_BUILDER_LEVELS_STORAGE_KEY, JSON.stringify(loadoutBuilder.placementLevelsByMap ?? {}));
   storage.setItem(LOADOUT_BUILDER_MASTERY_LEVELS_STORAGE_KEY, JSON.stringify(loadoutBuilder.placementMasteryLevelsByMap ?? {}));
+  storage.setItem(LOADOUT_BUILDER_COMBAT_STYLES_STORAGE_KEY, JSON.stringify(loadoutBuilder.placementCombatStylesByMap ?? {}));
   storage.setItem(LOADOUT_BUILDER_EXPANDED_MAPS_STORAGE_KEY, JSON.stringify(loadoutBuilder.expandedMapsById ?? {}));
 
   const statsLoadout = payload.sections.statsLoadout === undefined

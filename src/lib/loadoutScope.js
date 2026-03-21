@@ -169,6 +169,9 @@ export function createComparableLoadoutScopePayload(payload, scopeId, scopeConte
         placementMasteryLevelsByMap: {
           [mapId]: cloneValue(comparablePayload.sections.loadoutBuilder.placementMasteryLevelsByMap?.[mapId] ?? {}),
         },
+        placementCombatStylesByMap: {
+          [mapId]: cloneValue(comparablePayload.sections.loadoutBuilder.placementCombatStylesByMap?.[mapId] ?? {}),
+        },
         expandedMapsById: {
           [mapId]: Boolean(comparablePayload.sections.loadoutBuilder.expandedMapsById?.[mapId]),
         },
@@ -240,6 +243,10 @@ export function mergePayloadForLoadoutScope(basePayload, incomingPayload, scopeI
   nextPayload.sections.loadoutBuilder.placementMasteryLevelsByMap = {
     ...nextPayload.sections.loadoutBuilder.placementMasteryLevelsByMap,
     [mapId]: cloneValue(incomingPayload.sections?.loadoutBuilder?.placementMasteryLevelsByMap?.[mapId] ?? {}),
+  };
+  nextPayload.sections.loadoutBuilder.placementCombatStylesByMap = {
+    ...nextPayload.sections.loadoutBuilder.placementCombatStylesByMap,
+    [mapId]: cloneValue(incomingPayload.sections?.loadoutBuilder?.placementCombatStylesByMap?.[mapId] ?? {}),
   };
   nextPayload.sections.loadoutBuilder.expandedMapsById = {
     ...nextPayload.sections.loadoutBuilder.expandedMapsById,

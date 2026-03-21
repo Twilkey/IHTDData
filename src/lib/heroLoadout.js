@@ -1,4 +1,5 @@
 import heroAttributesData from "../data/hero_attributes.json";
+import { normalizeDefaultCombatStyleIdByHero } from "./combatStyles";
 import { heroList, heroesData } from "./gameData";
 import { schedulePersistLoadoutRuntime } from "./loadoutRuntimeStore";
 
@@ -92,6 +93,10 @@ function normalizeMasteryLevelByHero(rawMasteryLevelByHero) {
   );
 }
 
+function normalizeDefaultCombatStylesByHero(rawDefaultCombatStyleIdByHero) {
+  return normalizeDefaultCombatStyleIdByHero(rawDefaultCombatStyleIdByHero);
+}
+
 export function normalizeHeroLoadoutState(rawState) {
   const selectedHeroId = typeof rawState?.selectedHeroId === "string" && heroList.some((hero) => hero.id === rawState.selectedHeroId)
     ? rawState.selectedHeroId
@@ -104,6 +109,7 @@ export function normalizeHeroLoadoutState(rawState) {
     rankByHero: normalizeRankByHero(rawState?.rankByHero),
     levelByHero: normalizeLevelByHero(rawState?.levelByHero),
     masteryLevelByHero: normalizeMasteryLevelByHero(rawState?.masteryLevelByHero),
+    defaultCombatStyleIdByHero: normalizeDefaultCombatStylesByHero(rawState?.defaultCombatStyleIdByHero),
     attributeLevelsByHero: normalizeAttributeLevelsByHero(rawState?.attributeLevelsByHero),
   };
 }

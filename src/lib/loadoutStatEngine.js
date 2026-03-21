@@ -1,3 +1,4 @@
+import { collectCombatStyleEntries, getDefaultPlacementCombatStyleId } from "./combatStyles";
 import { HERO_ATTRIBUTE_DEFINITIONS, getHeroAttributeTotalValue } from "./heroLoadout";
 import { mapsData } from "./gameData";
 import { getPerkCurrentBonus } from "./mapLoadout";
@@ -118,6 +119,7 @@ export const HERO_STAT_LABELS = Object.freeze({
   ultraEnergyChance: "Ultra Energy Chance",
   ultraEnergyAmount: "Ultra Energy Amount",
   skillPower: "Skill Power",
+  masteryPower: "Mastery Power",
   skillCooldown: "Skill Cooldown",
   skillDuration: "Skill Duration",
   killGold: "Kill Gold",
@@ -720,8 +722,28 @@ export function buildHeroUpgradeStats(hero, bonusTotals) {
 
 export function buildHeroStatModel({ hero, statsLoadoutState, playerLoadoutState, heroLoadoutState, mapLoadoutState, selectedMapId }) {
   const globalModel = buildGlobalLoadoutStatModel({ statsLoadoutState, playerLoadoutState, mapLoadoutState, selectedMapId });
-  const personalEntries = collectHeroAttributeEntries(heroLoadoutState, hero.id, "personal");
-  const conditionalGlobalEntries = collectHeroAttributeEntries(heroLoadoutState, hero.id, "global");
+  const currentRank = Number.parseInt(heroLoadoutState?.rankByHero?.[hero.id], 10) || 0;
+  const defaultCombatStyleEntries = collectCombatStyleEntries(
+    getDefaultPlacementCombatStyleId(heroLoadoutState?.defaultCombatStyleIdByHero, hero.id),
+    {
+      currentRank,
+      heroId: hero.id,
+      system: "heroCombatStyle",
+      sourceType: "heroCombatStyle",
+      sourceId: hero.id,
+      sourceLabel: "Default Combat Style",
+      personalGroupLabel: "Hero Combat Style Personal",
+      globalGroupLabel: "Hero Combat Style Global",
+    }
+  );
+  const personalEntries = [
+    ...collectHeroAttributeEntries(heroLoadoutState, hero.id, "personal"),
+    ...defaultCombatStyleEntries.filter((entry) => entry.scope === "personal"),
+  ];
+  const conditionalGlobalEntries = [
+    ...collectHeroAttributeEntries(heroLoadoutState, hero.id, "global"),
+    ...defaultCombatStyleEntries.filter((entry) => entry.scope === "global"),
+  ];
 
   const heroApplicableEntries = [
     ...globalModel.entries,
