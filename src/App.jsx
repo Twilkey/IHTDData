@@ -71,6 +71,8 @@ const PlayerLoadoutView = lazy(() => loadBuilderViews().then((module) => ({ defa
 const StatsHubView = lazy(() => loadBuilderViews().then((module) => ({ default: module.StatsHubView })));
 const SavesView = lazy(() => loadBuilderViews().then((module) => ({ default: module.SavesView })));
 const CoordFinderView = lazy(() => loadBuilderViews().then((module) => ({ default: module.CoordFinderView })));
+const loadSimulatorViews = () => import("./views/simulatorViews.jsx");
+const StatSimulatorView = lazy(() => loadSimulatorViews().then((module) => ({ default: module.StatSimulatorView })));
 
 function normalizeSection(data) {
   const groups = {};
@@ -186,6 +188,12 @@ const NAV_GROUPS = [
       { key: "statsLoadout", label: "Upgrades Loadout", menuIcon: "_heroes.png" },
       { key: "playerLoadout", label: "Player Loadout", menuIcon: "_background.png" },
       { key: "saves", label: "Saves", menuIcon: "Icon_Trophy_0.png" },
+    ],
+  },
+  {
+    label: "Simulator",
+    items: [
+      { key: "statSimulator", label: "Stat Simulator", menuIcon: "_attributePoints_0.png" },
     ],
   },
   {
@@ -5629,6 +5637,14 @@ export default function App() {
                 fmt={fmt}
                 getIconUrl={getIconUrl}
                 heroes={heroesData.heroes}
+              />
+            </Suspense>
+          )}
+          {activeKey === "statSimulator" && (
+            <Suspense fallback={lazyFallback}>
+              <StatSimulatorView
+                colors={colors}
+                getIconUrl={getIconUrl}
               />
             </Suspense>
           )}

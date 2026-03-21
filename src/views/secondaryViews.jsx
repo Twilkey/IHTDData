@@ -57,6 +57,13 @@ function getHomeSections(colors, isAdmin) {
       ],
     },
     {
+      group: "Simulator",
+      color: "#ff9f5a",
+      items: [
+        { key: "statSimulator", label: "Stat Simulator", icon: "_attributePoints_0.png", desc: "Standalone stat sandbox with explicit loadout import and export bridges" },
+      ],
+    },
+    {
       group: "Misc",
       color: "#f5c842",
       items: [
