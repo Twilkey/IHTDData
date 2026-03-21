@@ -37,6 +37,7 @@ import {
   HeroFiltersPanel,
   useHeroFilters,
 } from "./HeroFiltersPanel";
+import { useIsNarrowScreen } from "../../lib/useIsNarrowScreen";
 
 const MAX_DUPLICATE_HEROES = 3;
 const RANGE_RADIUS_SCALE = 0.085;
@@ -1278,6 +1279,7 @@ export function LoadoutBuilderPage({
   forcedBuilderMode,
   saveButton,
 }) {
+  const isNarrowScreen = useIsNarrowScreen(1100);
   const statsLoadoutState = useMemo(() => readStatsLoadoutState(localStorage), []);
   const playerLoadoutState = useMemo(() => readPlayerLoadoutState(localStorage), []);
   const heroLoadoutState = useMemo(() => readHeroLoadoutState(localStorage), []);
@@ -2451,10 +2453,10 @@ export function LoadoutBuilderPage({
                 </div>
               </div>
 
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                <label style={{ display: "grid", gap: 6, color: colors.muted, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", minWidth: 220 }}>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", width: isNarrowScreen ? "100%" : "auto" }}>
+                <label style={{ display: "grid", gap: 6, color: colors.muted, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", minWidth: isNarrowScreen ? 0 : 220, flex: isNarrowScreen ? "1 1 100%" : "0 0 auto" }}>
                   Active Map
-                  <select value={selectedMap?.id ?? ""} onChange={(event) => setSelectedMapId(event.target.value)} style={{ minWidth: 220, background: "#0f2640", border: `1px solid ${colors.border}`, color: colors.text, borderRadius: 10, padding: "10px 12px", font: "inherit" }}>
+                  <select value={selectedMap?.id ?? ""} onChange={(event) => setSelectedMapId(event.target.value)} style={{ width: "100%", minWidth: 0, background: "#0f2640", border: `1px solid ${colors.border}`, color: colors.text, borderRadius: 10, padding: "10px 12px", font: "inherit" }}>
                     {maps.map((map) => (
                       <option key={map.id} value={map.id}>{map.name}</option>
                     ))}
@@ -2517,7 +2519,7 @@ export function LoadoutBuilderPage({
           ) : null}
 
           {builderMode === "hero" ? (
-            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.5fr) minmax(320px, 440px)", gap: 20, alignItems: "start" }}>
+            <div style={{ display: "grid", gridTemplateColumns: isNarrowScreen ? "1fr" : "minmax(0, 1.5fr) minmax(320px, 440px)", gap: 20, alignItems: "start" }}>
               <div style={{ display: isSelectedMapExpanded ? "contents" : "grid", gap: 14 }}>
 
               {selectedMap && (

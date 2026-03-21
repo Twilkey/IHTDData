@@ -23,6 +23,7 @@ import {
   HeroFiltersPanel,
   useHeroFilters,
 } from "./HeroFiltersPanel";
+import { useIsNarrowScreen } from "../../lib/useIsNarrowScreen";
 import { ScopedLoadoutPresetsPanel } from "./ScopedLoadoutPresetsPanel";
 
 const RARITY_SORT_ORDER = ["Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic", "Supreme", "Ascended"];
@@ -672,6 +673,7 @@ function SynergyTeamCard({ synergyTeam, selectedHeroId, heroesById, rankByHero, 
 }
 
 export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts = [], currentSavedLoadoutId = "", onLoadSave, onDeleteSave, onImportComplete, saveButton }) {
+  const isNarrowScreen = useIsNarrowScreen(1080);
   const initialState = useMemo(() => readHeroLoadoutState(localStorage), []);
   const [selectedHeroId, setSelectedHeroId] = useState(initialState.selectedHeroId);
   const [previewLevelsByHero, setPreviewLevelsByHero] = useState(initialState.previewLevelsByHero);
@@ -952,7 +954,7 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 22, fontWeight: 900, color: colors.text }}>Hero Loadout</div>
         </div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", width: isNarrowScreen ? "100%" : "auto" }}>
           <ScopedLoadoutPresetsPanel
             colors={colors}
             title="Hero Loadout Presets"
@@ -1004,8 +1006,8 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts
       />
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 20, alignItems: "flex-start" }}>
-        <aside style={{ flex: "0 0 300px", width: "100%", maxWidth: 340, display: "grid", gap: 14, alignSelf: "flex-start" }}>
-          <div style={{ background: `linear-gradient(180deg, ${colors.panel} 0%, ${colors.header} 100%)`, border: `1px solid ${colors.border}`, borderRadius: 16, padding: 16, display: "grid", gap: 12, maxHeight: "calc(200vh - 240px)", overflowY: "auto", position: "sticky", top: 16 }}>
+        <aside style={{ flex: isNarrowScreen ? "1 1 100%" : "0 0 300px", width: "100%", maxWidth: isNarrowScreen ? "none" : 340, display: "grid", gap: 14, alignSelf: "flex-start" }}>
+          <div style={{ background: `linear-gradient(180deg, ${colors.panel} 0%, ${colors.header} 100%)`, border: `1px solid ${colors.border}`, borderRadius: 16, padding: 16, display: "grid", gap: 12, maxHeight: isNarrowScreen ? "none" : "calc(200vh - 240px)", overflowY: isNarrowScreen ? "visible" : "auto", position: isNarrowScreen ? "static" : "sticky", top: isNarrowScreen ? "auto" : 16 }}>
             {groupedHeroes.map((group) => (
               <div key={group.rarity} style={{ display: "grid", gap: 8 }}>
                 <div style={{ fontSize: 11, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 800 }}>{group.rarity}</div>
@@ -1057,7 +1059,7 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts
           </div>
         </aside>
 
-        <section style={{ flex: "1 1 760px", minWidth: 0, display: "grid", gap: 16 }}>
+        <section style={{ flex: "1 1 760px", minWidth: 0, display: "grid", gap: 16, width: "100%" }}>
           {selectedHero ? (
             <>
               <div style={{ background: `linear-gradient(180deg, ${colors.header} 0%, ${colors.panel} 100%)`, border: `1px solid ${colors.border}`, borderRadius: 16, padding: 16, display: "grid", gap: 16 }}>
@@ -1212,7 +1214,7 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts
                       <div style={{ fontSize: 18, fontWeight: 900, color: colors.text }}>Milestones</div>
                     </div>
                     {(selectedHero.milestones ?? []).length ? (
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12 }}>
+                      <div style={{ display: "grid", gridTemplateColumns: isNarrowScreen ? "1fr" : "repeat(3, minmax(0, 1fr))", gap: 12 }}>
                         {(selectedHero.milestones ?? []).map((milestone) => {
                           const isActive = selectedHeroLevel >= (milestone.requirement ?? 0);
                           const scopeColor = milestone.scope === "personal" ? colors.accent : colors.positive;
@@ -1245,7 +1247,7 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts
                         <div style={{ fontSize: 18, fontWeight: 900, color: colors.text }}>Attributes</div>
                       </div>
                       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-                        <label style={{ display: "grid", gap: 6, minWidth: 180 }}>
+                        <label style={{ display: "grid", gap: 6, minWidth: isNarrowScreen ? 0 : 180, flex: isNarrowScreen ? "1 1 100%" : "0 0 auto" }}>
                           <span style={{ fontSize: 11, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase" }}>Additional Levels</span>
                           <input
                             type="number"
@@ -1276,7 +1278,7 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts
                           <div style={{ fontSize: 12, color: colors.muted }}>{group.attributes.length} attributes</div>
                         </div>
                         {group.attributes.length ? (
-                          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
+                          <div style={{ display: "grid", gridTemplateColumns: isNarrowScreen ? "1fr" : "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
                             {group.attributes.map((attribute) => (
                               <AttributeCard
                                 key={attribute.id}
@@ -1312,7 +1314,7 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts
                           Choose one default combat style for {selectedHero.name}. Newly placed copies will start with that style selected. If no default is set, placements fall back to Balanced.
                         </div>
                       </div>
-                      <div style={{ background: colors.header, border: `1px solid ${colors.border}`, borderRadius: 12, padding: "10px 12px", minWidth: 220 }}>
+                      <div style={{ background: colors.header, border: `1px solid ${colors.border}`, borderRadius: 12, padding: "10px 12px", minWidth: isNarrowScreen ? 0 : 220, width: isNarrowScreen ? "100%" : "auto" }}>
                         <div style={{ fontSize: 11, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 800 }}>Current Default</div>
                         <div style={{ fontSize: 15, fontWeight: 900, color: colors.text, marginTop: 6 }}>
                           {getCombatStyle(selectedHeroDefaultCombatStyleId)?.name ?? "Balanced"}
@@ -1320,7 +1322,7 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts
                       </div>
                     </div>
 
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: isNarrowScreen ? "1fr" : "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
                       {selectedHeroCombatStyleEntries.map(({ style, isUnlocked, entries }) => {
                         const isDefault = selectedHeroDefaultCombatStyleId === style.id;
 

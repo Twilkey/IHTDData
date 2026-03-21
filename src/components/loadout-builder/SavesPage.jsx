@@ -7,6 +7,7 @@ import {
   LOADOUT_EXPORT_SCOPES,
   parseImportedLoadoutFile,
 } from "../../lib/loadoutSavedRepository";
+import { useIsNarrowScreen } from "../../lib/useIsNarrowScreen";
 
 function formatDateTime(value) {
   if (!value) {
@@ -111,6 +112,7 @@ export function SavesPage({
   onStartFreshSave,
   onImportComplete,
 }) {
+  const isNarrowScreen = useIsNarrowScreen(900);
   const importInputRef = useRef(null);
   const [selectedScopeId, setSelectedScopeId] = useState(() => LOADOUT_EXPORT_SCOPES[0]?.id ?? "full");
   const [selectedSaveIds, setSelectedSaveIds] = useState(() => []);
@@ -473,7 +475,7 @@ export function SavesPage({
                     <input type="checkbox" checked={isSelected} onChange={() => toggleSaveSelection(save.id)} />
                     <span style={{ fontSize: 12, color: colors.muted, textTransform: "uppercase", letterSpacing: "0.08em" }}>Export</span>
                   </label>
-                  <div style={{ flex: 1, minWidth: 220 }}>
+                  <div style={{ flex: 1, minWidth: isNarrowScreen ? "100%" : 220 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                       <div style={{ fontSize: 19, fontWeight: 800 }}>{save.name}</div>
                       <span style={{ borderRadius: 999, padding: "4px 10px", background: "rgba(255,255,255,0.05)", border: `1px solid ${colors.border}`, fontSize: 11, color: colors.muted, textTransform: "uppercase", letterSpacing: "0.08em" }}>
@@ -489,18 +491,26 @@ export function SavesPage({
                       {save.description || "No description."}
                     </div>
                   </div>
-                  <div style={{ display: "grid", gap: 10, gridAutoFlow: "column", justifyContent: "end", flexWrap: "wrap" }}>
+                  <div
+                    style={{
+                      display: "grid",
+                      gap: 10,
+                      gridAutoFlow: isNarrowScreen ? "row" : "column",
+                      justifyContent: isNarrowScreen ? "stretch" : "end",
+                      width: isNarrowScreen ? "100%" : "auto",
+                    }}
+                  >
                     <button
                       onClick={() => handleLoadSave(save.id)}
                       disabled={busyAction === `load:${save.id}`}
-                      style={{ background: colors.accent, color: "#07111d", border: `1px solid ${colors.accent}`, borderRadius: 10, padding: "10px 14px", cursor: "pointer", fontFamily: "inherit", fontWeight: 800 }}
+                      style={{ background: colors.accent, color: "#07111d", border: `1px solid ${colors.accent}`, borderRadius: 10, padding: "10px 14px", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, width: isNarrowScreen ? "100%" : "auto" }}
                     >
                       {busyAction === `load:${save.id}` ? "Loading..." : "Load on Site"}
                     </button>
                     <button
                       onClick={() => setDeleteTarget(save)}
                       disabled={busyAction === `delete:${save.id}`}
-                      style={{ background: "transparent", color: "#ffb3a8", border: "1px solid rgba(255, 122, 103, 0.45)", borderRadius: 10, padding: "10px 14px", cursor: "pointer", fontFamily: "inherit", fontWeight: 800 }}
+                      style={{ background: "transparent", color: "#ffb3a8", border: "1px solid rgba(255, 122, 103, 0.45)", borderRadius: 10, padding: "10px 14px", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, width: isNarrowScreen ? "100%" : "auto" }}
                     >
                       Delete
                     </button>
