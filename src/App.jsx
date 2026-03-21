@@ -104,7 +104,6 @@ const MAP_LOADOUT_ROUTE_TO_MODE = Object.freeze({
   loadoutBuilderSpell: "spell",
 });
 const MAP_LOADOUT_ROUTE_KEYS = new Set(["loadoutBuilder", ...Object.keys(MAP_LOADOUT_ROUTE_TO_MODE)]);
-const PAGE_HEADER_SAVE_ROUTE_KEYS = new Set(["heroLoadout", "statsLoadout", "playerLoadout", "statsHub", "saves", ...MAP_LOADOUT_ROUTE_KEYS]);
 
 function getMapLoadoutModeFromRoute(activeKey, storage = localStorage) {
   if (activeKey === "loadoutBuilder") {
@@ -528,6 +527,164 @@ function rankExpForLevel(lvl) {
   if (lvl > 5500) v *= (1 + (lvl - 5500) * 0.40);
   if (lvl > 6000) v *= (1 + (lvl - 6000) * 0.50);
   return Math.round(v);
+}
+
+function RankExpView() {
+  const fmt = useFmt();
+  const [startInput, setStartInput] = useState("1");
+  const [endInput, setEndInput] = useState("150");
+  const [range, setRange] = useState({ start: 1, end: 150 });
+  const [sortDir, setSortDir] = useState("asc");
+
+  function clampLevel(value, fallback) {
+    return Math.max(1, Number.parseInt(value, 10) || fallback);
+  }
+
+  function applyRange() {
+    const nextStart = clampLevel(startInput, 1);
+    const nextEndRaw = clampLevel(endInput, nextStart);
+    const nextEnd = Math.max(nextStart, nextEndRaw);
+
+    setStartInput(String(nextStart));
+    setEndInput(String(nextEnd));
+    setRange({ start: nextStart, end: nextEnd });
+  }
+
+  function handleKeyDown(event) {
+    if (event.key === "Enter") {
+      applyRange();
+    }
+  }
+
+  const { rows, totalExp } = useMemo(() => {
+    const nextRows = [];
+    let cumulative = 0;
+
+    for (let level = range.start; level <= range.end; level += 1) {
+      const required = rankExpForLevel(level);
+      cumulative += required;
+      nextRows.push({ level, required, cumulative });
+    }
+
+    return {
+      rows: nextRows,
+      totalExp: nextRows.reduce((sum, row) => sum + row.required, 0),
+    };
+  }, [range]);
+
+  const displayRows = useMemo(() => {
+    const nextRows = [...rows];
+    nextRows.sort((left, right) => (sortDir === "asc" ? left.level - right.level : right.level - left.level));
+    return nextRows;
+  }, [rows, sortDir]);
+
+  const inputStyle = {
+    background: "#0f2640",
+    border: `1px solid ${colors.border}`,
+    borderRadius: 6,
+    color: colors.text,
+    padding: "6px 10px",
+    fontSize: 14,
+    fontFamily: "inherit",
+    width: 96,
+    textAlign: "center",
+    outline: "none",
+  };
+  const thMuted = {
+    padding: "8px 12px",
+    color: colors.muted,
+    fontWeight: 700,
+    fontSize: 11,
+    textAlign: "right",
+    borderBottom: `1px solid ${colors.border}`,
+    letterSpacing: "0.06em",
+    textTransform: "uppercase",
+  };
+  const thSortable = {
+    ...thMuted,
+    textAlign: "left",
+    cursor: "pointer",
+    userSelect: "none",
+  };
+
+  return (
+    <div>
+      <div style={{ marginBottom: 20, display: "flex", alignItems: "center", gap: 12 }}>
+        <img src={getIconUrl("_killExp.png")} alt="" style={{ width: 32, height: 32, objectFit: "contain" }} />
+        <div>
+          <div style={{ fontSize: 22, fontWeight: 900, color: colors.accent, letterSpacing: "0.04em", textTransform: "uppercase" }}>Rank Exp</div>
+          <div style={{ fontSize: 13, color: colors.muted, marginTop: 2 }}>Experience required for each rank level from the in-app formula.</div>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 16 }}>
+        <span style={{ fontSize: 12, color: colors.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>Levels</span>
+        <input
+          type="number"
+          min={1}
+          value={startInput}
+          onChange={(event) => setStartInput(event.target.value)}
+          onKeyDown={handleKeyDown}
+          onBlur={applyRange}
+          style={inputStyle}
+        />
+        <span style={{ color: colors.muted, fontSize: 13 }}>to</span>
+        <input
+          type="number"
+          min={1}
+          value={endInput}
+          onChange={(event) => setEndInput(event.target.value)}
+          onKeyDown={handleKeyDown}
+          onBlur={applyRange}
+          style={inputStyle}
+        />
+        <button
+          onClick={applyRange}
+          style={{
+            background: colors.accent,
+            color: "#000",
+            border: "none",
+            borderRadius: 6,
+            padding: "6px 18px",
+            cursor: "pointer",
+            fontWeight: 700,
+            fontSize: 13,
+            fontFamily: "inherit",
+          }}
+        >
+          Apply
+        </button>
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ display: "inline-block", background: colors.panel, border: `1px solid ${colors.border}`, borderRadius: 8, padding: "10px 16px" }}>
+          <div style={{ fontSize: 11, color: colors.muted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Total Exp (Levels {range.start}-{range.end})</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: colors.positive, fontFamily: "monospace" }}>{fmt(totalExp)}</div>
+        </div>
+      </div>
+
+      <div style={{ background: colors.header, border: `1px solid ${colors.border}`, borderRadius: 8, overflow: "hidden" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <thead>
+            <tr style={{ background: colors.panel }}>
+              <th onClick={() => setSortDir((current) => (current === "asc" ? "desc" : "asc"))} style={thSortable}>Level{sortDir === "asc" ? " ▲" : " ▼"}</th>
+              <th style={thMuted}>Exp Required</th>
+              <th style={thMuted}>Cumulative Exp</th>
+            </tr>
+          </thead>
+          <tbody>
+            {displayRows.map((row, index) => (
+              <tr key={row.level} style={{ background: index % 2 === 0 ? "transparent" : colors.panel + "60" }}>
+                <td style={{ padding: "8px 12px", color: colors.text, fontWeight: 700 }}>Rank {row.level}</td>
+                <td style={{ padding: "8px 12px", color: colors.gold, textAlign: "right", fontFamily: "monospace" }}>{fmt(row.required)}</td>
+                <td style={{ padding: "8px 12px", color: colors.positive, textAlign: "right", fontFamily: "monospace" }}>{fmt(row.cumulative)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 }
 
 // ─────────────────────────────────────────────
@@ -4219,6 +4376,89 @@ function LegacyWavePerksView() {
 // ─────────────────────────────────────────────
 // TECH TREE VIEW
 // ─────────────────────────────────────────────
+function SheetView({ sectionData, onOpen }) {
+  const fmt = useFmt();
+  const groups = Object.entries(sectionData?.groups ?? {});
+
+  return (
+    <div>
+      {sectionData?.label ? (
+        <div style={{ marginBottom: 20, display: "flex", alignItems: "center", gap: 12 }}>
+          {sectionData.menuIcon ? (
+            <img src={getIconUrl(sectionData.menuIcon)} alt="" style={{ width: 32, height: 32, objectFit: "contain" }} />
+          ) : null}
+          <div>
+            <div style={{ fontSize: 22, fontWeight: 900, color: colors.accent, letterSpacing: "0.04em", textTransform: "uppercase" }}>{sectionData.label}</div>
+            {sectionData.formulaNote ? <div style={{ fontSize: 13, color: colors.muted, marginTop: 2 }}>{sectionData.formulaNote}</div> : null}
+          </div>
+        </div>
+      ) : null}
+
+      {groups.map(([groupName, items]) => (
+        <div key={groupName} style={{ marginBottom: 32 }}>
+          <div style={{ background: `linear-gradient(180deg, #3a6eb0 0%, ${colors.bannerBg} 100%)`, border: "1px solid #4a7ec0", borderRadius: 8, padding: "8px 20px", marginBottom: 14, textAlign: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}>
+            <span style={{ fontSize: 14, fontWeight: 800, color: colors.bannerText, letterSpacing: "0.12em", textTransform: "uppercase", textShadow: "0 1px 4px rgba(0,0,0,0.6)" }}>{groupName}</span>
+          </div>
+
+          <div className="card-grid">
+            {items.map((item) => {
+              const totalCost = computeTotalCost(item, sectionData.costFormula);
+              const rewardValue = item.reward ?? item.statAmt;
+              const rewardLabel = item.rewardUnit ?? item.statLabel ?? STAT_UNITS[item.statKey]?.label ?? item.statKey ?? null;
+              const iconName = item.icon ?? item.rewardIcon ?? sectionData.menuIcon;
+              const costValue = item.cost ?? item.baseCost ?? null;
+              const requirementValue = item.requirement ?? item.waveReq ?? null;
+              const costPrefix = item.costCurrency ?? CURRENCY_LABELS[item.currency] ?? "Cost";
+
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => onOpen(item)}
+                  style={{
+                    width: "100%",
+                    background: `linear-gradient(180deg, #2a5c96 0%, ${colors.header} 100%)`,
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: 8,
+                    padding: 12,
+                    boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
+                    display: "flex",
+                    gap: 12,
+                    alignItems: "center",
+                    color: colors.text,
+                    cursor: "pointer",
+                    textAlign: "left",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  <div style={{ width: 52, height: 52, flexShrink: 0, borderRadius: 8, background: item.bgColor ?? item.rewardBgColor ?? colors.panel, border: `2px solid ${item.borderColor ?? item.rewardBorderColor ?? colors.border}`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                    {iconName ? <img src={getIconUrl(iconName)} alt="" style={{ width: 36, height: 36, objectFit: "contain" }} /> : <span style={{ color: colors.muted, fontSize: 18 }}>-</span>}
+                  </div>
+
+                  <div style={{ flex: 1, minWidth: 0, display: "grid", gap: 4 }}>
+                    <div style={{ color: colors.text, fontWeight: 700, fontSize: 15, lineHeight: 1.2 }}>{item.name}</div>
+
+                    {rewardLabel && rewardValue != null ? (
+                      <div style={{ fontSize: 13, color: colors.muted }}>
+                        Bonus <span style={{ color: Number(rewardValue) < 0 ? colors.positive : colors.accent, fontWeight: 700 }}>{isProgressiveItem(item) ? formatStat(progressiveTotal(Number(item.statAmt) || 0, Number(item.maxLevel) || 0), item.statKey) : `${Number(rewardValue) > 0 ? "+" : ""}${fmt(rewardValue)}${item.reward_type === "percent" ? "%" : rewardUnitSym(rewardLabel)}`}</span> {rewardLabel}
+                      </div>
+                    ) : null}
+
+                    {item.maxLevel != null ? <div style={{ fontSize: 13, color: colors.muted }}>Max Level {fmt(item.maxLevel)}</div> : null}
+                    {costValue != null ? <div style={{ fontSize: 13, color: colors.muted }}>{costPrefix} {fmt(costValue)}</div> : null}
+                    {totalCost != null ? <div style={{ fontSize: 13, color: colors.muted }}>Total {costPrefix} {fmt(totalCost)}</div> : null}
+                    {requirementValue != null ? <div style={{ fontSize: 13, color: colors.muted }}>Requirement {typeof requirementValue === "number" ? fmt(requirementValue) : requirementValue}</div> : null}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function TechTreeGroupAbs({ items, layout, onOpen, containerWidth }) {
   const fmt  = useFmt();
   const cols = layout.cols;
@@ -4902,11 +5142,7 @@ export default function App() {
       : currentSavedLoadout
         ? `${currentSavedLoadout.name} Saved`
         : "Saved";
-  const saveScopeBadgeLabel = activeLoadoutScope.scopeId === LOADOUT_RECORD_SCOPE_FULL
-    ? "Whole Save"
-    : compactActiveLoadoutScopeLabel;
   const isSaveButtonPassive = Boolean(currentSavedLoadoutId && !isCurrentSavedLoadoutDirty);
-  const shouldShowHeaderSaveGroup = !PAGE_HEADER_SAVE_ROUTE_KEYS.has(activeKey);
   const pageSaveButton = {
     label: saveButtonBusy ? "Saving..." : saveButtonLabel,
     onClick: handleSaveButtonClick,
@@ -5213,40 +5449,6 @@ export default function App() {
               })}
             </div>
           </div>
-          {shouldShowHeaderSaveGroup ? (
-            <div className="app-header-toolbar__group app-header-toolbar__group--save">
-              <div className="app-header-toolbar__save-meta">
-                <span className="app-header-toolbar__label" style={{ color: colors.muted }}>Save</span>
-                {currentSavedLoadout ? (
-                  <span className="app-header-toolbar__value" style={{ color: colors.text }} title={currentSavedLoadout.name}>
-                    {currentSavedLoadout.name}
-                  </span>
-                ) : (
-                  <span className="app-header-toolbar__value" style={{ color: colors.text }}>{saveButtonBaseLabel}</span>
-                )}
-                <span className="app-header-toolbar__meta-text" style={{ color: colors.muted }}>{saveScopeBadgeLabel}</span>
-                {saveButtonMessage ? (
-                  <span className={`app-header-toolbar__message app-header-toolbar__message--${saveButtonMessage.type}`}>
-                    {saveButtonMessage.text}
-                  </span>
-                ) : null}
-              </div>
-              <div className="app-header-toolbar__save-actions">
-                <button
-                  onClick={handleSaveButtonClick}
-                  className={`app-header-toolbar__save-button${isSaveButtonPassive ? " app-header-toolbar__save-button--passive" : ""}`}
-                  style={{
-                    background: isSaveButtonPassive ? colors.header : colors.accent,
-                    color: isSaveButtonPassive ? colors.muted : "#08111d",
-                    borderColor: isSaveButtonPassive ? colors.border : colors.accent,
-                    cursor: saveButtonBusy ? "wait" : isSaveButtonPassive ? "default" : "pointer",
-                  }}
-                >
-                  {saveButtonBusy ? "Saving..." : saveButtonLabel}
-                </button>
-              </div>
-            </div>
-          ) : null}
         </div>
       </div>
 
