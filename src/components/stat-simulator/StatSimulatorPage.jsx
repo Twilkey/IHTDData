@@ -10,6 +10,7 @@ import { readPlayerLoadoutState } from "../../lib/playerLoadout";
 import { createStatSimulatorDraftState, importSimulatorScenarioFromLoadout, pushSimulatorFocusHeroToLoadout, pushSimulatorMapToLoadout, readStatSimulatorState, STAT_SIMULATOR_MANUAL_STAT_FIELDS, STAT_SIMULATOR_SKILL_EFFECT_FIELDS, sumSupportExtraSynergy, sumSupportSkillEffects, updateSimulatorSupportRow, writeStatSimulatorState } from "../../lib/statSimulator";
 import { readStatsLoadoutState } from "../../lib/statsLoadout";
 import { readHeroLoadoutState } from "../../lib/heroLoadout";
+import { useIsNarrowScreen } from "../../lib/useIsNarrowScreen";
 
 const LOADOUT_SOURCE_FIELDS = Object.freeze([
   { key: "statsLoadout", label: "Use current upgrades loadout", description: "Applies purchased upgrade bonuses from the Upgrades Loadout page." },
@@ -46,7 +47,7 @@ function formatNumber(value) {
 
 function Panel({ title, subtitle, colors, children, action }) {
   return (
-    <section style={{ background: `linear-gradient(180deg, ${colors.header} 0%, ${colors.panel} 100%)`, border: `1px solid ${colors.border}`, borderRadius: 16, padding: 16, display: "grid", gap: 14 }}>
+    <section style={{ background: `linear-gradient(180deg, ${colors.header} 0%, ${colors.panel} 100%)`, border: `1px solid ${colors.border}`, borderRadius: 16, padding: 16, display: "grid", gap: 14, minWidth: 0, overflow: "hidden" }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "start", flexWrap: "wrap" }}>
         <div style={{ display: "grid", gap: 4 }}>
           <div style={{ fontSize: 14, fontWeight: 900, color: colors.accent, letterSpacing: "0.08em", textTransform: "uppercase" }}>{title}</div>
@@ -69,7 +70,7 @@ function ActionButton({ label, onClick, colors, tone = "default" }) {
   return (
     <button
       onClick={onClick}
-      style={{ borderRadius: 10, border: `1px solid ${palette.border}`, background: palette.background, color: palette.color, padding: "10px 14px", fontSize: 12, fontWeight: 800, cursor: "pointer" }}
+      style={{ borderRadius: 10, border: `1px solid ${palette.border}`, background: palette.background, color: palette.color, padding: "10px 14px", fontSize: 12, fontWeight: 800, cursor: "pointer", width: "100%", minWidth: 0, boxSizing: "border-box", whiteSpace: "normal", lineHeight: 1.35 }}
     >
       {label}
     </button>
@@ -78,7 +79,7 @@ function ActionButton({ label, onClick, colors, tone = "default" }) {
 
 function TextField({ label, value, onChange, colors, type = "text", step = "any", min = undefined, max = undefined }) {
   return (
-    <label style={{ display: "grid", gap: 6 }}>
+    <label style={{ display: "grid", gap: 6, minWidth: 0 }}>
       <span style={{ fontSize: 11, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 800 }}>{label}</span>
       <input
         type={type}
@@ -87,7 +88,7 @@ function TextField({ label, value, onChange, colors, type = "text", step = "any"
         min={min}
         max={max}
         onChange={(event) => onChange(event.target.value)}
-        style={{ background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 10, color: colors.text, fontSize: 14, fontWeight: 700, padding: "10px 12px", fontFamily: "inherit" }}
+        style={{ width: "100%", minWidth: 0, boxSizing: "border-box", background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 10, color: colors.text, fontSize: 14, fontWeight: 700, padding: "10px 12px", fontFamily: "inherit" }}
       />
     </label>
   );
@@ -95,12 +96,12 @@ function TextField({ label, value, onChange, colors, type = "text", step = "any"
 
 function SelectField({ label, value, onChange, colors, options }) {
   return (
-    <label style={{ display: "grid", gap: 6 }}>
+    <label style={{ display: "grid", gap: 6, minWidth: 0 }}>
       <span style={{ fontSize: 11, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 800 }}>{label}</span>
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        style={{ background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 10, color: colors.text, fontSize: 14, fontWeight: 700, padding: "10px 12px", fontFamily: "inherit" }}
+        style={{ width: "100%", minWidth: 0, boxSizing: "border-box", background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 10, color: colors.text, fontSize: 14, fontWeight: 700, padding: "10px 12px", fontFamily: "inherit" }}
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>{option.label}</option>
@@ -112,7 +113,7 @@ function SelectField({ label, value, onChange, colors, options }) {
 
 function ToggleCard({ item, checked, onChange, colors }) {
   return (
-    <label style={{ display: "grid", gap: 8, border: `1px solid ${checked ? colors.accent : colors.border}`, background: checked ? `${colors.accent}14` : colors.panel, borderRadius: 12, padding: 12, cursor: "pointer" }}>
+    <label style={{ display: "grid", gap: 8, border: `1px solid ${checked ? colors.accent : colors.border}`, background: checked ? `${colors.accent}14` : colors.panel, borderRadius: 12, padding: 12, cursor: "pointer", minWidth: 0, overflowWrap: "anywhere" }}>
       <div style={{ display: "flex", gap: 10, alignItems: "center", justifyContent: "space-between" }}>
         <span style={{ fontSize: 13, color: colors.text, fontWeight: 800 }}>{item.label}</span>
         <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
@@ -177,6 +178,66 @@ function HeroStatSummary({ heroModel, colors }) {
   );
 }
 
+function SupportRosterCards({ rows, colors, onUpdateRow }) {
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
+      {rows.map((row) => (
+        <div key={row.id} style={{ border: `1px solid ${colors.border}`, background: colors.panel, borderRadius: 12, padding: 12, display: "grid", gap: 12, minWidth: 0 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+            <div style={{ fontSize: 13, color: colors.text, fontWeight: 900 }}>{row.id.replace("slot-", "Support ")}</div>
+            <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: colors.muted, fontWeight: 700 }}>
+              <input
+                type="checkbox"
+                checked={row.enabled}
+                onChange={(event) => onUpdateRow(row.id, (existing) => ({ ...existing, enabled: event.target.checked }))}
+              />
+              Enabled
+            </label>
+          </div>
+          <div style={{ display: "grid", gap: 10 }}>
+            <label style={{ display: "grid", gap: 6, minWidth: 0 }}>
+              <span style={{ fontSize: 11, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 800 }}>Hero</span>
+              <select value={row.heroId} onChange={(event) => onUpdateRow(row.id, (existing) => ({ ...existing, heroId: event.target.value }))} style={{ width: "100%", minWidth: 0, boxSizing: "border-box", background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 8, color: colors.text, padding: "10px 12px", fontFamily: "inherit" }}>
+                <option value="">None</option>
+                {heroList.map((hero) => <option key={hero.id} value={hero.id}>{hero.name}</option>)}
+              </select>
+            </label>
+            <label style={{ display: "grid", gap: 6, minWidth: 0 }}>
+              <span style={{ fontSize: 11, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 800 }}>Combat Style</span>
+              <select value={row.combatStyleId} onChange={(event) => onUpdateRow(row.id, (existing) => ({ ...existing, combatStyleId: event.target.value }))} style={{ width: "100%", minWidth: 0, boxSizing: "border-box", background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 8, color: colors.text, padding: "10px 12px", fontFamily: "inherit" }}>
+                {COMBAT_STYLE_DEFINITIONS.map((style) => <option key={style.id} value={style.id}>{style.name}</option>)}
+              </select>
+            </label>
+            <label style={{ display: "grid", gap: 6, minWidth: 0 }}>
+              <span style={{ fontSize: 11, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 800 }}>Extra Synergy</span>
+              <input type="number" value={row.extraSynergy} onChange={(event) => onUpdateRow(row.id, (existing) => ({ ...existing, extraSynergy: parseNumberInput(event.target.value, 0) }))} style={{ width: "100%", minWidth: 0, boxSizing: "border-box", background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 8, color: colors.text, padding: "10px 12px", fontFamily: "inherit" }} />
+            </label>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>
+            {STAT_SIMULATOR_SKILL_EFFECT_FIELDS.map((field) => (
+              <label key={field.key} style={{ display: "grid", gap: 6, minWidth: 0 }}>
+                <span style={{ fontSize: 11, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 800 }}>{field.label}</span>
+                <input
+                  type="number"
+                  value={row.skillEffects[field.key]}
+                  onChange={(event) => onUpdateRow(row.id, (existing) => ({
+                    ...existing,
+                    skillEffects: {
+                      ...existing.skillEffects,
+                      [field.key]: parseNumberInput(event.target.value, 0),
+                    },
+                  }))}
+                  style={{ width: "100%", minWidth: 0, boxSizing: "border-box", background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 8, color: colors.text, padding: "10px 12px", fontFamily: "inherit" }}
+                />
+              </label>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function buildManualSandboxStats(manualStats, heroTotals, skillTotals) {
   const damageBonus = (heroTotals.damage ?? 0) + (skillTotals.damage ?? 0);
   const attackSpeedBonus = (heroTotals.attackSpeed ?? 0) + (skillTotals.attackSpeed ?? 0);
@@ -204,6 +265,9 @@ function buildManualSandboxStats(manualStats, heroTotals, skillTotals) {
 }
 
 export function StatSimulatorPage({ colors, getIconUrl }) {
+  const isNarrowScreen = useIsNarrowScreen(980);
+  const isCompactScreen = useIsNarrowScreen(1240);
+  const isPhoneScreen = useIsNarrowScreen(720);
   const [simulatorState, setSimulatorState] = useState(() => readStatSimulatorState(localStorage));
   const [loadoutRevision, setLoadoutRevision] = useState(0);
   const [bridgeMessage, setBridgeMessage] = useState(null);
@@ -355,7 +419,7 @@ export function StatSimulatorPage({ colors, getIconUrl }) {
         subtitle="Standalone sandbox based on the spreadsheet simulator layout, with optional pull and push bridges to the existing loadout system."
         colors={colors}
         action={(
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div style={{ display: "grid", gap: 8, gridTemplateColumns: isCompactScreen ? (isPhoneScreen ? "1fr" : "repeat(2, minmax(0, 1fr))") : "repeat(4, minmax(0, 1fr))", width: isCompactScreen ? "100%" : "min(100%, 980px)" }}>
             <ActionButton label="Import Hero + Map From Loadout" onClick={handleScenarioImport} colors={colors} tone="accent" />
             <ActionButton label="Push Hero To Hero Loadout" onClick={handlePushHero} colors={colors} />
             <ActionButton label="Push Map To Loadout" onClick={handlePushMap} colors={colors} />
@@ -363,20 +427,11 @@ export function StatSimulatorPage({ colors, getIconUrl }) {
           </div>
         )}
       >
-        <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-          <div style={{ width: 44, height: 44, borderRadius: 10, background: colors.panel, border: `1px solid ${colors.border}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <img src={getIconUrl("_attributePoints_0.png")} alt="" style={{ width: 26, height: 26, objectFit: "contain" }} />
-          </div>
-          <div style={{ display: "grid", gap: 3 }}>
-            <div style={{ fontSize: 22, fontWeight: 900, color: colors.text }}>Spreadsheet Sandbox</div>
-            <div style={{ fontSize: 13, color: colors.muted }}>Scenario inputs stay local to the simulator unless you explicitly push selected fields back into loadout storage.</div>
-          </div>
-        </div>
         {bridgeMessage ? <div style={{ color: colors.positive, fontSize: 13, fontWeight: 700 }}>{bridgeMessage}</div> : null}
       </Panel>
 
       <Panel title="Scenario Setup" subtitle="High-level sheet inputs and scenario context." colors={colors}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(auto-fit, minmax(${isCompactScreen ? 150 : 180}px, 1fr))`, gap: 12 }}>
           <TextField label="Highest Hero Tier" value={simulatorState.highestHeroTier} onChange={(value) => updateSimulatorState((current) => ({ ...current, highestHeroTier: value }))} colors={colors} />
           <TextField label="Milestone" type="number" min={0} value={simulatorState.milestone} onChange={(value) => updateSimulatorState((current) => ({ ...current, milestone: parseNumberInput(value, 0) }))} colors={colors} />
           <TextField label="Synergy Tier" value={simulatorState.synergyTier} onChange={(value) => updateSimulatorState((current) => ({ ...current, synergyTier: value }))} colors={colors} />
@@ -397,7 +452,7 @@ export function StatSimulatorPage({ colors, getIconUrl }) {
       </Panel>
 
       <Panel title="Loadout Bridges" subtitle="Explicitly choose which live loadout sources the simulator should read." colors={colors}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(auto-fit, minmax(${isCompactScreen ? 180 : 220}px, 1fr))`, gap: 12 }}>
           {LOADOUT_SOURCE_FIELDS.map((field) => (
             <ToggleCard
               key={field.key}
@@ -417,7 +472,7 @@ export function StatSimulatorPage({ colors, getIconUrl }) {
       </Panel>
 
       <Panel title="Focus Hero" subtitle="The hero whose stats are recalculated through the shared app stat engine." colors={colors}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(auto-fit, minmax(${isCompactScreen ? 150 : 180}px, 1fr))`, gap: 12 }}>
           <SelectField label="Hero" value={simulatorState.focusHeroId} onChange={(value) => updateSimulatorState((current) => ({ ...current, focusHeroId: value }))} colors={colors} options={heroList.map((hero) => ({ value: hero.id, label: hero.name }))} />
           <TextField label="Rank" type="number" min={0} value={simulatorState.focusHeroRank} onChange={(value) => updateSimulatorState((current) => ({ ...current, focusHeroRank: parseNumberInput(value, 0) }))} colors={colors} />
           <TextField label="Level" type="number" min={0} value={simulatorState.focusHeroLevel} onChange={(value) => updateSimulatorState((current) => ({ ...current, focusHeroLevel: parseNumberInput(value, 0) }))} colors={colors} />
@@ -428,6 +483,13 @@ export function StatSimulatorPage({ colors, getIconUrl }) {
       </Panel>
 
       <Panel title="Support Roster" subtitle="Sheet-style support rows with manual skill-effect inputs for the sandbox side of the simulator." colors={colors}>
+        {isCompactScreen ? (
+          <SupportRosterCards
+            rows={simulatorState.supportRows}
+            colors={colors}
+            onUpdateRow={(rowId, updater) => updateSimulatorState((current) => updateSimulatorSupportRow(current, rowId, updater))}
+          />
+        ) : (
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 1120 }}>
             <thead>
@@ -499,7 +561,8 @@ export function StatSimulatorPage({ colors, getIconUrl }) {
             </tbody>
           </table>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+        )}
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(auto-fit, minmax(${isCompactScreen ? 180 : 220}px, 1fr))`, gap: 12 }}>
           <div style={{ border: `1px solid ${colors.border}`, background: colors.panel, borderRadius: 12, padding: 12, display: "grid", gap: 4 }}>
             <div style={{ fontSize: 11, color: colors.muted, textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 800 }}>Enabled Support Heroes</div>
             <div style={{ fontSize: 24, color: colors.text, fontWeight: 900 }}>{simulatorState.supportRows.filter((row) => row.enabled && row.heroId).length}</div>
@@ -521,7 +584,7 @@ export function StatSimulatorPage({ colors, getIconUrl }) {
       </Panel>
 
       <Panel title="Manual DPS Sandbox" subtitle="Editable base values plus support skill effect totals for spreadsheet-style experimentation." colors={colors}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(auto-fit, minmax(${isCompactScreen ? 150 : 180}px, 1fr))`, gap: 12 }}>
           {STAT_SIMULATOR_MANUAL_STAT_FIELDS.map((field) => (
             <TextField
               key={field.key}
@@ -539,7 +602,7 @@ export function StatSimulatorPage({ colors, getIconUrl }) {
             />
           ))}
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(auto-fit, minmax(${isCompactScreen ? 180 : 220}px, 1fr))`, gap: 12 }}>
           {STAT_SIMULATOR_SKILL_EFFECT_FIELDS.map((field) => (
             <div key={field.key} style={{ border: `1px solid ${colors.border}`, background: colors.panel, borderRadius: 12, padding: 12, display: "grid", gap: 4 }}>
               <div style={{ fontSize: 11, color: colors.muted, textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 800 }}>{field.label} Total</div>

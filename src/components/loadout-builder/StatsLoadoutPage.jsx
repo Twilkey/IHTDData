@@ -10,6 +10,7 @@ import {
   writeStatsLoadoutState,
 } from "../../lib/statsLoadout";
 import { LOADOUT_RECORD_SCOPE_STATS } from "../../lib/loadoutScope";
+import { useIsNarrowScreen } from "../../lib/useIsNarrowScreen";
 import { ScopedLoadoutPresetsPanel } from "./ScopedLoadoutPresetsPanel";
 
 function UnlockList({ unlocks, colors, fmt }) {
@@ -235,6 +236,7 @@ function UpgradeCard({
 }
 
 export function StatsLoadoutPage({ colors, getIconUrl, fmt, savedLoadouts = [], currentSavedLoadoutId = "", onLoadSave, onDeleteSave, onImportComplete, saveButton }) {
+  const isNarrowScreen = useIsNarrowScreen(980);
   const initialState = useMemo(() => readStatsLoadoutState(localStorage), []);
   const [selectedTab, setSelectedTab] = useState(initialState.selectedTab);
   const [previewLevelsByTab, setPreviewLevelsByTab] = useState(initialState.previewLevelsByTab);
@@ -342,7 +344,7 @@ export function StatsLoadoutPage({ colors, getIconUrl, fmt, savedLoadouts = [], 
           <div style={{ fontSize: 22, fontWeight: 900, color: colors.text }}>Upgrades Loadout</div>
           <div style={{ fontSize: 13, color: colors.muted, marginTop: 4 }}>{activeTab.label}</div>
         </div>
-        <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center", width: isNarrowScreen ? "100%" : "auto" }}>
           <ScopedLoadoutPresetsPanel
             colors={colors}
             title="Upgrades Loadout Presets"
@@ -355,7 +357,7 @@ export function StatsLoadoutPage({ colors, getIconUrl, fmt, savedLoadouts = [], 
             onImportComplete={onImportComplete}
             compact
           />
-          <label style={{ display: "grid", gap: 6, minWidth: 104 }}>
+          <label style={{ display: "grid", gap: 6, minWidth: isNarrowScreen ? 0 : 104, flex: isNarrowScreen ? "1 1 100%" : "0 0 auto" }}>
             <span style={{ fontSize: 11, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase" }}>Buy Levels</span>
             <input
               type="number"
@@ -396,7 +398,7 @@ export function StatsLoadoutPage({ colors, getIconUrl, fmt, savedLoadouts = [], 
       </div>
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 20, alignItems: "start" }}>
-        <aside style={{ flex: "0 0 260px", width: "100%", maxWidth: 320, display: "grid", gap: 14, position: "sticky", top: 0 }}>
+        <aside style={{ flex: isNarrowScreen ? "1 1 100%" : "0 0 260px", width: "100%", maxWidth: isNarrowScreen ? "none" : 320, display: "grid", gap: 14, position: isNarrowScreen ? "static" : "sticky", top: isNarrowScreen ? "auto" : 0 }}>
           <div style={{ background: `linear-gradient(180deg, ${colors.panel} 0%, ${colors.header} 100%)`, border: `1px solid ${colors.border}`, borderRadius: 16, padding: 16, display: "grid", gap: 8 }}>
             {STATS_LOADOUT_TABS.map((tab) => (
               <TabButton
@@ -411,7 +413,7 @@ export function StatsLoadoutPage({ colors, getIconUrl, fmt, savedLoadouts = [], 
           </div>
         </aside>
 
-        <section style={{ flex: "1 1 760px", minWidth: 0, display: "grid", gap: 16 }}>
+        <section style={{ flex: "1 1 760px", minWidth: 0, display: "grid", gap: 16, width: "100%" }}>
           <div style={{ background: `linear-gradient(180deg, ${colors.header} 0%, ${colors.panel} 100%)`, border: `1px solid ${colors.border}`, borderRadius: 16, padding: 14, display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               {shouldShowParentGroups ? (
@@ -456,7 +458,7 @@ export function StatsLoadoutPage({ colors, getIconUrl, fmt, savedLoadouts = [], 
                 <div style={{ fontSize: 12, color: colors.muted }}>{activeGroupItems.length} upgrades</div>
               </div>
             ) : null}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: isNarrowScreen ? "1fr" : "repeat(3, minmax(0, 1fr))", gap: 12 }}>
               {activeGroupItems.map((item) => {
                 return (
                   <UpgradeCard

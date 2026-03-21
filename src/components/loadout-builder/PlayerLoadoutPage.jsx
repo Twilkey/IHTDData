@@ -10,6 +10,7 @@ import {
 } from "../../lib/playerLoadout";
 import { buildStatBreakdown, formatSignedHeroBonus } from "../../lib/loadoutStatEngine";
 import { LOADOUT_RECORD_SCOPE_PLAYER } from "../../lib/loadoutScope";
+import { useIsNarrowScreen } from "../../lib/useIsNarrowScreen";
 import { ScopedLoadoutPresetsPanel } from "./ScopedLoadoutPresetsPanel";
 
 function buildDefaultParentExpansion() {
@@ -416,6 +417,7 @@ function PlayerStatSummaryTree({ sections, expandedParents, expandedGroups, colo
 }
 
 export function PlayerLoadoutPage({ colors, getIconUrl, fmt, savedLoadouts = [], currentSavedLoadoutId = "", onLoadSave, onDeleteSave, onImportComplete, saveButton }) {
+  const isNarrowScreen = useIsNarrowScreen(980);
   const initialState = useMemo(() => readPlayerLoadoutState(localStorage), []);
   const [selectedTab, setSelectedTab] = useState(initialState.selectedTab);
   const [selectedGroupByTab, setSelectedGroupByTab] = useState(initialState.selectedGroupByTab);
@@ -519,7 +521,7 @@ export function PlayerLoadoutPage({ colors, getIconUrl, fmt, savedLoadouts = [],
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 22, fontWeight: 900, color: colors.text }}>Player Loadout</div>
         </div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", width: isNarrowScreen ? "100%" : "auto" }}>
           <ScopedLoadoutPresetsPanel
             colors={colors}
             title="Player Loadout Presets"
@@ -554,7 +556,7 @@ export function PlayerLoadoutPage({ colors, getIconUrl, fmt, savedLoadouts = [],
       </div>
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 20, alignItems: "start" }}>
-        <aside style={{ flex: "0 0 260px", width: "100%", maxWidth: 320, display: "grid", gap: 14, position: "sticky", top: 0 }}>
+        <aside style={{ flex: isNarrowScreen ? "1 1 100%" : "0 0 260px", width: "100%", maxWidth: isNarrowScreen ? "none" : 320, display: "grid", gap: 14, position: isNarrowScreen ? "static" : "sticky", top: isNarrowScreen ? "auto" : 0 }}>
           <div style={{ background: `linear-gradient(180deg, ${colors.header} 0%, ${colors.panel} 100%)`, border: `1px solid ${colors.border}`, borderRadius: 16, padding: 16, display: "grid", gap: 12 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <div style={{ fontSize: 14, fontWeight: 900, color: colors.accent, letterSpacing: "0.08em", textTransform: "uppercase" }}>
@@ -595,7 +597,7 @@ export function PlayerLoadoutPage({ colors, getIconUrl, fmt, savedLoadouts = [],
           </div>
         </aside>
 
-        <section style={{ flex: "1 1 760px", minWidth: 0, display: "grid", gap: 16 }}>
+        <section style={{ flex: "1 1 760px", minWidth: 0, display: "grid", gap: 16, width: "100%" }}>
           <div style={{ display: "grid", gap: 12 }}>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               {PLAYER_LOADOUT_TABS.map((tab) => (
@@ -622,7 +624,7 @@ export function PlayerLoadoutPage({ colors, getIconUrl, fmt, savedLoadouts = [],
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: isNarrowScreen ? "1fr" : "repeat(auto-fit, minmax(280px, 1fr))", gap: 14 }}>
             {activeItems.map((item) => {
               const isAutoOwned = isAutoOwnedPlayerItem({ tabKey: activeTab.key, groupEntries, groupKey: activeGroup?.key, item });
               const isPurchased = isAutoOwned || Boolean(activePurchased[item.id]);
