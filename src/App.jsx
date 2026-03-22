@@ -760,6 +760,559 @@ const ASTRAL_COLORS = {
   misc:    "#1a8c1a",
 };
 
+const ASTRAL_BATTLEGROUND_MAP = mapsData.maps.find((map) => map.id === "astral_battleground") ?? null;
+const ASTRAL_ROTATION_INTERVAL_MS = 3 * 24 * 60 * 60 * 1000;
+const ASTRAL_ROTATION_ANCHOR_MS = new Date(2026, 2, 19, 19, 0, 0, 0).getTime();
+const ASTRAL_HELPFUL_NEGATIVE_KEYS = new Set(["skillCooldown", "spellCooldown"]);
+const IMMORTAL_BOSS_NEXT_START_MS = new Date(2026, 2, 23, 18, 0, 0, 0).getTime();
+const IMMORTAL_BOSS_INTERVAL_PATTERN_MS = [4 * 24 * 60 * 60 * 1000, 3 * 24 * 60 * 60 * 1000];
+const IMMORTAL_BOSS_ROTATION_ITEMS = [
+  { key: "none", label: "None", accentColor: "#7aaacf" },
+  { key: "melee", label: "Melee", accentColor: "#e05555" },
+  { key: "mage", label: "Mage", accentColor: "#7d7cff" },
+  { key: "range", label: "Range", accentColor: "#2ecc71" },
+];
+const COMMUNITY_EVENT_NEXT_START_MS = new Date(2026, 2, 22, 18, 49, 0, 0).getTime();
+const COMMUNITY_EVENT_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
+const COMMUNITY_EVENT_ROTATION_ITEMS = [
+  {
+    key: "killAliensShadows",
+    label: "Kill Aliens/Shadows",
+    accentColor: "#f5921e",
+    effects: [
+      { label: "Focus", value: "Defeat Alien and Shadow enemies" },
+      { label: "Typical rewards", value: "Alien Tech and Shadow Rune progress" },
+    ],
+  },
+  {
+    key: "gemsSpent",
+    label: "Gems Spent",
+    accentColor: "#33cccc",
+    effects: [
+      { label: "Focus", value: "Spend gems anywhere in the run" },
+      { label: "Best fit", value: "Large upgrade or unlock pushes" },
+    ],
+  },
+  {
+    key: "enemyKills",
+    label: "Enemy Kills",
+    accentColor: "#2ecc71",
+    effects: [
+      { label: "Focus", value: "Any enemy kill counts toward progress" },
+      { label: "Best fit", value: "High-wave farming and dense spawn maps" },
+    ],
+  },
+  {
+    key: "bpExperience",
+    label: "BP Experience",
+    accentColor: "#c58cff",
+    effects: [
+      { label: "Focus", value: "Gain battlepass experience" },
+      { label: "Best fit", value: "Battlepass quests and passive BP gain" },
+    ],
+  },
+];
+
+function positiveModulo(value, modulus) {
+  return ((value % modulus) + modulus) % modulus;
+}
+
+function formatAstralCountdown(ms) {
+  if (ms <= 0) {
+    return "0m";
+  }
+
+  const totalMinutes = Math.max(1, Math.ceil(ms / 60000));
+  const days = Math.floor(totalMinutes / (24 * 60));
+  const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+  const minutes = totalMinutes % 60;
+  const parts = [];
+
+  if (days > 0) {
+    parts.push(`${days}d`);
+  }
+  if (hours > 0 || days > 0) {
+    parts.push(`${hours}h`);
+  }
+  if (minutes > 0 || parts.length === 0) {
+    parts.push(`${minutes}m`);
+  }
+
+  return parts.join(" ");
+}
+
+function getPatternOffsetMs(pattern, stepsAheadFromNext) {
+  let total = 0;
+
+  for (let index = 0; index < stepsAheadFromNext; index += 1) {
+    total += pattern[index % pattern.length];
+  }
+
+  return total;
+}
+
+function getUpcomingCycleSnapshot({ items, currentIndex, nextStartMs, getOffsetMs, now = Date.now() }) {
+  if (!items.length) {
+    return null;
+  }
+
+  const orderedEntries = Array.from({ length: items.length }, (_, offset) => {
+    const item = items[(currentIndex + offset) % items.length];
+
+    if (offset === 0) {
+      return {
+        item,
+        isActive: true,
+        timeUntilInactive: Math.max(0, nextStartMs - now),
+      };
+    }
+
+    const activationMs = nextStartMs + getOffsetMs(offset - 1);
+    return {
+      item,
+      isActive: false,
+      timeUntilActive: Math.max(0, activationMs - now),
+    };
+  });
+
+  return {
+    currentItem: items[currentIndex],
+    nextItem: items[(currentIndex + 1) % items.length],
+    timeUntilNextChange: Math.max(0, nextStartMs - now),
+    orderedEntries,
+  };
+}
+
+function HeaderRotationPopover({ isMobile, title, accentColor, currentLabel, nextLabel, countdownMs, children }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const rootRef = useRef(null);
+  const buttonBorderColor = `${accentColor}77`;
+  const buttonBackground = `linear-gradient(135deg, ${accentColor}30 0%, rgba(10, 24, 41, 0.78) 100%)`;
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    function handlePointerDown(event) {
+      if (rootRef.current && !rootRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+
+    window.addEventListener("pointerdown", handlePointerDown);
+    return () => window.removeEventListener("pointerdown", handlePointerDown);
+  }, [isOpen]);
+
+  return (
+    <div ref={rootRef} className="app-header-toolbar__group" style={{ position: "relative" }}>
+      <button
+        onClick={() => setIsOpen((current) => !current)}
+        style={{
+          minWidth: isMobile ? "100%" : 250,
+          maxWidth: isMobile ? "100%" : 320,
+          display: "grid",
+          gap: 4,
+          padding: "8px 12px",
+          borderRadius: 14,
+          border: `1px solid ${buttonBorderColor}`,
+          background: buttonBackground,
+          color: colors.text,
+          cursor: "pointer",
+          fontFamily: "inherit",
+          textAlign: "left",
+          boxShadow: isOpen ? `0 0 0 1px ${accentColor}55, 0 14px 34px rgba(0,0,0,0.25)` : "0 10px 24px rgba(0,0,0,0.18)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <span className="app-header-toolbar__label" style={{ color: accentColor }}>{title}</span>
+          <span style={{ fontSize: 10, fontWeight: 800, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase" }}>{isOpen ? "Hide" : "Open"}</span>
+        </div>
+        <div style={{ fontSize: 14, fontWeight: 800, color: colors.text, lineHeight: 1.1 }}>{currentLabel}</div>
+        <div style={{ fontSize: 11, color: colors.muted, lineHeight: 1.15 }}>
+          {nextLabel} in <span style={{ color: accentColor, fontWeight: 800 }}>{formatAstralCountdown(countdownMs)}</span>
+        </div>
+      </button>
+
+      {isOpen && (
+        <div
+          style={{
+            position: "absolute",
+            top: "calc(100% + 10px)",
+            right: 0,
+            width: isMobile ? "min(100vw - 24px, 360px)" : 420,
+            maxHeight: "min(70vh, 640px)",
+            overflowY: "auto",
+            borderRadius: 16,
+            border: `1px solid ${colors.border}`,
+            background: `linear-gradient(180deg, ${colors.header} 0%, ${colors.panel} 26%, ${colors.bg} 100%)`,
+            boxShadow: "0 28px 70px rgba(0,0,0,0.4)",
+            padding: 14,
+            zIndex: 250,
+          }}
+        >
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function getAstralRotationSnapshot(now = Date.now()) {
+  const variants = [...(ASTRAL_BATTLEGROUND_MAP?.astralVariants ?? [])].sort((left, right) => left.enumValue - right.enumValue);
+  if (!variants.length) {
+    return null;
+  }
+
+  const anchorIndex = variants.findIndex((variant) => variant.enumName === "skills");
+  const baseIndex = anchorIndex >= 0 ? anchorIndex : 0;
+  const elapsedSegments = Math.floor((now - ASTRAL_ROTATION_ANCHOR_MS) / ASTRAL_ROTATION_INTERVAL_MS);
+  const currentIndex = positiveModulo(baseIndex + elapsedSegments, variants.length);
+  const currentSegmentStart = ASTRAL_ROTATION_ANCHOR_MS + elapsedSegments * ASTRAL_ROTATION_INTERVAL_MS;
+  const currentSegmentEnd = currentSegmentStart + ASTRAL_ROTATION_INTERVAL_MS;
+  const orderedEntries = Array.from({ length: variants.length }, (_, offset) => {
+    const variantIndex = (currentIndex + offset) % variants.length;
+    const variant = variants[variantIndex];
+    const isActive = offset === 0;
+    const nextStart = isActive ? currentSegmentStart : currentSegmentStart + offset * ASTRAL_ROTATION_INTERVAL_MS;
+
+    return {
+      variant,
+      isActive,
+      nextStart,
+      nextEnd: nextStart + ASTRAL_ROTATION_INTERVAL_MS,
+      timeUntilActive: Math.max(0, nextStart - now),
+      timeUntilInactive: isActive ? Math.max(0, currentSegmentEnd - now) : null,
+    };
+  });
+
+  return {
+    currentVariant: variants[currentIndex],
+    nextVariant: variants[(currentIndex + 1) % variants.length],
+    currentSegmentStart,
+    currentSegmentEnd,
+    timeUntilNextVariant: Math.max(0, currentSegmentEnd - now),
+    orderedEntries,
+  };
+}
+
+function getImmortalBossRotationSnapshot(now = Date.now()) {
+  return getUpcomingCycleSnapshot({
+    items: IMMORTAL_BOSS_ROTATION_ITEMS,
+    currentIndex: 0,
+    nextStartMs: IMMORTAL_BOSS_NEXT_START_MS,
+    getOffsetMs: (stepsAheadFromNext) => getPatternOffsetMs(IMMORTAL_BOSS_INTERVAL_PATTERN_MS, stepsAheadFromNext),
+    now,
+  });
+}
+
+function getImmortalBossLeagueEffects(rotationKey) {
+  if (rotationKey === "none") {
+    return [
+      { label: "Bronze", value: "No immunities" },
+      { label: "Silver / Gold", value: "No class penalty" },
+      { label: "Diamond", value: "No class disabled" },
+    ];
+  }
+
+  const classLabel = rotationKey.charAt(0).toUpperCase() + rotationKey.slice(1);
+  return [
+    { label: "Bronze", value: `${classLabel} heroes unaffected` },
+    { label: "Silver / Gold", value: `${classLabel} heroes deal -50% damage` },
+    { label: "Diamond", value: `${classLabel} heroes cannot attack` },
+  ];
+}
+
+function getCommunityEventSnapshot(now = Date.now()) {
+  return getUpcomingCycleSnapshot({
+    items: COMMUNITY_EVENT_ROTATION_ITEMS,
+    currentIndex: COMMUNITY_EVENT_ROTATION_ITEMS.length - 1,
+    nextStartMs: COMMUNITY_EVENT_NEXT_START_MS,
+    getOffsetMs: (stepsAheadFromNext) => stepsAheadFromNext * COMMUNITY_EVENT_INTERVAL_MS,
+    now,
+  });
+}
+
+function AstralRotationWidget({ isMobile, now }) {
+  const rotation = useMemo(() => getAstralRotationSnapshot(now), [now]);
+
+  if (!rotation) {
+    return null;
+  }
+
+  const currentColor = ASTRAL_COLORS[rotation.currentVariant.enumName] ?? colors.accent;
+
+  return (
+    <HeaderRotationPopover
+      isMobile={isMobile}
+      title="Astral Rotation"
+      accentColor={currentColor}
+      currentLabel={rotation.currentVariant.displayName}
+      nextLabel={rotation.nextVariant.displayName}
+      countdownMs={rotation.timeUntilNextVariant}
+    >
+      <div style={{ display: "grid", gap: 3, marginBottom: 12 }}>
+        <div style={{ fontSize: 15, fontWeight: 800, color: colors.text }}>Astral Battleground</div>
+        <div style={{ fontSize: 12, color: colors.muted }}>
+          Active group: <span style={{ color: currentColor, fontWeight: 800 }}>{rotation.currentVariant.displayName}</span>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gap: 12 }}>
+        {rotation.orderedEntries.map((entry) => {
+          const accentColor = ASTRAL_COLORS[entry.variant.enumName] ?? colors.accent;
+          const timingLabel = entry.isActive
+            ? `Ends in ${formatAstralCountdown(entry.timeUntilInactive ?? 0)}`
+            : `Active in ${formatAstralCountdown(entry.timeUntilActive)}`;
+
+          return (
+            <div
+              key={entry.variant.enumName}
+              style={{
+                borderRadius: 12,
+                border: `1px solid ${entry.isActive ? `${accentColor}88` : colors.border}`,
+                background: entry.isActive ? `${accentColor}18` : "rgba(8, 17, 29, 0.18)",
+                padding: 12,
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start", marginBottom: 10 }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: accentColor }}>{entry.variant.displayName}</div>
+                  <div style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>{timingLabel}</div>
+                </div>
+                <div style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: entry.isActive ? accentColor : colors.muted }}>
+                  {entry.isActive ? "Active Now" : "Upcoming"}
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gap: 6 }}>
+                {entry.variant.effects.map((effect, effectIndex) => {
+                  const isPenalty = ASTRAL_HELPFUL_NEGATIVE_KEYS.has(effect.statKey) ? effect.amount > 0 : effect.amount < 0;
+                  const sign = effect.amount > 0 ? "+" : "";
+                  const unit = effect.unit === "pct" ? "%" : effect.unit === "flat" ? "" : ` ${effect.unit}`;
+
+                  return (
+                    <div key={`${entry.variant.enumName}-${effectIndex}`} style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", paddingTop: effectIndex === 0 ? 0 : 6, borderTop: effectIndex === 0 ? "none" : `1px solid ${colors.border}33` }}>
+                      <span style={{ fontSize: 12, color: colors.muted }}>{effect.statLabel}</span>
+                      <span style={{ fontSize: 12, fontWeight: 800, color: isPenalty ? "#ff8f8f" : colors.positive, textAlign: "right" }}>
+                        {sign}{effect.amount}{unit}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </HeaderRotationPopover>
+  );
+}
+
+function ImmortalBossRotationWidget({ isMobile, now }) {
+  const rotation = useMemo(() => getImmortalBossRotationSnapshot(now), [now]);
+
+  if (!rotation) {
+    return null;
+  }
+
+  const currentColor = rotation.currentItem.accentColor;
+
+  return (
+    <HeaderRotationPopover
+      isMobile={isMobile}
+      title="Immortal Boss"
+      accentColor={currentColor}
+      currentLabel={rotation.currentItem.label}
+      nextLabel={rotation.nextItem.label}
+      countdownMs={rotation.timeUntilNextChange}
+    >
+      <div style={{ display: "grid", gap: 3, marginBottom: 12 }}>
+        <div style={{ fontSize: 15, fontWeight: 800, color: colors.text }}>Immortal Boss Immunity Rotation</div>
+        <div style={{ fontSize: 12, color: colors.muted }}>
+          Tuesdays and Saturdays · unlocks at wave {immortalBossData.availability.unlockWave.toLocaleString()}
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gap: 10, marginBottom: 12 }}>
+        {immortalBossData.leagues.map((league) => (
+          <div key={league.id} style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", padding: "8px 10px", borderRadius: 10, border: `1px solid ${league.color}55`, background: `${league.color}14` }}>
+            <span style={{ fontSize: 12, fontWeight: 800, color: league.color }}>{league.name}</span>
+            <span style={{ fontSize: 12, color: colors.text, textAlign: "right" }}>{league.id === 1 ? "No immunity" : league.id === 4 ? "Immune class disabled" : "Immune class -50% damage"}</span>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: "grid", gap: 12 }}>
+        {rotation.orderedEntries.map((entry) => {
+          const timingLabel = entry.isActive
+            ? `Changes in ${formatAstralCountdown(entry.timeUntilInactive ?? 0)}`
+            : `Active in ${formatAstralCountdown(entry.timeUntilActive)}`;
+
+          return (
+            <div
+              key={entry.item.key}
+              style={{
+                borderRadius: 12,
+                border: `1px solid ${entry.isActive ? `${entry.item.accentColor}88` : colors.border}`,
+                background: entry.isActive ? `${entry.item.accentColor}18` : "rgba(8, 17, 29, 0.18)",
+                padding: 12,
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start", marginBottom: 10 }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: entry.item.accentColor }}>{entry.item.label}</div>
+                  <div style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>{timingLabel}</div>
+                </div>
+                <div style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: entry.isActive ? entry.item.accentColor : colors.muted }}>
+                  {entry.isActive ? "Current" : "Upcoming"}
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gap: 6 }}>
+                {getImmortalBossLeagueEffects(entry.item.key).map((effect, effectIndex) => (
+                  <div key={`${entry.item.key}-${effect.label}`} style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", paddingTop: effectIndex === 0 ? 0 : 6, borderTop: effectIndex === 0 ? "none" : `1px solid ${colors.border}33` }}>
+                    <span style={{ fontSize: 12, color: colors.muted }}>{effect.label}</span>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: effect.value.includes("No") || effect.value.includes("unaffected") ? colors.positive : "#ffb08f", textAlign: "right" }}>{effect.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </HeaderRotationPopover>
+  );
+}
+
+function CommunityEventRotationWidget({ isMobile, now }) {
+  const rotation = useMemo(() => getCommunityEventSnapshot(now), [now]);
+
+  if (!rotation) {
+    return null;
+  }
+
+  const currentColor = rotation.currentItem.accentColor;
+
+  return (
+    <HeaderRotationPopover
+      isMobile={isMobile}
+      title="Community Event"
+      accentColor={currentColor}
+      currentLabel={rotation.currentItem.label}
+      nextLabel={rotation.nextItem.label}
+      countdownMs={rotation.timeUntilNextChange}
+    >
+      <div style={{ display: "grid", gap: 3, marginBottom: 12 }}>
+        <div style={{ fontSize: 15, fontWeight: 800, color: colors.text }}>Community Event Rotation</div>
+        <div style={{ fontSize: 12, color: colors.muted }}>Weekly event cycle with one focus objective active at a time.</div>
+      </div>
+
+      <div style={{ display: "grid", gap: 12 }}>
+        {rotation.orderedEntries.map((entry) => {
+          const timingLabel = entry.isActive
+            ? `Changes in ${formatAstralCountdown(entry.timeUntilInactive ?? 0)}`
+            : `Active in ${formatAstralCountdown(entry.timeUntilActive)}`;
+
+          return (
+            <div
+              key={entry.item.key}
+              style={{
+                borderRadius: 12,
+                border: `1px solid ${entry.isActive ? `${entry.item.accentColor}88` : colors.border}`,
+                background: entry.isActive ? `${entry.item.accentColor}18` : "rgba(8, 17, 29, 0.18)",
+                padding: 12,
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start", marginBottom: 10 }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: entry.item.accentColor }}>{entry.item.label}</div>
+                  <div style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>{timingLabel}</div>
+                </div>
+                <div style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: entry.isActive ? entry.item.accentColor : colors.muted }}>
+                  {entry.isActive ? "Current" : "Upcoming"}
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gap: 6 }}>
+                {entry.item.effects.map((effect, effectIndex) => (
+                  <div key={`${entry.item.key}-${effect.label}`} style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", paddingTop: effectIndex === 0 ? 0 : 6, borderTop: effectIndex === 0 ? "none" : `1px solid ${colors.border}33` }}>
+                    <span style={{ fontSize: 12, color: colors.muted }}>{effect.label}</span>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: colors.text, textAlign: "right" }}>{effect.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </HeaderRotationPopover>
+  );
+}
+
+function RotationEventsBar({ isMobile }) {
+  const [now, setNow] = useState(() => Date.now());
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  useEffect(() => {
+    const timerId = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timerId);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobile) {
+      setIsExpanded(false);
+    }
+  }, [isMobile]);
+
+  const eventWidgets = (
+    <>
+      <AstralRotationWidget isMobile={isMobile} now={now} />
+      <ImmortalBossRotationWidget isMobile={isMobile} now={now} />
+      <CommunityEventRotationWidget isMobile={isMobile} now={now} />
+    </>
+  );
+
+  if (!isMobile) {
+    return eventWidgets;
+  }
+
+  return (
+    <div style={{ width: "100%", display: "grid", gap: 10 }}>
+      <button
+        onClick={() => setIsExpanded((current) => !current)}
+        style={{
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+          padding: "9px 12px",
+          borderRadius: 12,
+          border: `1px solid ${colors.border}`,
+          background: "linear-gradient(135deg, rgba(245, 146, 30, 0.18) 0%, rgba(10, 24, 41, 0.82) 100%)",
+          color: colors.text,
+          cursor: "pointer",
+          fontFamily: "inherit",
+          textAlign: "left",
+        }}
+      >
+        <span style={{ display: "grid", gap: 2, minWidth: 0 }}>
+          <span className="app-header-toolbar__label" style={{ color: colors.accent }}>Event Rotations</span>
+          <span style={{ fontSize: 12, color: colors.muted }}>Show Astral, Immortal Boss, and Community Event timers</span>
+        </span>
+        <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 800, color: colors.accent, letterSpacing: "0.08em", textTransform: "uppercase" }}>{isExpanded ? "Hide" : "Show"}</span>
+      </button>
+
+      {isExpanded && (
+        <div style={{ display: "grid", gap: 10 }}>
+          {eventWidgets}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────
 function AllSynergiesView() {
   const [query, setQuery] = useState("");
@@ -1970,7 +2523,7 @@ function MapModal({ map, onClose, mapPerkMult = 1 }) {
                     );
                   })}
                 </div>
-                <div style={{ marginTop: 10, fontSize: 11, color: colors.muted, fontStyle: "italic" }}>Active variant is set server-side and rotates daily.</div>
+                <div style={{ marginTop: 10, fontSize: 11, color: colors.muted, fontStyle: "italic" }}>Astral Battleground groups rotate every 3 days.</div>
               </>
             );
           })()}
@@ -5492,6 +6045,7 @@ export default function App() {
           <div style={{ fontSize: 11, color: colors.muted, marginTop: 1, letterSpacing: "0.04em" }}>Game Data Reference · v15.04</div>
         </div>
         <div className="app-header-toolbar">
+          <RotationEventsBar isMobile={isMobile} />
           <div className="app-header-toolbar__group">
             <span className="app-header-toolbar__label" style={{ color: colors.muted }}>Notation</span>
             <div className="app-header-toolbar__segmented" style={{ borderColor: colors.border }}>
