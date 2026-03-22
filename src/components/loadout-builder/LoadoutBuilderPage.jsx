@@ -25,6 +25,7 @@ import { getPerkCurrentBonus, getPlacementBonusValue, readMapLoadoutBuilderMode,
 import { readPlayerLoadoutState } from "../../lib/playerLoadout";
 import { readStatsLoadoutState } from "../../lib/statsLoadout";
 import { schedulePersistLoadoutRuntime } from "../../lib/loadoutRuntimeStore";
+import { SearchableSelect } from "../SearchableSelect";
 import { HeroComparisonModal } from "./HeroComparisonModal";
 import { MapLoadoutPresetsPanel } from "./MapLoadoutPresetsPanel";
 import { MapPerksLoadoutBuilder } from "./MapPerksLoadoutBuilder";
@@ -1108,10 +1109,10 @@ function HeroSelectorCard({ hero, colors, getIconUrl, isSelected, isDisabled, pl
             <span
               key={`${hero.id}-${stat.key}`}
               style={{
-                background: "rgba(68,136,238,0.14)",
-                border: `1px solid ${colors.border}`,
+                background: stat.bonusLabel ? "rgba(46,204,113,0.14)" : "rgba(68,136,238,0.14)",
+                border: `1px solid ${stat.bonusLabel ? colors.positive : colors.border}`,
                 borderRadius: 999,
-                color: colors.text,
+                color: stat.bonusLabel ? colors.positive : colors.text,
                 fontSize: 10,
                 fontWeight: 700,
                 padding: "4px 7px",
@@ -1175,6 +1176,7 @@ function PlacedHeroToken({ hero, spot, colors, getIconUrl, size, onSelect, onHov
     >
       <button
         type="button"
+        onMouseDown={(event) => event.preventDefault()}
         onClick={() => onSelect(hero.id, spot.id)}
         onMouseEnter={() => onHoverStart?.(spot.id)}
         onMouseLeave={() => onHoverEnd?.(spot.id)}
@@ -1337,7 +1339,7 @@ export function LoadoutBuilderPage({
   });
   const heroFilters = useHeroFilters({ includePlacementFilter: true });
   const [selectedHeroAction, setSelectedHeroAction] = useState(null);
-  const [inspectedHeroId, setInspectedHeroId] = useState(heroes[0]?.id ?? null);
+  const [inspectedHeroId, setInspectedHeroId] = useState(null);
   const [inspectedHeroSpotId, setInspectedHeroSpotId] = useState(null);
   const [dragState, setDragState] = useState(null);
   const [isFocusedHeroExpanded, setIsFocusedHeroExpanded] = useState(false);
@@ -1630,8 +1632,6 @@ export function LoadoutBuilderPage({
         const heroAttributeLevels = heroLoadoutState.attributeLevelsByHero?.[heroId] ?? {};
         const personalAttributeBonuses = getHeroAttributeBonusTotals(heroAttributeLevels, "personal");
         const globalAttributeBonuses = getHeroAttributeBonusTotals(heroAttributeLevels, "global");
-        const milestoneEffectBonusPct = (selectedMapGlobalBonuses.milestoneBonus ?? 0) + (placementTotals.milestoneBonus ?? 0);
-        const synergyEffectBonusPct = (selectedMapGlobalBonuses.synergyBonus ?? 0) + (placementTotals.synergyBonus ?? 0);
         const defaultRank = Math.max(0, Number.parseInt(heroLoadoutState.rankByHero?.[heroId], 10) || 0);
         const defaultLevel = Math.max(0, Number.parseInt(heroLoadoutState.levelByHero?.[heroId], 10) || 0);
         const defaultMastery = Math.max(0, Number.parseInt(heroLoadoutState.masteryLevelByHero?.[heroId], 10) || 0);
@@ -1677,17 +1677,29 @@ export function LoadoutBuilderPage({
           heroAttributeLevels,
           personalAttributeBonuses,
           globalAttributeBonuses,
-          milestoneEffectBonusPct,
-          synergyEffectBonusPct,
         };
       })
       .filter(Boolean);
 
     const uniqueGlobalAttributeBonuses = new Map();
     const uniqueGlobalMilestones = new Map();
+    const globalModifierBonusesBeforeMilestones = mergeBonusTotals(
+      statsLoadoutBonuses,
+      selectedMapGlobalBonuses,
+      ...rawEntries.map((entry) => entry.globalCombatStyleBonuses),
+      ...rawEntries.map((entry) => entry.globalAttributeBonuses)
+    );
 
     rawEntries.forEach((entry) => {
       uniqueGlobalAttributeBonuses.set(entry.heroId, entry.globalAttributeBonuses);
+
+      const milestoneModifierBonuses = mergeBonusTotals(
+        globalModifierBonusesBeforeMilestones,
+        entry.personalAttributeBonuses,
+        entry.personalCombatStyleBonuses,
+        entry.placementTotals
+      );
+      entry.milestoneEffectBonusPct = milestoneModifierBonuses.milestoneBonus ?? 0;
 
       entry.activeMilestones = (entry.baseHero.milestones ?? [])
         .filter((milestone) => (milestone.requirement ?? 0) <= entry.currentLevel)
@@ -1778,6 +1790,17 @@ export function LoadoutBuilderPage({
     rawEntries.forEach((entry) => {
       entry.activeSynergies = [];
       entry.inactiveSynergies = [];
+    });
+
+    rawEntries.forEach((entry) => {
+      const synergyModifierBonuses = mergeBonusTotals(
+        globalBonusesWithoutSynergies,
+        entry.personalAttributeBonuses,
+        entry.personalCombatStyleBonuses,
+        buildProgressionBonusTotals(entry.activeMilestones, "personal"),
+        entry.placementTotals
+      );
+      entry.synergyEffectBonusPct = synergyModifierBonuses.synergyBonus ?? 0;
 
       (entry.baseHero.synergies ?? []).forEach((synergy) => {
         const enriched = enrichProgressionEffect(synergy, "synergy", entry.synergyEffectBonusPct, fmt);
@@ -1788,10 +1811,33 @@ export function LoadoutBuilderPage({
         if (matchedGroup) {
           const activeSynergy = {
             ...enriched,
+            sourceHeroId: entry.heroId,
+            sourceHeroName: entry.baseHero.name,
             partnerNames: matchedGroup.filter((candidate) => candidate.spotId !== entry.spotId).map((candidate) => candidate.baseHero.name),
             activeSpotIds: matchedGroup.map((candidate) => candidate.spotId),
           };
-          entry.activeSynergies.push(activeSynergy);
+
+          matchedGroup.forEach((memberEntry) => {
+            memberEntry.activeSynergies = memberEntry.activeSynergies ?? [];
+            const alreadyIncluded = memberEntry.activeSynergies.some((existing) => (
+              existing.sourceHeroId === activeSynergy.sourceHeroId
+              && existing.synergyLevel === activeSynergy.synergyLevel
+              && existing.tier === activeSynergy.tier
+            ));
+
+            if (!alreadyIncluded) {
+              const memberSpecificSynergy = enrichProgressionEffect(synergy, "synergy", memberEntry.synergyEffectBonusPct, fmt);
+              memberEntry.activeSynergies.push({
+                ...memberSpecificSynergy,
+                sourceHeroId: activeSynergy.sourceHeroId,
+                sourceHeroName: activeSynergy.sourceHeroName,
+                activeSpotIds: activeSynergy.activeSpotIds,
+                partnerNames: matchedGroup
+                  .filter((candidate) => candidate.spotId !== memberEntry.spotId)
+                  .map((candidate) => candidate.baseHero.name),
+              });
+            }
+          });
 
           if (activeSynergy.scope === "global") {
             const key = getProgressionKey("synergy", entry.heroId, activeSynergy);
@@ -1897,9 +1943,12 @@ export function LoadoutBuilderPage({
     };
   }, [heroLoadoutState.attributeLevelsByHero, heroLoadoutState.defaultCombatStyleIdByHero, heroLoadoutState.levelByHero, heroLoadoutState.masteryLevelByHero, heroLoadoutState.rankByHero, heroes, inspectedHeroId, selectedMapGlobalBonuses, statsLoadoutBonuses]);
 
-  const focusedHero = placedEntries.find((entry) => entry.spotId === inspectedHeroSpotId)?.hero
-    ?? previewFocusedHero
-    ?? null;
+  const focusedPlacementEntry = placedEntries.find((entry) => entry.spotId === inspectedHeroSpotId) ?? null;
+  const focusedHero = focusedPlacementEntry?.hero ?? null;
+  const focusedHeroActiveMilestones = focusedPlacementEntry?.activeMilestones ?? focusedHero?.activeMilestones ?? [];
+  const focusedHeroInactiveMilestones = focusedPlacementEntry?.inactiveMilestones ?? focusedHero?.inactiveMilestones ?? [];
+  const focusedHeroActiveSynergies = focusedPlacementEntry?.activeSynergies ?? focusedHero?.activeSynergies ?? [];
+  const focusedHeroInactiveSynergies = focusedPlacementEntry?.inactiveSynergies ?? focusedHero?.inactiveSynergies ?? [];
 
   const compareHeroModels = useMemo(() => {
     const rawEntries = compareEntries
@@ -2265,6 +2314,11 @@ export function LoadoutBuilderPage({
   }
 
   function setSpotCombatStyle(spotId, styleId) {
+    const placementEntry = placedEntries.find((entry) => entry.spotId === spotId) ?? null;
+    if (placementEntry && !isCombatStyleUnlocked(styleId, placementEntry.currentRank)) {
+      return;
+    }
+
     updatePlacementCombatStyles((current) => ({
       ...current,
       [spotId]: styleId,
@@ -2456,11 +2510,14 @@ export function LoadoutBuilderPage({
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", width: isNarrowScreen ? "100%" : "auto" }}>
                 <label style={{ display: "grid", gap: 6, color: colors.muted, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", minWidth: isNarrowScreen ? 0 : 220, flex: isNarrowScreen ? "1 1 100%" : "0 0 auto" }}>
                   Active Map
-                  <select value={selectedMap?.id ?? ""} onChange={(event) => setSelectedMapId(event.target.value)} style={{ width: "100%", minWidth: 0, background: "#0f2640", border: `1px solid ${colors.border}`, color: colors.text, borderRadius: 10, padding: "10px 12px", font: "inherit" }}>
-                    {maps.map((map) => (
-                      <option key={map.id} value={map.id}>{map.name}</option>
-                    ))}
-                  </select>
+                  <SearchableSelect
+                    value={selectedMap?.id ?? ""}
+                    onChange={setSelectedMapId}
+                    colors={colors}
+                    options={maps.map((map) => ({ value: map.id, label: map.name }))}
+                    searchPlaceholder="Search maps..."
+                    containerStyle={{ width: "100%", minWidth: 0 }}
+                  />
                 </label>
                 <MapLoadoutPresetsPanel
                   colors={colors}
@@ -2733,27 +2790,22 @@ export function LoadoutBuilderPage({
                           </label>
                           <label style={{ display: "grid", gap: 4 }}>
                             <span style={{ fontSize: 10, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase" }}>Combat Style</span>
-                            <select
+                            <SearchableSelect
                               value={entry.currentCombatStyleId}
-                              onChange={(event) => setSpotCombatStyle(entry.spotId, event.target.value)}
-                              style={{
-                                width: "100%",
-                                background: "#0f2640",
-                                border: `1px solid ${colors.border}`,
-                                borderRadius: 8,
-                                color: colors.text,
-                                fontSize: 13,
-                                fontWeight: 700,
-                                padding: "8px 10px",
-                                fontFamily: "inherit",
-                              }}
-                            >
-                              {COMBAT_STYLE_DEFINITIONS.map((style) => (
-                                <option key={style.id} value={style.id}>
-                                  {formatCombatStyleOptionLabel(style)}
-                                </option>
-                              ))}
-                            </select>
+                              onChange={(nextValue) => setSpotCombatStyle(entry.spotId, nextValue)}
+                              colors={colors}
+                              options={COMBAT_STYLE_DEFINITIONS.map((style) => ({
+                                value: style.id,
+                                label: formatCombatStyleOptionLabel(style),
+                                description: isCombatStyleUnlocked(style, entry.currentRank)
+                                  ? "Available"
+                                  : `Locked until Rank ${fmt(style.rankReq ?? 0)}`,
+                                disabled: !isCombatStyleUnlocked(style, entry.currentRank),
+                              }))}
+                              searchPlaceholder="Search combat styles..."
+                              containerStyle={{ width: "100%", minWidth: 0 }}
+                              size="sm"
+                            />
                           </label>
                           <label style={{ display: "grid", gap: 4 }}>
                             <span style={{ fontSize: 10, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase" }}>Mastery Level</span>
@@ -2826,6 +2878,7 @@ export function LoadoutBuilderPage({
                 </div>
                 </div>
 
+                {focusedHero ? (
                 <div style={{ background: colors.panel, border: `1px solid ${colors.border}`, borderRadius: 14, padding: 16, display: "grid", gap: 12 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
                   <div>
@@ -2844,7 +2897,6 @@ export function LoadoutBuilderPage({
                   </div>
                 </div>
 
-                {focusedHero ? (
                   <>
                     <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
                       <FocusedHeroPreview hero={focusedHero} colors={colors} getIconUrl={getIconUrl} />
@@ -2868,7 +2920,7 @@ export function LoadoutBuilderPage({
                       {(focusedHero.upgradeDisplayStats ?? []).map((stat) => (
                         <div key={stat.key} style={{ background: colors.header, borderRadius: 10, border: `1px solid ${colors.border}`, padding: 10, display: "grid", gap: 4 }}>
                           <div style={{ fontSize: 10, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase" }}>{stat.label}</div>
-                          <div style={{ fontSize: 16, fontWeight: 900, color: colors.text }}>{stat.value}</div>
+                          <div style={{ fontSize: 16, fontWeight: 900, color: stat.bonusLabel ? colors.positive : colors.text }}>{stat.value}</div>
                           {stat.bonusLabel ? <div style={{ fontSize: 11, color: colors.muted }}>{stat.bonusLabel}</div> : null}
                         </div>
                       ))}
@@ -2902,7 +2954,7 @@ export function LoadoutBuilderPage({
                         {activeFocusedHeroInfoTab === "milestones" && (
                           <FocusedHeroDetailSection
                             title="Milestones"
-                            subtitle={`${focusedHero.activeMilestones?.length ?? 0} active · ${focusedHero.inactiveMilestones?.length ?? 0} inactive`}
+                            subtitle={`${focusedHeroActiveMilestones.length} active · ${focusedHeroInactiveMilestones.length} inactive`}
                             colors={colors}
                           >
                             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -2911,8 +2963,8 @@ export function LoadoutBuilderPage({
                               ))}
                             </div>
                             <div style={{ display: "grid", gap: 8, maxHeight: 280, overflowY: "auto", paddingRight: 4 }}>
-                              {(activeFocusedMilestoneTab === "active" ? focusedHero.activeMilestones : focusedHero.inactiveMilestones).length ? (
-                                (activeFocusedMilestoneTab === "active" ? focusedHero.activeMilestones : focusedHero.inactiveMilestones).map((milestone) => (
+                              {(activeFocusedMilestoneTab === "active" ? focusedHeroActiveMilestones : focusedHeroInactiveMilestones).length ? (
+                                (activeFocusedMilestoneTab === "active" ? focusedHeroActiveMilestones : focusedHeroInactiveMilestones).map((milestone) => (
                                   <FocusedHeroMilestoneCard key={`${focusedHero.id}-milestone-${activeFocusedMilestoneTab}-${milestone.milestone}`} milestone={milestone} colors={colors} />
                                 ))
                               ) : (
@@ -2925,7 +2977,7 @@ export function LoadoutBuilderPage({
                         {activeFocusedHeroInfoTab === "synergies" && (
                           <FocusedHeroDetailSection
                             title="Synergies"
-                            subtitle={`${focusedHero.activeSynergies?.length ?? 0} active · ${focusedHero.inactiveSynergies?.length ?? 0} inactive`}
+                            subtitle={`${focusedHeroActiveSynergies.length} active · ${focusedHeroInactiveSynergies.length} inactive`}
                             colors={colors}
                           >
                             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -2934,9 +2986,23 @@ export function LoadoutBuilderPage({
                               ))}
                             </div>
                             <div style={{ display: "grid", gap: 8, maxHeight: 280, overflowY: "auto", paddingRight: 4 }}>
-                              {(activeFocusedSynergyTab === "active" ? focusedHero.activeSynergies : focusedHero.inactiveSynergies).length ? (
-                                (activeFocusedSynergyTab === "active" ? focusedHero.activeSynergies : focusedHero.inactiveSynergies).map((synergy) => (
-                                  <FocusedHeroSynergyCard key={`${focusedHero.id}-synergy-${activeFocusedSynergyTab}-${synergy.synergyLevel}-${synergy.tier}`} synergy={synergy} colors={colors} />
+                              {(activeFocusedSynergyTab === "active" ? focusedHeroActiveSynergies : focusedHeroInactiveSynergies).length ? (
+                                (activeFocusedSynergyTab === "active" ? focusedHeroActiveSynergies : focusedHeroInactiveSynergies).map((synergy, index) => (
+                                  <FocusedHeroSynergyCard
+                                    key={[
+                                      focusedHero.id,
+                                      "synergy",
+                                      activeFocusedSynergyTab,
+                                      synergy.sourceHeroId ?? "local",
+                                      synergy.synergyKey ?? synergy.synergyLevel ?? "unknown",
+                                      synergy.tier ?? "unknown",
+                                      Array.isArray(synergy.activeSpotIds) ? synergy.activeSpotIds.join("-") : "",
+                                      Array.isArray(synergy.partnerNames) ? synergy.partnerNames.join("-") : "",
+                                      index,
+                                    ].join("-")}
+                                    synergy={synergy}
+                                    colors={colors}
+                                  />
                                 ))
                               ) : (
                                 <div style={{ fontSize: 12, color: colors.muted }}>No {activeFocusedSynergyTab} synergies for this placement.</div>
@@ -2947,10 +3013,8 @@ export function LoadoutBuilderPage({
                       </div>
                     )}
                   </>
-                ) : (
-                  <div style={{ color: colors.muted, fontSize: 13 }}>Select a hero from the map, placements list, or selector to inspect details here.</div>
-                )}
                 </div>
+                ) : null}
               </div>
             </div>
           ) : builderMode === "perks" ? (

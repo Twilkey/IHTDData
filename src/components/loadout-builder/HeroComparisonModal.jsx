@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { SearchableSelect } from "../SearchableSelect";
 import { PresetsModalShell } from "./PresetsModalShell";
 
 function formatFilterLabel(value) {
@@ -185,13 +186,19 @@ function HeroComparisonCard({
           <input type="number" min={0} max={hero.masteryExp?.maxLevel ?? 0} value={model.currentMastery} onChange={(event) => onUpdateOverride(entryId, "mastery", event.target.value)} style={{ width: "100%", background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 8, color: colors.text, fontSize: 13, fontWeight: 700, padding: "8px 10px", fontFamily: "inherit" }} />
         </CompareSettingRow>
         <CompareSettingRow label="Combat Style" colors={colors}>
-          <select value={model.combatStyle?.id ?? "balanced"} onChange={(event) => onUpdateOverride(entryId, "combatStyleId", event.target.value)} style={{ width: "100%", background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 8, color: colors.text, fontSize: 13, fontWeight: 700, padding: "8px 10px", fontFamily: "inherit" }}>
-            {combatStyles.map((style) => (
-              <option key={style.id} value={style.id} disabled={(style.rankReq ?? 0) > model.currentRank}>
-                {style.rankReq > 0 ? `${style.name} (Rank ${fmt(style.rankReq)}+)` : style.name}
-              </option>
-            ))}
-          </select>
+          <SearchableSelect
+            value={model.combatStyle?.id ?? "balanced"}
+            onChange={(nextValue) => onUpdateOverride(entryId, "combatStyleId", nextValue)}
+            colors={colors}
+            options={combatStyles.map((style) => ({
+              value: style.id,
+              label: style.rankReq > 0 ? `${style.name} (Rank ${fmt(style.rankReq)}+)` : style.name,
+              description: (style.rankReq ?? 0) > model.currentRank ? `Locked until Rank ${fmt(style.rankReq)}` : "Available",
+              disabled: (style.rankReq ?? 0) > model.currentRank,
+            }))}
+            searchPlaceholder="Search combat styles..."
+            size="sm"
+          />
         </CompareSettingRow>
       </div>
 

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
+import { SearchableSelect } from "../SearchableSelect";
+
 const FILTER_TABS = [
   { id: "search", label: "Search" },
   { id: "identity", label: "Identity" },
@@ -424,13 +426,19 @@ export function HeroFiltersPanel({
           ) : null}
           <div style={{ display: "grid", gap: 8 }}>
             <label style={{ color: colors.muted, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Sort</label>
-            <select value={filters.sortMode} onChange={(event) => filters.setSortMode(event.target.value)} style={{ background: "#0f2640", border: `1px solid ${colors.border}`, color: colors.text, borderRadius: 10, padding: "10px 12px", font: "inherit" }}>
-              <option value="order">Default Order</option>
-              <option value="name">Name</option>
-              <option value="class">Class</option>
-              <option value="rarity">Rarity</option>
-              <option value="type">Hero Type</option>
-            </select>
+            <SearchableSelect
+              value={filters.sortMode}
+              onChange={filters.setSortMode}
+              colors={colors}
+              options={[
+                { value: "order", label: "Default Order" },
+                { value: "name", label: "Name" },
+                { value: "class", label: "Class" },
+                { value: "rarity", label: "Rarity" },
+                { value: "type", label: "Hero Type" },
+              ]}
+              searchPlaceholder="Search sort modes..."
+            />
           </div>
         </div>
       ) : null}

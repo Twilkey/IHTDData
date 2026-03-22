@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
+import { SearchableSelect } from "../components/SearchableSelect";
 import { heroesData, mapsData } from "../lib/gameData";
 
 function useIsMobile() {
@@ -186,27 +187,15 @@ function HeroDropdown({ colors, value, onChange }) {
   return (
     <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
       <span style={{ fontSize: 11, color: colors.muted, textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Hero</span>
-      <select
+      <SearchableSelect
         value={value}
-        onChange={(event) => onChange(event.target.value)}
-        style={{
-          background: "#0f2640",
-          border: `1px solid ${colors.border}`,
-          borderRadius: 6,
-          color: colors.text,
-          padding: "5px 10px",
-          fontSize: 13,
-          fontFamily: "inherit",
-          cursor: "pointer",
-          outline: "none",
-          minWidth: 140,
-        }}
-      >
-        <option value="all">All Heroes</option>
-        {HERO_NAMES.map((hero) => (
-          <option key={hero.id} value={hero.id}>{hero.name}</option>
-        ))}
-      </select>
+        onChange={onChange}
+        colors={colors}
+        options={[{ value: "all", label: "All Heroes" }, ...HERO_NAMES.map((hero) => ({ value: hero.id, label: hero.name }))]}
+        searchPlaceholder="Search heroes..."
+        size="sm"
+        containerStyle={{ minWidth: 180 }}
+      />
     </div>
   );
 }

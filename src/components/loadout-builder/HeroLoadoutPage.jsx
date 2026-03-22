@@ -7,6 +7,11 @@ import {
   readHeroLoadoutState,
   writeHeroLoadoutState,
 } from "../../lib/heroLoadout";
+import { buildHeroStatModel } from "../../lib/loadoutStatEngine";
+import { LOADOUT_BUILDER_SELECTED_MAP_STORAGE_KEY } from "../../lib/loadoutBuilderSave";
+import { readMapLoadoutState } from "../../lib/mapLoadout";
+import { readPlayerLoadoutState } from "../../lib/playerLoadout";
+import { readStatsLoadoutState } from "../../lib/statsLoadout";
 import {
   COMBAT_STYLE_FALLBACK_ID,
   COMBAT_STYLE_DEFINITIONS,
@@ -356,6 +361,33 @@ function formatBaseStatValue(statKey, value, fmt) {
   return Number.isFinite(Number(value)) ? (typeof fmt === "function" ? fmt(Number(value)) : Number(value).toLocaleString()) : String(value);
 }
 
+function readSelectedMapId(storage = localStorage) {
+  const selectedMapId = storage.getItem(LOADOUT_BUILDER_SELECTED_MAP_STORAGE_KEY);
+  return typeof selectedMapId === "string" ? selectedMapId : "";
+}
+
+function getProgressionModifierAmount(effect, modifierPct, useModifiedAmount) {
+  const baseAmount = Number(effect?.amount);
+  if (!Number.isFinite(baseAmount)) {
+    return null;
+  }
+
+  if (!useModifiedAmount) {
+    return baseAmount;
+  }
+
+  return baseAmount * (1 + ((Number(modifierPct) || 0) / 100));
+}
+
+function formatProgressionModifierAmount(effect, modifierPct, useModifiedAmount, fmt) {
+  const amount = getProgressionModifierAmount(effect, modifierPct, useModifiedAmount);
+  if (!Number.isFinite(amount)) {
+    return null;
+  }
+
+  return formatHeroEffectAmount(effect?.type, amount, fmt);
+}
+
 function formatCombatStyleBonusAmount(entry, fmt) {
   const numeric = Number(entry?.amount ?? 0);
   if (!Number.isFinite(numeric)) {
@@ -614,14 +646,21 @@ function SynergyHeroBadge({ hero, rank, isFocused, colors, getIconUrl, fmt }) {
   );
 }
 
-function SynergyHeroDescription({ hero, heroSynergy, rank, isFocused, colors, getIconUrl, fmt }) {
+function SynergyHeroDescription({ hero, heroSynergy, rank, isFocused, colors, getIconUrl, fmt, rewardModifierPct = 0, showModifiedRewards = true }) {
   const scopeColor = heroSynergy?.scope === "personal" ? "#f5921e" : heroSynergy?.scope ? colors.positive : colors.muted;
+  const rewardAmountLabel = formatProgressionModifierAmount(heroSynergy, rewardModifierPct, showModifiedRewards, fmt);
+  const rewardStatLabel = heroSynergy?.type ? getHeroEffectLabel(heroSynergy.type) : null;
 
   return (
     <div className="hero-synergy-lane">
       <SynergyHeroBadge hero={hero} rank={rank} isFocused={isFocused} colors={colors} getIconUrl={getIconUrl} fmt={fmt} />
       <img src={getIconUrl("_arrowDown.png")} alt="down arrow" style={{ width: 20, height: 20, objectFit: "contain", opacity: 0.85 }} />
       <div style={{ width: "100%", background: isFocused ? "rgba(230, 190, 86, 0.16)" : colors.header, border: `1px solid ${isFocused ? "rgba(230, 190, 86, 0.45)" : colors.border}`, borderRadius: 12, padding: 12, display: "grid", gap: 8, alignContent: "start", textAlign: "center" }}>
+        {rewardStatLabel && rewardAmountLabel ? (
+          <div style={{ fontSize: 11, fontWeight: 900, color: colors.accent, letterSpacing: "0.04em", textTransform: "uppercase", lineHeight: 1.5 }}>
+            {rewardStatLabel} {rewardAmountLabel}
+          </div>
+        ) : null}
         <div style={{ fontSize: 13, fontWeight: 800, color: colors.text, lineHeight: 1.6 }}>
           {heroSynergy?.description ?? "No synergy description available."}
         </div>
@@ -635,7 +674,7 @@ function SynergyHeroDescription({ hero, heroSynergy, rank, isFocused, colors, ge
   );
 }
 
-function SynergyTeamCard({ synergyTeam, selectedHeroId, heroesById, rankByHero, colors, getIconUrl, fmt }) {
+function SynergyTeamCard({ synergyTeam, selectedHeroId, heroesById, rankByHero, colors, getIconUrl, fmt, rewardModifierByHeroId = {}, showModifiedRewards = true }) {
   const teamHeroIds = synergyTeam.teamHeroIds;
   const isActive = teamHeroIds.every((heroId) => (rankByHero[heroId] ?? 0) >= (synergyTeam.rankRequired ?? 0));
   const teamSize = teamHeroIds.length;
@@ -658,7 +697,17 @@ function SynergyTeamCard({ synergyTeam, selectedHeroId, heroesById, rankByHero, 
 
           return (
             <Fragment key={`${synergyTeam.key}-${heroId}`}>
-              <SynergyHeroDescription hero={teamHero} heroSynergy={heroSynergy} rank={currentRank} isFocused={isFocused} colors={colors} getIconUrl={getIconUrl} fmt={fmt} />
+              <SynergyHeroDescription
+                hero={teamHero}
+                heroSynergy={heroSynergy}
+                rank={currentRank}
+                isFocused={isFocused}
+                colors={colors}
+                getIconUrl={getIconUrl}
+                fmt={fmt}
+                rewardModifierPct={rewardModifierByHeroId[heroId] ?? 0}
+                showModifiedRewards={showModifiedRewards}
+              />
               {index < teamHeroIds.length - 1 ? (
                 <div className="hero-synergy-plus">
                   <img src={getIconUrl("_plus.png")} alt="+" style={{ width: 18, height: 18, objectFit: "contain", opacity: 0.9, flexShrink: 0 }} />
@@ -675,6 +724,12 @@ function SynergyTeamCard({ synergyTeam, selectedHeroId, heroesById, rankByHero, 
 export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts = [], currentSavedLoadoutId = "", onLoadSave, onDeleteSave, onImportComplete, saveButton }) {
   const isNarrowScreen = useIsNarrowScreen(1080);
   const initialState = useMemo(() => readHeroLoadoutState(localStorage), []);
+  const persistedLoadoutState = useMemo(() => ({
+    statsLoadoutState: readStatsLoadoutState(localStorage),
+    playerLoadoutState: readPlayerLoadoutState(localStorage),
+    mapLoadoutState: readMapLoadoutState(localStorage),
+    selectedMapId: readSelectedMapId(localStorage),
+  }), []);
   const [selectedHeroId, setSelectedHeroId] = useState(initialState.selectedHeroId);
   const [previewLevelsByHero, setPreviewLevelsByHero] = useState(initialState.previewLevelsByHero);
   const [hideMaxedByHero, setHideMaxedByHero] = useState(initialState.hideMaxedByHero);
@@ -684,6 +739,8 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts
   const [defaultCombatStyleIdByHero, setDefaultCombatStyleIdByHero] = useState(initialState.defaultCombatStyleIdByHero);
   const [attributeLevelsByHero, setAttributeLevelsByHero] = useState(initialState.attributeLevelsByHero);
   const [activeHeroTab, setActiveHeroTab] = useState("information");
+  const [showModifiedMilestones, setShowModifiedMilestones] = useState(true);
+  const [showModifiedSynergies, setShowModifiedSynergies] = useState(true);
   const heroPresets = useMemo(
     () => savedLoadouts.filter((save) => save.scopeId === LOADOUT_RECORD_SCOPE_HERO),
     [savedLoadouts]
@@ -775,6 +832,28 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts
   const selectedHeroDefaultCombatStyleId = selectedHero
     ? getStoredDefaultCombatStyleId(defaultCombatStyleIdByHero, selectedHero.id)
     : "";
+  const selectedHeroStatModel = useMemo(() => {
+    if (!selectedHero) {
+      return null;
+    }
+
+    return buildHeroStatModel({
+      hero: selectedHero,
+      statsLoadoutState: persistedLoadoutState.statsLoadoutState,
+      playerLoadoutState: persistedLoadoutState.playerLoadoutState,
+      heroLoadoutState: {
+        rankByHero,
+        levelByHero,
+        masteryLevelByHero,
+        defaultCombatStyleIdByHero,
+        attributeLevelsByHero,
+      },
+      mapLoadoutState: persistedLoadoutState.mapLoadoutState,
+      selectedMapId: persistedLoadoutState.selectedMapId,
+    });
+  }, [attributeLevelsByHero, defaultCombatStyleIdByHero, levelByHero, masteryLevelByHero, persistedLoadoutState, rankByHero, selectedHero]);
+  const milestoneRewardModifierPct = Number(selectedHeroStatModel?.combined?.totals?.milestoneBonus ?? 0);
+  const synergyRewardModifierPct = Number(selectedHeroStatModel?.combined?.totals?.synergyBonus ?? 0);
   const activeAttributeLevels = selectedHero ? (attributeLevelsByHero[selectedHero.id] ?? {}) : {};
   const visibleGroups = useMemo(() => ATTRIBUTE_GROUPS.map((group) => ({
     ...group,
@@ -814,6 +893,61 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts
 
     return Array.from(groups.values()).sort((left, right) => getSynergyTierSortValue(left.tier) - getSynergyTierSortValue(right.tier));
   }, [heroesById, selectedHero]);
+  const teamSynergyRewardModifierByKey = useMemo(() => {
+    if (!selectedHero) {
+      return {};
+    }
+
+    const commonGlobalSynergyBonus = Number(selectedHeroStatModel?.global?.totals?.synergyBonus ?? 0);
+    const teamHeroIds = new Set((selectedHero.synergies ?? []).flatMap((synergy) => buildSynergyTeamIds(selectedHero.id, synergy)));
+    const heroTeamSynergyBonuses = {};
+
+    teamHeroIds.forEach((heroId) => {
+      const hero = heroesById[heroId];
+      if (!hero) {
+        return;
+      }
+
+      const memberModel = buildHeroStatModel({
+        hero,
+        statsLoadoutState: persistedLoadoutState.statsLoadoutState,
+        playerLoadoutState: persistedLoadoutState.playerLoadoutState,
+        heroLoadoutState: {
+          rankByHero,
+          levelByHero,
+          masteryLevelByHero,
+          defaultCombatStyleIdByHero,
+          attributeLevelsByHero,
+        },
+        mapLoadoutState: persistedLoadoutState.mapLoadoutState,
+        selectedMapId: persistedLoadoutState.selectedMapId,
+      });
+
+      heroTeamSynergyBonuses[heroId] = {
+        personal: Number(memberModel.personal?.totals?.synergyBonus ?? 0),
+        global: Number(memberModel.conditionalGlobal?.totals?.synergyBonus ?? 0),
+      };
+    });
+
+    return Object.fromEntries(
+      synergiesByTier.flatMap((tierGroup) => tierGroup.synergies.map((team) => {
+        const teamIsActive = team.teamHeroIds.every((heroId) => (rankByHero[heroId] ?? 0) >= (team.rankRequired ?? 0));
+        const globalTeamBonus = teamIsActive
+          ? team.teamHeroIds.reduce((sum, heroId) => sum + Number(heroTeamSynergyBonuses[heroId]?.global ?? 0), 0)
+          : 0;
+
+        return [
+          team.key,
+          Object.fromEntries(
+            team.teamHeroIds.map((heroId) => [
+              heroId,
+              commonGlobalSynergyBonus + globalTeamBonus + Number(heroTeamSynergyBonuses[heroId]?.personal ?? 0),
+            ])
+          ),
+        ];
+      }))
+    );
+  }, [attributeLevelsByHero, defaultCombatStyleIdByHero, heroesById, levelByHero, masteryLevelByHero, persistedLoadoutState, rankByHero, selectedHero, selectedHeroStatModel, synergiesByTier]);
 
   const nextMasteryLevel = selectedHero
     ? Math.min((selectedHero.masteryExp?.maxLevel ?? 0), selectedHeroMasteryLevel + 1)
@@ -1210,14 +1344,24 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts
                   </div>
 
                   <div style={{ background: colors.panel, border: `1px solid ${colors.border}`, borderRadius: 16, padding: 16, display: "grid", gap: 16 }}>
-                    <div>
-                      <div style={{ fontSize: 18, fontWeight: 900, color: colors.text }}>Milestones</div>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+                      <div>
+                        <div style={{ fontSize: 18, fontWeight: 900, color: colors.text }}>Milestones</div>
+                      </div>
+                      <SwitchToggle
+                        checked={showModifiedMilestones}
+                        onChange={setShowModifiedMilestones}
+                        colors={colors}
+                        checkedLabel="Showing Modified Buffs"
+                        uncheckedLabel="Showing Base Buffs"
+                      />
                     </div>
                     {(selectedHero.milestones ?? []).length ? (
                       <div style={{ display: "grid", gridTemplateColumns: isNarrowScreen ? "1fr" : "repeat(3, minmax(0, 1fr))", gap: 12 }}>
                         {(selectedHero.milestones ?? []).map((milestone) => {
                           const isActive = selectedHeroLevel >= (milestone.requirement ?? 0);
                           const scopeColor = milestone.scope === "personal" ? colors.accent : colors.positive;
+                          const rewardAmountLabel = formatProgressionModifierAmount(milestone, milestoneRewardModifierPct, showModifiedMilestones, fmt);
                           return (
                             <div key={milestone.milestone} style={{ background: isActive ? "rgba(46,204,113,0.12)" : colors.header, border: `1px solid ${isActive ? colors.positive : colors.border}`, borderRadius: 14, padding: 14, display: "grid", gridTemplateColumns: "72px minmax(0, 1fr)", gap: 14, alignItems: "center", opacity: isActive ? 1 : 0.58, minWidth: 0 }}>
                               <div style={{ width: 72, height: 72, borderRadius: 16, background: milestone.bgColor ?? colors.panel, border: `1px solid ${milestone.borderColor ?? colors.border}`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
@@ -1225,6 +1369,11 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts
                               </div>
                               <div style={{ display: "grid", gap: 6 }}>
                                 <div style={{ fontSize: 15, fontWeight: 900, color: colors.text }}>Level {fmt(milestone.requirement ?? 0)}</div>
+                                {rewardAmountLabel ? (
+                                  <div style={{ fontSize: 11, color: colors.accent, fontWeight: 900, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+                                    {getHeroEffectLabel(milestone.type)} {rewardAmountLabel}
+                                  </div>
+                                ) : null}
                                 <div style={{ fontSize: 13, color: colors.text, lineHeight: 1.6 }}>{milestone.description ?? `${milestone.name} ${formatHeroEffectAmount(milestone.type, milestone.amount, fmt)}`}</div>
                                 <div style={{ fontSize: 12, fontWeight: 800, color: scopeColor }}>{formatLabel(milestone.scope)} effect</div>
                               </div>
@@ -1377,8 +1526,17 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts
 
               {activeHeroTab === "synergies" && (
                 <div style={{ background: colors.panel, border: `1px solid ${colors.border}`, borderRadius: 16, padding: 16, display: "grid", gap: 16 }}>
-                  <div>
-                    <div style={{ fontSize: 18, fontWeight: 900, color: colors.text }}>Synergies</div>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+                    <div>
+                      <div style={{ fontSize: 18, fontWeight: 900, color: colors.text }}>Synergies</div>
+                    </div>
+                    <SwitchToggle
+                      checked={showModifiedSynergies}
+                      onChange={setShowModifiedSynergies}
+                      colors={colors}
+                      checkedLabel="Showing Modified Rewards"
+                      uncheckedLabel="Showing Base Rewards"
+                    />
                   </div>
 
                   {(selectedHero.synergies ?? []).length ? (
@@ -1403,6 +1561,8 @@ export function HeroLoadoutPage({ colors, getIconUrl, fmt, heroes, savedLoadouts
                                 colors={colors}
                                 getIconUrl={getIconUrl}
                                 fmt={fmt}
+                                rewardModifierByHeroId={teamSynergyRewardModifierByKey[synergyTeam.key] ?? { [selectedHero.id]: synergyRewardModifierPct }}
+                                showModifiedRewards={showModifiedSynergies}
                               />
                             ))}
                           </div>

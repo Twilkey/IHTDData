@@ -7,6 +7,7 @@ import {
   LOADOUT_EXPORT_SCOPES,
   parseImportedLoadoutFile,
 } from "../../lib/loadoutSavedRepository";
+import { SearchableSelect } from "../SearchableSelect";
 import { useIsNarrowScreen } from "../../lib/useIsNarrowScreen";
 
 function formatDateTime(value) {
@@ -573,12 +574,17 @@ export function SavesPage({
                         <span>Overwrite one existing compatible save record</span>
                       </div>
                       {entry.mode === "overwrite" ? (
-                        <select value={entry.targetId} onChange={(event) => updateImportEntry(entry.importId, { targetId: event.target.value })} style={{ marginLeft: 28, background: colors.bg, color: colors.text, border: `1px solid ${colors.border}`, borderRadius: 10, padding: "10px 12px", fontFamily: "inherit" }}>
-                          <option value="">Choose a save</option>
-                          {getOverwriteCandidates(entry).map((save) => (
-                            <option key={save.id} value={save.id}>{save.name}</option>
-                          ))}
-                        </select>
+                        <SearchableSelect
+                          value={entry.targetId}
+                          onChange={(nextValue) => updateImportEntry(entry.importId, { targetId: nextValue })}
+                          colors={colors}
+                          options={[
+                            { value: "", label: "Choose a save" },
+                            ...getOverwriteCandidates(entry).map((save) => ({ value: save.id, label: save.name })),
+                          ]}
+                          searchPlaceholder="Search saves..."
+                          containerStyle={{ marginLeft: 28 }}
+                        />
                       ) : null}
                     </label>
                   </div>

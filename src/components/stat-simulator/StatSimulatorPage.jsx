@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
+import { SearchableSelect } from "../SearchableSelect";
 import { collectCombatStyleEntries, COMBAT_STYLE_DEFINITIONS } from "../../lib/combatStyles";
 import { heroList, mapsData } from "../../lib/gameData";
 import { buildHeroStatModel, buildStatBreakdown, formatHeroStatValue, formatSignedHeroBonus } from "../../lib/loadoutStatEngine";
@@ -96,18 +97,14 @@ function TextField({ label, value, onChange, colors, type = "text", step = "any"
 
 function SelectField({ label, value, onChange, colors, options }) {
   return (
-    <label style={{ display: "grid", gap: 6, minWidth: 0 }}>
-      <span style={{ fontSize: 11, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 800 }}>{label}</span>
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        style={{ width: "100%", minWidth: 0, boxSizing: "border-box", background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 10, color: colors.text, fontSize: 14, fontWeight: 700, padding: "10px 12px", fontFamily: "inherit" }}
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>{option.label}</option>
-        ))}
-      </select>
-    </label>
+    <SearchableSelect
+      label={label}
+      value={value}
+      onChange={onChange}
+      colors={colors}
+      options={options}
+      containerStyle={{ minWidth: 0 }}
+    />
   );
 }
 
@@ -197,16 +194,27 @@ function SupportRosterCards({ rows, colors, onUpdateRow }) {
           <div style={{ display: "grid", gap: 10 }}>
             <label style={{ display: "grid", gap: 6, minWidth: 0 }}>
               <span style={{ fontSize: 11, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 800 }}>Hero</span>
-              <select value={row.heroId} onChange={(event) => onUpdateRow(row.id, (existing) => ({ ...existing, heroId: event.target.value }))} style={{ width: "100%", minWidth: 0, boxSizing: "border-box", background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 8, color: colors.text, padding: "10px 12px", fontFamily: "inherit" }}>
-                <option value="">None</option>
-                {heroList.map((hero) => <option key={hero.id} value={hero.id}>{hero.name}</option>)}
-              </select>
+              <SearchableSelect
+                value={row.heroId}
+                onChange={(nextValue) => onUpdateRow(row.id, (existing) => ({ ...existing, heroId: nextValue }))}
+                colors={colors}
+                options={[{ value: "", label: "None" }, ...heroList.map((hero) => ({ value: hero.id, label: hero.name }))]}
+                searchPlaceholder="Search heroes..."
+                containerStyle={{ minWidth: 0 }}
+                size="sm"
+              />
             </label>
             <label style={{ display: "grid", gap: 6, minWidth: 0 }}>
               <span style={{ fontSize: 11, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 800 }}>Combat Style</span>
-              <select value={row.combatStyleId} onChange={(event) => onUpdateRow(row.id, (existing) => ({ ...existing, combatStyleId: event.target.value }))} style={{ width: "100%", minWidth: 0, boxSizing: "border-box", background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 8, color: colors.text, padding: "10px 12px", fontFamily: "inherit" }}>
-                {COMBAT_STYLE_DEFINITIONS.map((style) => <option key={style.id} value={style.id}>{style.name}</option>)}
-              </select>
+              <SearchableSelect
+                value={row.combatStyleId}
+                onChange={(nextValue) => onUpdateRow(row.id, (existing) => ({ ...existing, combatStyleId: nextValue }))}
+                colors={colors}
+                options={COMBAT_STYLE_DEFINITIONS.map((style) => ({ value: style.id, label: style.name }))}
+                searchPlaceholder="Search combat styles..."
+                containerStyle={{ minWidth: 0 }}
+                size="sm"
+              />
             </label>
             <label style={{ display: "grid", gap: 6, minWidth: 0 }}>
               <span style={{ fontSize: 11, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 800 }}>Extra Synergy</span>
@@ -514,23 +522,24 @@ export function StatSimulatorPage({ colors, getIconUrl }) {
                     />
                   </td>
                   <td style={{ padding: "8px 10px" }}>
-                    <select
+                    <SearchableSelect
                       value={row.heroId}
-                      onChange={(event) => updateSimulatorState((current) => updateSimulatorSupportRow(current, row.id, (existing) => ({ ...existing, heroId: event.target.value })))}
-                      style={{ width: "100%", background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 8, color: colors.text, padding: "8px 10px", fontFamily: "inherit" }}
-                    >
-                      <option value="">None</option>
-                      {heroList.map((hero) => <option key={hero.id} value={hero.id}>{hero.name}</option>)}
-                    </select>
+                      onChange={(nextValue) => updateSimulatorState((current) => updateSimulatorSupportRow(current, row.id, (existing) => ({ ...existing, heroId: nextValue })))}
+                      colors={colors}
+                      options={[{ value: "", label: "None" }, ...heroList.map((hero) => ({ value: hero.id, label: hero.name }))]}
+                      searchPlaceholder="Search heroes..."
+                      size="sm"
+                    />
                   </td>
                   <td style={{ padding: "8px 10px" }}>
-                    <select
+                    <SearchableSelect
                       value={row.combatStyleId}
-                      onChange={(event) => updateSimulatorState((current) => updateSimulatorSupportRow(current, row.id, (existing) => ({ ...existing, combatStyleId: event.target.value })))}
-                      style={{ width: "100%", background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 8, color: colors.text, padding: "8px 10px", fontFamily: "inherit" }}
-                    >
-                      {COMBAT_STYLE_DEFINITIONS.map((style) => <option key={style.id} value={style.id}>{style.name}</option>)}
-                    </select>
+                      onChange={(nextValue) => updateSimulatorState((current) => updateSimulatorSupportRow(current, row.id, (existing) => ({ ...existing, combatStyleId: nextValue })))}
+                      colors={colors}
+                      options={COMBAT_STYLE_DEFINITIONS.map((style) => ({ value: style.id, label: style.name }))}
+                      searchPlaceholder="Search combat styles..."
+                      size="sm"
+                    />
                   </td>
                   <td style={{ padding: "8px 10px" }}>
                     <input
