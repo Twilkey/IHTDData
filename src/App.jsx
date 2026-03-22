@@ -44,6 +44,7 @@ import {
 } from "./lib/loadoutSavedRepository";
 import { buildActiveLoadoutScope, buildComparableLoadoutScopePayload, createComparableLoadoutScopePayload, getLoadoutScopeDisplayName, LOADOUT_RECORD_SCOPE_FULL } from "./lib/loadoutScope";
 import { readMapLoadoutBuilderMode } from "./lib/mapLoadout";
+import { costAtLevel as getUpgradeCostAtLevel } from "./lib/statsLoadout";
 
 const loadSecondaryViews = () => import("./views/secondaryViews.jsx");
 const HomeView = lazy(() => loadSecondaryViews().then((module) => ({ default: module.HomeView })));
@@ -511,6 +512,124 @@ function computeTotalCost(item, sectionFormula) {
     default:
       return baseCost * maxLevel;
   }
+}
+
+function CostModal({ item, sectionFormula, onClose }) {
+  const fmt = useFmt();
+  const formula = item.costFormula ?? sectionFormula;
+  const maxLevel = Math.max(1, item.maxLevel ?? 1);
+  const displayedMaxLevel = Math.min(maxLevel, 50);
+  const isSpellFormula = formula === "spell";
+  const totalCost = computeTotalCost(item, sectionFormula);
+  const hasStatValue = typeof item.statAmt === "number" && Boolean(item.statKey);
+  const hasBaseStat = typeof item.baseAmt === "number";
+
+  const rows = useMemo(() => {
+    const nextRows = [];
+    let cumulativeCost = typeof totalCost === "bigint" ? 0n : 0;
+
+    for (let level = 1; level <= displayedMaxLevel; level += 1) {
+      let costLabel = "-";
+      let cumulativeLabel = "-";
+
+      if (item.baseCost !== undefined && formula !== "none") {
+        if (isSpellFormula) {
+          const entry = spellCostEntry(level, item);
+          if (entry.type === "unlock") {
+            costLabel = `${fmt(entry.amount)} ${CURRENCY_LABELS[entry.currency] ?? entry.currency}`;
+          } else {
+            cumulativeCost += entry.cost;
+            costLabel = fmt(entry.cost);
+            cumulativeLabel = fmt(cumulativeCost);
+          }
+        } else {
+          const levelCost = getUpgradeCostAtLevel(level, item, sectionFormula);
+          cumulativeCost = typeof cumulativeCost === "bigint" || typeof levelCost === "bigint"
+            ? BigInt(cumulativeCost) + BigInt(levelCost)
+            : cumulativeCost + levelCost;
+          costLabel = fmt(levelCost);
+          cumulativeLabel = fmt(cumulativeCost);
+        }
+      }
+
+      let bonusLabel = "-";
+      if (hasStatValue) {
+        const totalStatValue = isProgressiveItem(item)
+          ? progressiveTotal(item.statAmt, level)
+          : (hasBaseStat ? item.baseAmt + item.statAmt * level : item.statAmt * level);
+        bonusLabel = formatStatTotal(totalStatValue, item.statKey, fmt);
+      } else if (typeof item.reward === "number") {
+        const rewardValue = hasBaseStat ? item.baseAmt + item.reward * level : item.reward * level;
+        bonusLabel = `${fmt(rewardValue)}${rewardUnitSym(item.rewardUnit)}`;
+      }
+
+      nextRows.push({
+        level,
+        costLabel,
+        cumulativeLabel,
+        bonusLabel,
+      });
+    }
+
+    return nextRows;
+  }, [displayedMaxLevel, fmt, formula, hasBaseStat, hasStatValue, isSpellFormula, item, sectionFormula, totalCost]);
+
+  const summaryStatLabel = hasStatValue
+    ? formatStat(item.statAmt, item.statKey)
+    : typeof item.reward === "number"
+      ? `${fmt(item.reward)}${rewardUnitSym(item.rewardUnit)}`
+      : null;
+
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.72)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div onClick={(event) => event.stopPropagation()} className="modal-box" style={{ background: colors.bg, border: `1px solid ${colors.border}`, display: "flex", flexDirection: "column", boxShadow: "0 8px 32px rgba(0,0,0,0.6)", width: "100%", maxWidth: 760, maxHeight: "88vh" }}>
+        <div style={{ padding: "16px 20px", borderBottom: `1px solid ${colors.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+            {item.icon ? <img src={getIconUrl(item.icon)} alt="" style={{ width: 40, height: 40, objectFit: "contain", flexShrink: 0 }} /> : null}
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 20, fontWeight: 900, color: colors.text }}>{item.name}</div>
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 4 }}>
+                {summaryStatLabel ? <span style={{ fontSize: 12, color: colors.positive, fontWeight: 700 }}>Per level {summaryStatLabel}</span> : null}
+                {item.maxLevel != null ? <span style={{ fontSize: 12, color: colors.muted }}>Max level {fmt(item.maxLevel)}</span> : null}
+                {item.waveReq != null ? <span style={{ fontSize: 12, color: colors.accent }}>Requirement {fmt(item.waveReq)}</span> : null}
+                {totalCost != null ? <span style={{ fontSize: 12, color: colors.gold }}>Total cost {fmt(totalCost)}</span> : null}
+              </div>
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: colors.muted, fontSize: 20, cursor: "pointer", lineHeight: 1, padding: 4 }}>✕</button>
+        </div>
+
+        <div style={{ padding: "16px 20px", overflow: "auto", display: "grid", gap: 12 }}>
+          {displayedMaxLevel < maxLevel ? (
+            <div style={{ fontSize: 12, color: colors.muted }}>Showing the first {fmt(displayedMaxLevel)} levels of {fmt(maxLevel)}.</div>
+          ) : null}
+
+          <div style={{ border: `1px solid ${colors.border}`, borderRadius: 10, overflow: "hidden" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <thead style={{ background: colors.panel, position: "sticky", top: 0 }}>
+                <tr>
+                  <th style={{ padding: "8px 12px", textAlign: "left", color: colors.muted, fontWeight: 700, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${colors.border}` }}>Level</th>
+                  <th style={{ padding: "8px 12px", textAlign: "right", color: colors.gold, fontWeight: 700, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${colors.border}` }}>Cost</th>
+                  <th style={{ padding: "8px 12px", textAlign: "right", color: colors.text, fontWeight: 700, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${colors.border}` }}>Total Cost</th>
+                  <th style={{ padding: "8px 12px", textAlign: "right", color: colors.positive, fontWeight: 700, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${colors.border}` }}>Bonus</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, index) => (
+                  <tr key={row.level} style={{ background: index % 2 === 0 ? "transparent" : `${colors.panel}66` }}>
+                    <td style={{ padding: "8px 12px", color: colors.accent, fontWeight: 700 }}>Level {fmt(row.level)}</td>
+                    <td style={{ padding: "8px 12px", textAlign: "right", color: colors.gold, fontFamily: "monospace" }}>{row.costLabel}</td>
+                    <td style={{ padding: "8px 12px", textAlign: "right", color: colors.text, fontFamily: "monospace" }}>{row.cumulativeLabel}</td>
+                    <td style={{ padding: "8px 12px", textAlign: "right", color: colors.positive, fontWeight: 700 }}>{row.bonusLabel}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ─────────────────────────────────────────────
