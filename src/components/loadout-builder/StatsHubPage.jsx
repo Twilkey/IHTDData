@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
+import { SearchableSelect } from "../SearchableSelect";
 import { LOADOUT_BUILDER_SELECTED_MAP_STORAGE_KEY } from "../../lib/loadoutBuilderSave";
 import { buildGlobalLoadoutStatModel, buildHeroStatModel, formatHeroStatValue, formatSignedHeroBonus } from "../../lib/loadoutStatEngine";
 import { mapsData } from "../../lib/gameData";
@@ -12,16 +13,13 @@ import { schedulePersistLoadoutRuntime } from "../../lib/loadoutRuntimeStore";
 function SelectorCard({ label, value, onChange, options, colors }) {
   return (
     <div style={{ background: `linear-gradient(180deg, ${colors.header} 0%, ${colors.panel} 100%)`, border: `1px solid ${colors.border}`, borderRadius: 14, padding: 14, display: "grid", gap: 6 }}>
-      <div style={{ fontSize: 11, color: colors.muted, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 800 }}>{label}</div>
-      <select
+      <SearchableSelect
+        label={label}
         value={value}
-        onChange={(event) => onChange(event.target.value)}
-        style={{ background: "#0f2640", border: `1px solid ${colors.border}`, borderRadius: 10, color: colors.text, fontSize: 14, fontWeight: 700, padding: "10px 12px", fontFamily: "inherit" }}
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>{option.label}</option>
-        ))}
-      </select>
+        onChange={onChange}
+        options={options}
+        colors={colors}
+      />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { exportSavedLoadoutsBundle, importLoadoutEntries, parseImportedLoadoutFile } from "../../lib/loadoutSavedRepository";
+import { SearchableSelect } from "../SearchableSelect";
 import { PresetsModalShell } from "./PresetsModalShell";
 
 function downloadBlob(blob, fileName) {
@@ -298,16 +299,16 @@ export function MapLoadoutPresetsPanel({
                             {persistedLinkedHeroPreset ? persistedLinkedHeroPreset.name : "None linked"}
                           </div>
                         </div>
-                        <select
+                        <SearchableSelect
                           value={linkedHeroPresetId}
-                          onChange={(event) => setDraftHeroPresetBySaveId((current) => ({ ...current, [save.id]: event.target.value }))}
-                          style={{ background: "#0f2640", border: `1px solid ${colors.border}`, color: colors.text, borderRadius: 10, padding: "10px 12px", font: "inherit" }}
-                        >
-                          <option value="">No linked hero preset</option>
-                          {heroPresets.map((heroPreset) => (
-                            <option key={heroPreset.id} value={heroPreset.id}>{heroPreset.name}</option>
-                          ))}
-                        </select>
+                          onChange={(nextValue) => setDraftHeroPresetBySaveId((current) => ({ ...current, [save.id]: nextValue }))}
+                          colors={colors}
+                          options={[
+                            { value: "", label: "No linked hero preset" },
+                            ...heroPresets.map((heroPreset) => ({ value: heroPreset.id, label: heroPreset.name })),
+                          ]}
+                          searchPlaceholder="Search hero presets..."
+                        />
                         {linkedHeroPreset ? (
                           <div style={{ fontSize: 12, color: colors.muted, lineHeight: 1.5 }}>
                             Loading this map preset will also load <span style={{ color: colors.text, fontWeight: 700 }}>{linkedHeroPreset.name}</span>.

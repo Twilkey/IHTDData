@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { GuideLines, HeroToken, MapStage, OverlayAnchor, SpotBadge } from "../map/MapStage";
+import { SearchableSelect } from "../SearchableSelect";
 import { coordToSlider, pixelsToNormalized, roundCoord, sliderToCoord } from "../../lib/coords";
 import { createSpotId, normalizeMapSpots } from "../../lib/gameData";
 import { readMapsJsonFromServer, writeMapSpotsToServer } from "../../lib/mapsAdminApi";
@@ -305,16 +306,26 @@ export function CoordFinderPage({ colors, getIconUrl, maps, heroes, onMapSpotsCh
             <div style={{ display: "grid", gap: 12 }}>
               <label style={{ display: "grid", gap: 6, color: colors.muted, fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
                 Map
-                <select value={selectedMap?.id ?? ""} onChange={(event) => setSelectedMapId(event.target.value)} style={{ minWidth: 220, background: "#0f2640", border: `1px solid ${colors.border}`, color: colors.text, borderRadius: 10, padding: "10px 12px", font: "inherit" }}>
-                  {maps.map((map) => <option key={map.id} value={map.id}>{map.name}</option>)}
-                </select>
+                <SearchableSelect
+                  value={selectedMap?.id ?? ""}
+                  onChange={setSelectedMapId}
+                  colors={colors}
+                  options={maps.map((map) => ({ value: map.id, label: map.name }))}
+                  searchPlaceholder="Search maps..."
+                  containerStyle={{ minWidth: 220 }}
+                />
               </label>
 
               <label style={{ display: "grid", gap: 6, color: colors.muted, fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
                 Preview Hero
-                <select value={previewHero?.id ?? ""} onChange={(event) => setPreviewHeroId(event.target.value)} style={{ minWidth: 220, background: "#0f2640", border: `1px solid ${colors.border}`, color: colors.text, borderRadius: 10, padding: "10px 12px", font: "inherit" }}>
-                  {heroes.map((hero) => <option key={hero.id} value={hero.id}>{hero.name}</option>)}
-                </select>
+                <SearchableSelect
+                  value={previewHero?.id ?? ""}
+                  onChange={setPreviewHeroId}
+                  colors={colors}
+                  options={heroes.map((hero) => ({ value: hero.id, label: hero.name }))}
+                  searchPlaceholder="Search heroes..."
+                  containerStyle={{ minWidth: 220 }}
+                />
               </label>
             </div>
 
