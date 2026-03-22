@@ -58,6 +58,7 @@ const WavePerksView = lazy(() => loadMiscViews().then((module) => ({ default: mo
 const loadCalculatorViews = () => import("./views/calculatorViews.jsx");
 const CombatStylesView = lazy(() => loadCalculatorViews().then((module) => ({ default: module.CombatStylesView })));
 const EnemyHpView = lazy(() => loadCalculatorViews().then((module) => ({ default: module.EnemyHpView })));
+const ResourceOptimizerView = lazy(() => loadCalculatorViews().then((module) => ({ default: module.ResourceOptimizerView })));
 const loadAppDataViews = () => import("./views/appDataViews.jsx");
 const AllHeroesRoute = lazy(() => loadAppDataViews().then((module) => ({ default: module.AllHeroesRoute })));
 const AllSynergiesRoute = lazy(() => loadAppDataViews().then((module) => ({ default: module.AllSynergiesRoute })));
@@ -194,6 +195,7 @@ const NAV_GROUPS = [
     label: "Simulator",
     items: [
       { key: "statSimulator", label: "Stat Simulator", menuIcon: "_attributePoints_0.png" },
+      { key: "resourceOptimizer", label: "Resource Optimizer", menuIcon: "_coin.png" },
     ],
   },
   {
@@ -5514,6 +5516,11 @@ export default function App() {
           {activeKey === "enemyHp"      && (
             <Suspense fallback={lazyFallback}>
               <EnemyHpView colors={colors} fmt={fmt} getIconUrl={getIconUrl} isMobile={isMobile} />
+            </Suspense>
+          )}
+          {activeKey === "resourceOptimizer" && (
+            <Suspense fallback={lazyFallback}>
+              <ResourceOptimizerView colors={colors} fmt={fmt} getIconUrl={getIconUrl} isMobile={isMobile} />
             </Suspense>
           )}
           {activeKey === "home"       && (
