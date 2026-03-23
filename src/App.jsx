@@ -687,11 +687,10 @@ function RankExpView() {
 
   const { rows, totalExp } = useMemo(() => {
     const nextRows = [];
-    let cumulative = 0;
 
     for (let level = range.start; level <= range.end; level += 1) {
-      const required = rankExpForLevel(level);
-      cumulative += required;
+      const cumulative = rankExpForLevel(level);
+      const required = level === 1 ? cumulative : cumulative - rankExpForLevel(level - 1);
       nextRows.push({ level, required, cumulative });
     }
 
@@ -3394,7 +3393,7 @@ function UltimusTokensView() {
           <img src={getIconUrl("flagSword.png")} alt="" style={{ width: 16, height: 16, objectFit: "contain" }} />
           <span style={{ fontWeight: 700, fontSize: 13, color: colors.text }}>Wave Perk Effect Upgrades</span>
           <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
-            <button onClick={() => { const next = Object.fromEntries(WAVE_PERK_EFFECT_SOURCES.map(s => [s.key, String(s.maxLevel)])); setWpeLevels(next); localStorage.setItem("wavePerkEffectLevels", JSON.stringify(next)); updateSnowLevel(String(SNOW_FORT_WPE.maxLevel)); }}
+            <button onClick={() => { const next = Object.fromEntries(WAVE_PERK_EFFECT_SOURCES.map(s => [s.key, String(s.maxLevel)])); setWpeLevels(next); localStorage.setItem("wavePerkEffectLevels", JSON.stringify(next)); if (mapSelection === "snow") updateSnowLevel(String(SNOW_FORT_WPE.maxLevel)); else if (mapSelection === "astral") updateAstralBossLevel("10"); }}
               style={{ background: colors.accent+"22", border: `1px solid ${colors.accent}44`, color: colors.accent, borderRadius: 6, padding: "2px 12px", fontFamily: "inherit", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>Max</button>
             <button onClick={() => { const next = Object.fromEntries(WAVE_PERK_EFFECT_SOURCES.map(s => [s.key, ""])); setWpeLevels(next); localStorage.setItem("wavePerkEffectLevels", JSON.stringify(next)); updateSnowLevel(""); }}
               style={{ background: "transparent", border: `1px solid ${colors.border}`, color: colors.muted, borderRadius: 6, padding: "2px 12px", fontFamily: "inherit", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>Clear</button>
@@ -3423,7 +3422,7 @@ function UltimusTokensView() {
           <div style={{ display: "flex", gap: 12 }}>
             {[{ key: "snow", label: "Snow Fort", icon: "icon_snow.png" }, { key: "astral", label: "Astral Battleground", icon: "icon_astral.png" }].map(({ key, label, icon }) => (
               <label key={key} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-                <input type="checkbox" checked={mapSelection === key} onChange={e => setMapSelection(e.target.checked ? key : "none")} style={{ width: 14, height: 14, cursor: "pointer" }} />
+                <input type="checkbox" checked={mapSelection === key} onChange={e => { if (e.target.checked) { setMapSelection(key); } else { setMapSelection("none"); if (key === "snow") updateSnowLevel("0"); else if (key === "astral") updateAstralBossLevel("0"); } }} style={{ width: 14, height: 14, cursor: "pointer" }} />
                 <img src={getIconUrl(icon)} alt="" style={{ width: 16, height: 16, objectFit: "contain" }} />
                 <span style={{ fontSize: 12, color: colors.muted }}>{label}</span>
               </label>
