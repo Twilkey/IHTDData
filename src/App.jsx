@@ -890,7 +890,7 @@ const IMMORTAL_BOSS_ROTATION_ITEMS = [
   { key: "mage", label: "Mage", accentColor: "#7d7cff" },
   { key: "range", label: "Range", accentColor: "#2ecc71" },
 ];
-const COMMUNITY_EVENT_NEXT_START_MS = new Date(2026, 2, 22, 18, 49, 0, 0).getTime();
+const COMMUNITY_EVENT_NEXT_START_MS = new Date(2026, 2, 29, 18, 49, 0, 0).getTime();
 const COMMUNITY_EVENT_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
 const COMMUNITY_EVENT_ROTATION_ITEMS = [
   {
@@ -1144,7 +1144,7 @@ function getImmortalBossLeagueEffects(rotationKey) {
 function getCommunityEventSnapshot(now = Date.now()) {
   return getUpcomingCycleSnapshot({
     items: COMMUNITY_EVENT_ROTATION_ITEMS,
-    currentIndex: COMMUNITY_EVENT_ROTATION_ITEMS.length - 1,
+    currentIndex: 1,
     nextStartMs: COMMUNITY_EVENT_NEXT_START_MS,
     getOffsetMs: (stepsAheadFromNext) => stepsAheadFromNext * COMMUNITY_EVENT_INTERVAL_MS,
     now,
