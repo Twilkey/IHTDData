@@ -61,6 +61,7 @@ function getHomeSections(colors, isAdmin) {
       color: "#ff9f5a",
       items: [
         { key: "statSimulator", label: "Stat Simulator", icon: "_attributePoints_0.png", desc: "Standalone stat sandbox with explicit loadout import and export bridges" },
+        { key: "resourceOptimizer", label: "Resource Optimizer", icon: "_coin.png", desc: "Greedy budget optimizer with optional Upgrades Loadout sync" },
       ],
     },
     {
