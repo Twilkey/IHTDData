@@ -303,6 +303,7 @@ export function spellCostEntry(level, item) {
 }
 
 function usesBigInt(item, sectionFormula) {
+  if (item.hasLinearMult) return false;
   const formula = item.costFormula ?? sectionFormula;
   if (formula === "spell") {
     return true;
@@ -314,6 +315,12 @@ function usesBigInt(item, sectionFormula) {
 
   return Number.isInteger(item.baseCost)
     && (item.multiCost === undefined || Number.isInteger(item.multiCost));
+}
+
+function prestigeBreakpointMult(level, maxLevel) {
+  const bp1 = Math.ceil(maxLevel * 0.5);
+  const bp2 = Math.ceil(maxLevel * 0.8);
+  return level >= bp2 ? 24 : level >= bp1 ? 3 : 1;
 }
 
 export function costAtLevel(level, item, sectionFormula) {
@@ -367,11 +374,19 @@ export function costAtLevel(level, item, sectionFormula) {
       return baseCost;
     case "rank_linear":
       return baseCost * level;
-    case "power":
-      return baseCost * Math.pow(level, multiCost ?? 1);
+    case "power": {
+      const itemMaxLevel = item.maxLevel ?? DEFAULT_FALLBACK_MAX_LEVEL;
+      const bpMult = item.hasLinearMult ? prestigeBreakpointMult(level, itemMaxLevel) : 1;
+      const linMult = item.hasLinearMult && itemMaxLevel > 999 && level > 1 ? 1 + level * 0.001 : 1;
+      return baseCost * Math.pow(level, multiCost ?? 1) * bpMult * linMult;
+    }
     case "exponential":
-    case "exponential_endgame":
-      return baseCost * Math.pow(multiCost ?? 1, exponentLevel);
+    case "exponential_endgame": {
+      const itemMaxLevel = item.maxLevel ?? DEFAULT_FALLBACK_MAX_LEVEL;
+      const bpMult = item.hasLinearMult ? prestigeBreakpointMult(level, itemMaxLevel) : 1;
+      const linMult = item.hasLinearMult && itemMaxLevel > 999 && level > 1 ? 1 + level * 0.001 : 1;
+      return baseCost * Math.pow(multiCost ?? 1, exponentLevel) * bpMult * linMult;
+    }
     case "capped_linear":
       return baseCost * Math.min(level, stopCostIncreaseAt ?? level);
     default:

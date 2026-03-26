@@ -112,7 +112,7 @@ export function HomeView({ colors, getIconUrl, onNavigate, isMobile, isAdmin }) 
           Idle Hero TD
         </div>
         <div style={{ fontSize: 16, fontWeight: 700, color: colors.text, marginBottom: 4 }}>Game Data Reference</div>
-        <div style={{ fontSize: 13, color: colors.muted, marginBottom: 20 }}>by Asingh · Game Version 15.04</div>
+        <div style={{ fontSize: 13, color: colors.muted, marginBottom: 20 }}>by Asingh · Twilkey · Datum47 · Game Version 15.04</div>
         <p style={{ fontSize: 14, color: colors.muted, lineHeight: 1.7, maxWidth: 560, margin: "0 auto 12px" }}>
           A comprehensive reference tool for Idle Hero TD - covering upgrade costs, hero stats, synergies, milestones, mastery exp, map perks, tournament brackets, and battlepass exp. Use the sidebar to navigate between sections.
         </p>

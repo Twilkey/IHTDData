@@ -558,8 +558,8 @@
         "baseCost": 15000000.0,
         "multCost": 1.0,
         "icon": "icon_arrow_shaped_26.png",
-        "bgColor": "#00244C",
-        "borderColor": "#004080"
+        "bgColor": "#00234B",
+        "borderColor": "#003A74"
       }
     ]
   }

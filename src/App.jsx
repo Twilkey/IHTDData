@@ -374,6 +374,12 @@ function rewardUnitSym(rewardUnit) {
   return REWARD_UNIT_SYMBOL[rewardUnit?.toLowerCase()] ?? "";
 }
 
+function prestigeBreakpointMult(level, maxLevel) {
+  const bp1 = Math.ceil(maxLevel * 0.5);
+  const bp2 = Math.ceil(maxLevel * 0.8);
+  return level >= bp2 ? 24 : level >= bp1 ? 3 : 1;
+}
+
 function computeTotalCost(item, sectionFormula) {
   const formula = item.costFormula ?? sectionFormula;
   const { baseCost, multiCost, maxLevel, stopCostIncreaseAt } = item;
@@ -413,16 +419,12 @@ function computeTotalCost(item, sectionFormula) {
 
       case "power": {
         if (item.hasLinearMult) break;
-        const breakpointOne = BigInt(Math.ceil(maxLevel * 0.5));
-        const breakpointTwo = BigInt(Math.ceil(maxLevel * 0.8));
-        const sumRange = (start, end) => (end >= start ? ((end - start + 1n) * (start + end)) / 2n : 0n);
         if (!multiCost || multiCost === 1) {
-          return baseCostBig * (sumRange(1n, breakpointOne - 1n) + 3n * sumRange(breakpointOne, breakpointTwo - 1n) + 24n * sumRange(breakpointTwo, maxLevelBig));
+          return (baseCostBig * maxLevelBig * (maxLevelBig + 1n)) / 2n;
         }
         let total = 0n;
         for (let level = 1n; level <= maxLevelBig; level += 1n) {
-          const breakpointMult = level >= breakpointTwo ? 24n : level >= breakpointOne ? 3n : 1n;
-          total += baseCostBig * level ** multiCostBig * breakpointMult;
+          total += baseCostBig * level ** multiCostBig;
         }
         return total;
       }
@@ -430,17 +432,12 @@ function computeTotalCost(item, sectionFormula) {
       case "exponential":
       case "exponential_endgame": {
         if (item.hasLinearMult) break;
-        const breakpointOne = BigInt(Math.ceil(maxLevel * 0.5));
-        const breakpointTwo = BigInt(Math.ceil(maxLevel * 0.8));
         if (!multiCost || multiCost === 1) {
-          const countOne = breakpointOne > 1n ? breakpointOne - 1n : 0n;
-          const countTwo = breakpointTwo > breakpointOne ? breakpointTwo - breakpointOne : 0n;
-          const countThree = maxLevelBig >= breakpointTwo ? maxLevelBig - breakpointTwo + 1n : 0n;
-          return baseCostBig * (countOne + 3n * countTwo + 24n * countThree);
+          return baseCostBig * maxLevelBig;
         }
         const geometric = (start, end) => end < start ? 0n : multiCostBig ** (start - 1n) * (multiCostBig ** (end - start + 1n) - 1n) / (multiCostBig - 1n);
         try {
-          return baseCostBig * (geometric(1n, breakpointOne - 1n) + 3n * geometric(breakpointOne, breakpointTwo - 1n) + 24n * geometric(breakpointTwo, maxLevelBig));
+          return baseCostBig * geometric(1n, maxLevelBig);
         } catch {
           break;
         }
@@ -465,37 +462,27 @@ function computeTotalCost(item, sectionFormula) {
       return (baseCost * maxLevel * (maxLevel + 1)) / 2;
 
     case "power": {
-      const breakpointOne = maxLevel * 0.5;
-      const breakpointTwo = maxLevel * 0.8;
       const exponent = multiCost ?? 1;
-      if (maxLevel > 10000) {
-        const integral = (start, end) => {
-          const first = (Math.pow(end, exponent + 1) - Math.pow(start, exponent + 1)) / (exponent + 1);
-          const second = 0.001 * (Math.pow(end, exponent + 2) - Math.pow(start, exponent + 2)) / (exponent + 2);
-          return first + second;
-        };
-        return baseCost * (integral(0, breakpointOne) + 3 * integral(breakpointOne, breakpointTwo) + 24 * integral(breakpointTwo, maxLevel));
+      if (exponent === 1 && !item.hasLinearMult) {
+        return baseCost * maxLevel * (maxLevel + 1) / 2;
       }
       let total = 0;
-      for (let index = 0; index < maxLevel; index += 1) {
-        const level = index + 1;
-        const breakpointMult = level >= breakpointTwo ? 24 : level >= breakpointOne ? 3 : 1;
-        const linearMult = item.hasLinearMult && level > 1 ? 1 + level * 0.001 : 1;
-        total += baseCost * Math.pow(level, exponent) * breakpointMult * linearMult;
+      for (let level = 1; level <= maxLevel; level += 1) {
+        const bpMult = item.hasLinearMult ? prestigeBreakpointMult(level, maxLevel) : 1;
+        const linearMult = item.hasLinearMult && maxLevel > 999 && level > 1 ? 1 + level * 0.001 : 1;
+        total += baseCost * Math.pow(level, exponent) * linearMult * bpMult;
       }
       return total;
     }
 
     case "exponential":
     case "exponential_endgame": {
-      const breakpointOne = Math.ceil(maxLevel * 0.5);
-      const breakpointTwo = Math.ceil(maxLevel * 0.8);
       if (item.hasLinearMult) {
         let total = 0;
         for (let level = 1; level <= maxLevel; level += 1) {
-          const breakpointMult = level >= breakpointTwo ? 24 : level >= breakpointOne ? 3 : 1;
-          const linearMult = level > 1 ? 1 + level * 0.001 : 1;
-          total += baseCost * Math.pow(multiCost ?? 1, level - 1) * breakpointMult * linearMult;
+          const bpMult = prestigeBreakpointMult(level, maxLevel);
+          const linearMult = maxLevel > 999 && level > 1 ? 1 + level * 0.001 : 1;
+          total += baseCost * Math.pow(multiCost ?? 1, level - 1) * linearMult * bpMult;
         }
         return total;
       }
@@ -504,7 +491,7 @@ function computeTotalCost(item, sectionFormula) {
         if (!multiCost || multiCost === 1) return end - start + 1;
         return Math.pow(multiCost, start - 1) * (Math.pow(multiCost, end - start + 1) - 1) / (multiCost - 1);
       };
-      return baseCost * (geometric(1, breakpointOne - 1) + 3 * geometric(breakpointOne, breakpointTwo - 1) + 24 * geometric(breakpointTwo, maxLevel));
+      return baseCost * geometric(1, maxLevel);
     }
 
     case "capped_linear": {
@@ -522,17 +509,23 @@ function CostModal({ item, sectionFormula, onClose }) {
   const fmt = useFmt();
   const formula = item.costFormula ?? sectionFormula;
   const maxLevel = Math.max(1, item.maxLevel ?? 1);
-  const displayedMaxLevel = Math.min(maxLevel, 50);
   const isSpellFormula = formula === "spell";
   const totalCost = computeTotalCost(item, sectionFormula);
   const hasStatValue = typeof item.statAmt === "number" && Boolean(item.statKey);
   const hasBaseStat = typeof item.baseAmt === "number";
 
+  const [startLevel, setStartLevel] = useState(1);
+  const [endLevel, setEndLevel] = useState(Math.min(maxLevel, 50));
+
+  const clampedStart = Math.max(1, Math.min(startLevel || 1, maxLevel));
+  const clampedEnd = Math.max(clampedStart, Math.min(endLevel || clampedStart, maxLevel));
+
   const rows = useMemo(() => {
     const nextRows = [];
     let cumulativeCost = typeof totalCost === "bigint" ? 0n : 0;
+    let rangeCostStart = typeof totalCost === "bigint" ? 0n : 0;
 
-    for (let level = 1; level <= displayedMaxLevel; level += 1) {
+    for (let level = 1; level <= clampedEnd; level += 1) {
       let costLabel = "-";
       let cumulativeLabel = "-";
 
@@ -556,6 +549,10 @@ function CostModal({ item, sectionFormula, onClose }) {
         }
       }
 
+      if (level === clampedStart - 1) rangeCostStart = cumulativeCost;
+
+      if (level < clampedStart) continue;
+
       let bonusLabel = "-";
       if (hasStatValue) {
         const totalStatValue = isProgressiveItem(item)
@@ -567,16 +564,22 @@ function CostModal({ item, sectionFormula, onClose }) {
         bonusLabel = `${fmt(rewardValue)}${rewardUnitSym(item.rewardUnit)}`;
       }
 
-      nextRows.push({
-        level,
-        costLabel,
-        cumulativeLabel,
-        bonusLabel,
-      });
+      nextRows.push({ level, costLabel, cumulativeLabel, bonusLabel });
     }
 
-    return nextRows;
-  }, [displayedMaxLevel, fmt, formula, hasBaseStat, hasStatValue, isSpellFormula, item, sectionFormula, totalCost]);
+    const lastRow = nextRows[nextRows.length - 1];
+    let rangeCost = null;
+    if (lastRow && item.baseCost !== undefined && formula !== "none" && !isSpellFormula) {
+      const endCumulative = typeof totalCost === "bigint"
+        ? BigInt(lastRow.cumulativeLabel.replace(/[^0-9]/g, ""))
+        : null;
+      rangeCost = { start: rangeCostStart, rows: nextRows };
+    }
+
+    return { rows: nextRows, rangeCostStart };
+  }, [clampedStart, clampedEnd, fmt, formula, hasBaseStat, hasStatValue, isSpellFormula, item, sectionFormula, totalCost]);
+
+  const { rows: displayRows, rangeCostStart } = rows;
 
   const summaryStatLabel = hasStatValue
     ? formatStat(item.statAmt, item.statKey)
@@ -584,10 +587,19 @@ function CostModal({ item, sectionFormula, onClose }) {
       ? `${fmt(item.reward)}${rewardUnitSym(item.rewardUnit)}`
       : null;
 
+  const inputStyle = {
+    background: colors.panel, border: `1px solid ${colors.border}`, borderRadius: 6,
+    color: colors.text, fontSize: 13, padding: "4px 8px", width: 80, textAlign: "center",
+  };
+
   return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.72)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-      <div onClick={(event) => event.stopPropagation()} className="modal-box" style={{ background: colors.bg, border: `1px solid ${colors.border}`, display: "flex", flexDirection: "column", boxShadow: "0 8px 32px rgba(0,0,0,0.6)", width: "100%", maxWidth: 760, maxHeight: "88vh" }}>
-        <div style={{ padding: "16px 20px", borderBottom: `1px solid ${colors.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14 }}>
+    <div
+      onClick={onClose}
+      onWheel={e => e.stopPropagation()}
+      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.72)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+    >
+      <div onClick={(event) => event.stopPropagation()} className="modal-box" style={{ background: colors.bg, border: `1px solid ${colors.border}`, display: "flex", flexDirection: "column", boxShadow: "0 8px 32px rgba(0,0,0,0.6)", width: "100%", maxWidth: 760, height: "88vh" }}>
+        <div style={{ padding: "16px 20px", borderBottom: `1px solid ${colors.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexShrink: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
             {item.icon ? <img src={getIconUrl(item.icon)} alt="" style={{ width: 40, height: 40, objectFit: "contain", flexShrink: 0 }} /> : null}
             <div style={{ minWidth: 0 }}>
@@ -595,7 +607,7 @@ function CostModal({ item, sectionFormula, onClose }) {
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 4 }}>
                 {summaryStatLabel ? <span style={{ fontSize: 12, color: colors.positive, fontWeight: 700 }}>Per level {summaryStatLabel}</span> : null}
                 {item.maxLevel != null ? <span style={{ fontSize: 12, color: colors.muted }}>Max level {fmt(item.maxLevel)}</span> : null}
-                {item.waveReq != null ? <span style={{ fontSize: 12, color: colors.accent }}>Requirement {fmt(item.waveReq)}</span> : null}
+                {item.waveReq != null && item.waveReq !== 0 ? <Badge color={colors.accent}>Unlock: Wave {item.waveReq.toLocaleString()}</Badge> : null}
                 {totalCost != null ? <span style={{ fontSize: 12, color: colors.gold }}>Total cost {fmt(totalCost)}</span> : null}
               </div>
             </div>
@@ -603,32 +615,53 @@ function CostModal({ item, sectionFormula, onClose }) {
           <button onClick={onClose} style={{ background: "none", border: "none", color: colors.muted, fontSize: 20, cursor: "pointer", lineHeight: 1, padding: 4 }}>✕</button>
         </div>
 
-        <div style={{ padding: "16px 20px", overflow: "auto", display: "grid", gap: 12 }}>
-          {displayedMaxLevel < maxLevel ? (
-            <div style={{ fontSize: 12, color: colors.muted }}>Showing the first {fmt(displayedMaxLevel)} levels of {fmt(maxLevel)}.</div>
-          ) : null}
+        <div style={{ padding: "10px 20px", borderBottom: `1px solid ${colors.border}`, display: "flex", alignItems: "center", gap: 10, flexShrink: 0, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 12, color: colors.muted, fontWeight: 600 }}>Level range</span>
+          <input
+            type="number" min={1} max={maxLevel} value={startLevel}
+            onChange={e => setStartLevel(Math.max(1, Math.min(Number(e.target.value), maxLevel)))}
+            style={inputStyle}
+          />
+          <span style={{ fontSize: 12, color: colors.muted }}>to</span>
+          <input
+            type="number" min={1} max={maxLevel} value={endLevel}
+            onChange={e => setEndLevel(Math.max(1, Math.min(Number(e.target.value), maxLevel)))}
+            style={inputStyle}
+          />
+          {maxLevel > 1 && (
+            <button
+              onClick={() => { setStartLevel(1); setEndLevel(maxLevel); }}
+              style={{ fontSize: 11, color: colors.accent, background: "none", border: `1px solid ${colors.border}`, borderRadius: 5, padding: "3px 8px", cursor: "pointer" }}
+            >
+              All {fmt(maxLevel)} levels
+            </button>
+          )}
+        </div>
 
-          <div style={{ border: `1px solid ${colors.border}`, borderRadius: 10, overflow: "hidden" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-              <thead style={{ background: colors.panel, position: "sticky", top: 0 }}>
-                <tr>
-                  <th style={{ padding: "8px 12px", textAlign: "left", color: colors.muted, fontWeight: 700, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${colors.border}` }}>Level</th>
-                  <th style={{ padding: "8px 12px", textAlign: "right", color: colors.gold, fontWeight: 700, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${colors.border}` }}>Cost</th>
-                  <th style={{ padding: "8px 12px", textAlign: "right", color: colors.text, fontWeight: 700, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${colors.border}` }}>Total Cost</th>
-                  <th style={{ padding: "8px 12px", textAlign: "right", color: colors.positive, fontWeight: 700, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${colors.border}` }}>Bonus</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row, index) => (
-                  <tr key={row.level} style={{ background: index % 2 === 0 ? "transparent" : `${colors.panel}66` }}>
-                    <td style={{ padding: "8px 12px", color: colors.accent, fontWeight: 700 }}>Level {fmt(row.level)}</td>
-                    <td style={{ padding: "8px 12px", textAlign: "right", color: colors.gold, fontFamily: "monospace" }}>{row.costLabel}</td>
-                    <td style={{ padding: "8px 12px", textAlign: "right", color: colors.text, fontFamily: "monospace" }}>{row.cumulativeLabel}</td>
-                    <td style={{ padding: "8px 12px", textAlign: "right", color: colors.positive, fontWeight: 700 }}>{row.bonusLabel}</td>
+        <div style={{ overflow: "auto", overscrollBehavior: "contain", flex: 1, minHeight: 0 }}>
+          <div style={{ padding: "16px 20px", display: "grid", gap: 12 }}>
+            <div style={{ border: `1px solid ${colors.border}`, borderRadius: 10, overflow: "hidden" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <thead style={{ background: colors.panel, position: "sticky", top: 0 }}>
+                  <tr>
+                    <th style={{ padding: "8px 12px", textAlign: "left", color: colors.muted, fontWeight: 700, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${colors.border}` }}>Level</th>
+                    <th style={{ padding: "8px 12px", textAlign: "right", color: colors.gold, fontWeight: 700, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${colors.border}` }}>Cost</th>
+                    <th style={{ padding: "8px 12px", textAlign: "right", color: colors.text, fontWeight: 700, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${colors.border}` }}>Total Cost</th>
+                    <th style={{ padding: "8px 12px", textAlign: "right", color: colors.positive, fontWeight: 700, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${colors.border}` }}>Bonus</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {displayRows.map((row, index) => (
+                    <tr key={row.level} style={{ background: index % 2 === 0 ? "transparent" : `${colors.panel}66` }}>
+                      <td style={{ padding: "8px 12px", color: colors.accent, fontWeight: 700 }}>Level {fmt(row.level)}</td>
+                      <td style={{ padding: "8px 12px", textAlign: "right", color: colors.gold, fontFamily: "monospace" }}>{row.costLabel}</td>
+                      <td style={{ padding: "8px 12px", textAlign: "right", color: colors.text, fontFamily: "monospace" }}>{row.cumulativeLabel}</td>
+                      <td style={{ padding: "8px 12px", textAlign: "right", color: colors.positive, fontWeight: 700 }}>{row.bonusLabel}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
@@ -691,11 +724,10 @@ function RankExpView() {
 
   const { rows, totalExp } = useMemo(() => {
     const nextRows = [];
-    let cumulative = 0;
 
     for (let level = range.start; level <= range.end; level += 1) {
-      const required = rankExpForLevel(level);
-      cumulative += required;
+      const cumulative = rankExpForLevel(level);
+      const required = level === 1 ? cumulative : cumulative - rankExpForLevel(level - 1);
       nextRows.push({ level, required, cumulative });
     }
 
@@ -895,7 +927,7 @@ const IMMORTAL_BOSS_ROTATION_ITEMS = [
   { key: "mage", label: "Mage", accentColor: "#7d7cff" },
   { key: "range", label: "Range", accentColor: "#2ecc71" },
 ];
-const COMMUNITY_EVENT_NEXT_START_MS = new Date(2026, 2, 22, 18, 49, 0, 0).getTime();
+const COMMUNITY_EVENT_NEXT_START_MS = new Date(2026, 2, 29, 18, 49, 0, 0).getTime();
 const COMMUNITY_EVENT_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
 const COMMUNITY_EVENT_ROTATION_ITEMS = [
   {
@@ -1149,7 +1181,7 @@ function getImmortalBossLeagueEffects(rotationKey) {
 function getCommunityEventSnapshot(now = Date.now()) {
   return getUpcomingCycleSnapshot({
     items: COMMUNITY_EVENT_ROTATION_ITEMS,
-    currentIndex: COMMUNITY_EVENT_ROTATION_ITEMS.length - 1,
+    currentIndex: 1,
     nextStartMs: COMMUNITY_EVENT_NEXT_START_MS,
     getOffsetMs: (stepsAheadFromNext) => stepsAheadFromNext * COMMUNITY_EVENT_INTERVAL_MS,
     now,
@@ -3398,7 +3430,7 @@ function UltimusTokensView() {
           <img src={getIconUrl("flagSword.png")} alt="" style={{ width: 16, height: 16, objectFit: "contain" }} />
           <span style={{ fontWeight: 700, fontSize: 13, color: colors.text }}>Wave Perk Effect Upgrades</span>
           <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
-            <button onClick={() => { const next = Object.fromEntries(WAVE_PERK_EFFECT_SOURCES.map(s => [s.key, String(s.maxLevel)])); setWpeLevels(next); localStorage.setItem("wavePerkEffectLevels", JSON.stringify(next)); updateSnowLevel(String(SNOW_FORT_WPE.maxLevel)); }}
+            <button onClick={() => { const next = Object.fromEntries(WAVE_PERK_EFFECT_SOURCES.map(s => [s.key, String(s.maxLevel)])); setWpeLevels(next); localStorage.setItem("wavePerkEffectLevels", JSON.stringify(next)); if (mapSelection === "snow") updateSnowLevel(String(SNOW_FORT_WPE.maxLevel)); else if (mapSelection === "astral") updateAstralBossLevel("10"); }}
               style={{ background: colors.accent+"22", border: `1px solid ${colors.accent}44`, color: colors.accent, borderRadius: 6, padding: "2px 12px", fontFamily: "inherit", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>Max</button>
             <button onClick={() => { const next = Object.fromEntries(WAVE_PERK_EFFECT_SOURCES.map(s => [s.key, ""])); setWpeLevels(next); localStorage.setItem("wavePerkEffectLevels", JSON.stringify(next)); updateSnowLevel(""); }}
               style={{ background: "transparent", border: `1px solid ${colors.border}`, color: colors.muted, borderRadius: 6, padding: "2px 12px", fontFamily: "inherit", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>Clear</button>
@@ -3427,7 +3459,7 @@ function UltimusTokensView() {
           <div style={{ display: "flex", gap: 12 }}>
             {[{ key: "snow", label: "Snow Fort", icon: "icon_snow.png" }, { key: "astral", label: "Astral Battleground", icon: "icon_astral.png" }].map(({ key, label, icon }) => (
               <label key={key} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-                <input type="checkbox" checked={mapSelection === key} onChange={e => setMapSelection(e.target.checked ? key : "none")} style={{ width: 14, height: 14, cursor: "pointer" }} />
+                <input type="checkbox" checked={mapSelection === key} onChange={e => { if (e.target.checked) { setMapSelection(key); } else { setMapSelection("none"); if (key === "snow") updateSnowLevel("0"); else if (key === "astral") updateAstralBossLevel("0"); } }} style={{ width: 14, height: 14, cursor: "pointer" }} />
                 <img src={getIconUrl(icon)} alt="" style={{ width: 16, height: 16, objectFit: "contain" }} />
                 <span style={{ fontSize: 12, color: colors.muted }}>{label}</span>
               </label>
@@ -5095,12 +5127,15 @@ function SheetView({ sectionData, onOpen }) {
               const costValue = item.cost ?? item.baseCost ?? null;
               const requirementValue = item.requirement ?? item.waveReq ?? null;
               const costPrefix = item.costCurrency ?? CURRENCY_LABELS[item.currency] ?? "Cost";
+              const accentColor = item.borderColor ?? item.rewardBorderColor ?? colors.accent;
 
               return (
                 <button
                   key={item.id}
                   type="button"
                   onClick={() => onOpen(item)}
+                  onMouseEnter={e => e.currentTarget.style.border = `1px solid ${accentColor}`}
+                  onMouseLeave={e => e.currentTarget.style.border = `1px solid ${colors.border}`}
                   style={{
                     width: "100%",
                     background: `linear-gradient(180deg, #2a5c96 0%, ${colors.header} 100%)`,
@@ -5130,11 +5165,15 @@ function SheetView({ sectionData, onOpen }) {
                       </div>
                     ) : null}
 
-                    {item.maxLevel != null ? <div style={{ fontSize: 13, color: colors.muted }}>Max Level {fmt(item.maxLevel)}</div> : null}
-                    {costValue != null ? <div style={{ fontSize: 13, color: colors.muted }}>{costPrefix} {fmt(costValue)}</div> : null}
-                    {totalCost != null ? <div style={{ fontSize: 13, color: colors.muted }}>Total {costPrefix} {fmt(totalCost)}</div> : null}
-                    {requirementValue != null ? <div style={{ fontSize: 13, color: colors.muted }}>Requirement {typeof requirementValue === "number" ? fmt(requirementValue) : requirementValue}</div> : null}
+                    {item.maxLevel != null ? <div style={{ fontSize: 13, color: colors.muted }}>Max Level <span style={{ color: colors.text, fontWeight: 600 }}>{fmt(item.maxLevel)}</span></div> : null}
+                    {costValue != null ? <div style={{ fontSize: 13, color: colors.muted }}>{costPrefix} <span style={{ color: colors.gold, fontWeight: 600 }}>{fmt(costValue)}</span></div> : null}
+                    {totalCost != null ? <div style={{ fontSize: 13, color: colors.muted }}>Total {costPrefix} <span style={{ color: colors.gold, fontWeight: 700 }}>{fmt(totalCost)}</span></div> : null}
                   </div>
+                  {requirementValue != null && requirementValue !== 0 ? (
+                    <div style={{ alignSelf: "flex-start" }}>
+                      <Badge color={colors.accent}>Unlock: Wave {typeof requirementValue === "number" ? requirementValue.toLocaleString() : requirementValue}</Badge>
+                    </div>
+                  ) : null}
                 </button>
               );
             })}
