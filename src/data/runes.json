@@ -14,65 +14,7 @@
         "name": "Damage I",
         "statKey": "damage",
         "statAmt": 5,
-        "maxLevel": 999999999,
-        "icon": "_dps.png",
-        "bgColor": "#960000",
-        "borderColor": "#FF0000"
-      },
-      {
-        "id": "kill_gold_i",
-        "name": "Kill Gold I",
-        "statKey": "kill_gold",
-        "statAmt": 5,
-        "maxLevel": 999999999,
-        "icon": "_coin.png",
-        "bgColor": "#999900",
-        "borderColor": "#FFFF00"
-      },
-      {
-        "id": "attack_speed",
-        "name": "Attack Speed",
-        "statKey": "attack_speed",
-        "statAmt": 3,
-        "maxLevel": 15,
-        "icon": "_attSpeed.png",
-        "bgColor": "#009B00",
-        "borderColor": "#00FF00"
-      },
-      {
-        "id": "crit_damage",
-        "name": "Crit Damage",
-        "statKey": "crit_damage",
-        "statAmt": 5,
-        "maxLevel": 15,
-        "icon": "_critDmg_2.png",
-        "bgColor": "#994B00",
-        "borderColor": "#FF8000"
-      },
-      {
-        "id": "enemy_hp",
-        "name": "Enemy HP",
-        "statKey": "enemy_hp",
-        "statAmt": 3,
-        "maxLevel": 15,
-        "icon": "_enemyHp.png",
-        "bgColor": "#4C0000",
-        "borderColor": "#800000"
-      }
-    ],
-    "Uncommon": [
-      {
-        "id": "prestige_power_i",
-        "name": "Prestige Power I",
-        "statKey": "prestige_power",
-        "statAmt": 10,
-        "maxLevel": 999999999,
-        "icon": "_planet.png",
-        "bgColor": "#6E00A2",
-        "borderColor": "#AF00FF"
-      },
-      {
-        "id": "rank_exp_i",
+        "menuIcon": "_rune_2.png",
         "name": "Rank Exp I",
         "statKey": "rank_exp",
         "statAmt": 1,

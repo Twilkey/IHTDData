@@ -40,6 +40,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "The skill adds the bleed effect to each enemy it hits, dealing 200% of the skill's damage per second, for 3s.",
+      "masteryExpRequirement": "Kill enemies with this hero",
       "baseStats": {
         "damage": 10,
         "dps": 10,
@@ -537,6 +538,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "For every second that an enemy is slowed, they take +1.0% additional damage from all attacks (stacks additively).",
+      "masteryExpRequirement": "Kill enemies within this hero's skill aura",
       "baseStats": {
         "damage": 15,
         "dps": 11,
@@ -1037,6 +1039,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "This skill deals 250% splash damage to all nearby enemies.",
+      "masteryExpRequirement": "Kill enemies with this hero",
       "baseStats": {
         "damage": 13,
         "dps": 13,
@@ -1534,6 +1537,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "Each consecutive hit on the same enemy from this hero deals +1.0% more damage (stacks additively / max 500%).",
+      "masteryExpRequirement": "Kill enemies with this hero while her skill is active",
       "baseStats": {
         "damage": 10,
         "dps": 12,
@@ -2034,6 +2038,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "All heroes within range gain a second Damage Boost multiplier, which increases at +2.0% per second (stacks additively).",
+      "masteryExpRequirement": "Buff nearby heroes with this hero's skill",
       "baseStats": {
         "damage": 11,
         "dps": 10,
@@ -2534,6 +2539,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "Increase the gold bonus effect by +10%. Also adds a splash effect, tagging +1x nearby enemies.",
+      "masteryExpRequirement": "Tag enemies with this hero's skill",
       "baseStats": {
         "damage": 20,
         "dps": 10,
@@ -3031,6 +3037,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "This hero's skill deals +25% more damage and activates on +1x more attacks on the same enemy (rather than just the first attack).",
+      "masteryExpRequirement": "Kill enemies with this hero",
       "baseStats": {
         "damage": 7,
         "dps": 12,
@@ -3528,6 +3535,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "Increase the skill's stun duration by +0.5s. Stunned enemies take +20% extra damage from all attacks.",
+      "masteryExpRequirement": "Stun enemies with this hero's skill",
       "baseStats": {
         "damage": 7,
         "dps": 7,
@@ -4028,6 +4036,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "Every second that the enemy is bleeding deals +25% more bleed damage (stacks additively).",
+      "masteryExpRequirement": "Kill enemies with this hero while her skill is active",
       "baseStats": {
         "damage": 10,
         "dps": 10,
@@ -4525,6 +4534,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "Increase the execution HP threshold by +1%. After executing an enemy, this hero gains +50% damage and +5% attack speed (stacks additively).",
+      "masteryExpRequirement": "Kill enemies with this hero while her skill is active",
       "baseStats": {
         "damage": 10,
         "dps": 14,
@@ -5022,6 +5032,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "Increase the exp bonus effect by +0.02% of the current wave number (half effective on Training Dummy).",
+      "masteryExpRequirement": "Kill enemies within this hero's skill aura",
       "baseStats": {
         "damage": 16,
         "dps": 16,
@@ -5522,6 +5533,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "Increase the exp bonus effect by +0.02% of the current wave number (half effective on Training Dummy).",
+      "masteryExpRequirement": "Tag enemies with this hero's skill",
       "baseStats": {
         "damage": 20,
         "dps": 12,
@@ -6022,6 +6034,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "This hero gains +25% damage for each enemy he kills (stacks additively).",
+      "masteryExpRequirement": "Kill enemies with this hero while her skill is active",
       "baseStats": {
         "damage": 14,
         "dps": 13,
@@ -6519,6 +6532,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "All heroes within range gain +5% triple-shot chance (instantly perform 3 attacks).",
+      "masteryExpRequirement": "Buff nearby heroes with this hero's skill",
       "baseStats": {
         "damage": 28,
         "dps": 17,
@@ -7019,6 +7033,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "Each ultra crit from this hero deals between +100% and +500% more ultra crit damage.",
+      "masteryExpRequirement": "Kill enemies with this hero while her skill is active",
       "baseStats": {
         "damage": 28,
         "dps": 14,
@@ -7516,6 +7531,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "The damage of each immolation is increased by +20% for each enemy within range.",
+      "masteryExpRequirement": "Kill enemies with this hero",
       "baseStats": {
         "damage": 17,
         "dps": 17,
@@ -8013,6 +8029,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "Confused enemies run backwards at +10% increased movement speed and take +15% extra damage.",
+      "masteryExpRequirement": "Confuse enemies with this hero's skill",
       "baseStats": {
         "damage": 12,
         "dps": 11,
@@ -8513,6 +8530,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "Each enemy tagged increases the base energy income of the current wave by +5 (stacks with Boss Rush).",
+      "masteryExpRequirement": "Tag enemies with this hero's skill",
       "baseStats": {
         "damage": 19,
         "dps": 17,
@@ -9010,6 +9028,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "Each consecutive hit on the same enemy from this hero deals +1.0% more splash damage to nearby enemies (stacks additively / max 500%).",
+      "masteryExpRequirement": "Kill enemies with this hero while her skill is active",
       "baseStats": {
         "damage": 45,
         "dps": 22,
@@ -9507,6 +9526,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "All heroes within range gain +0.2% ultra crit chance per enemy they kill (stacks additively).",
+      "masteryExpRequirement": "Buff nearby heroes with this hero's skill",
       "baseStats": {
         "damage": 28,
         "dps": 21,
@@ -10007,6 +10027,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "This hero gains +5% instant skill cooldown chance.",
+      "masteryExpRequirement": "Kill enemies with this hero",
       "baseStats": {
         "damage": 42,
         "dps": 21,
@@ -10504,6 +10525,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "This hero gains +35% super crit damage for each enemy he kills (stacks additively).",
+      "masteryExpRequirement": "Kill enemies with this hero while her skill is active",
       "baseStats": {
         "damage": 25,
         "dps": 18,
@@ -11004,6 +11026,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "When a hero within range kills an enemy, all heroes within range gain an additional +3.0% critical hit damage multiplier (stacks additively).",
+      "masteryExpRequirement": "Buff nearby heroes with this hero's skill",
       "baseStats": {
         "damage": 10,
         "dps": 10,
@@ -11504,6 +11527,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "Each enemy killed within range rewards +2.0% more gold (stacks additively).",
+      "masteryExpRequirement": "Kill enemies within this hero's skill aura",
       "baseStats": {
         "damage": 11,
         "dps": 14,
@@ -12001,6 +12025,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "The damage of each attack is increased by +10% for each cleaved enemy on that attack.",
+      "masteryExpRequirement": "Kill enemies with this hero while her skill is active",
       "baseStats": {
         "damage": 17,
         "dps": 25,
@@ -12501,6 +12526,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "Each time an enemy is teleported, they take +30% more damage from all attacks (stacks additively).",
+      "masteryExpRequirement": "Teleport enemies with this hero's skill",
       "baseStats": {
         "damage": 29,
         "dps": 14,
@@ -13001,6 +13027,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "Each enemy killed within range rewards +0.2% more exp (stacks additively / max 20% / half effective on Training Dummy).",
+      "masteryExpRequirement": "Kill enemies within this hero's skill aura",
       "baseStats": {
         "damage": 33,
         "dps": 22,
@@ -13501,6 +13528,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "This hero gains +150% damage to all enemies affected by his skill. The first 0.5s of the skill stuns the enemy.",
+      "masteryExpRequirement": "Kill enemies with this hero",
       "baseStats": {
         "damage": 29,
         "dps": 23,
@@ -13998,6 +14026,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "All heroes within range gain +3% instant skill cooldown chance.",
+      "masteryExpRequirement": "Buff nearby heroes with this hero's skill",
       "baseStats": {
         "damage": 34,
         "dps": 25,
@@ -14498,6 +14527,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "Each consecutive attack on the same enemy rewards +0.5% more gold (stacks additively / max 250%). The skill works at 5% efficiency on wave bosses.",
+      "masteryExpRequirement": "Number of Golden Arrows fired",
       "baseStats": {
         "damage": 14,
         "dps": 13,
@@ -14995,6 +15025,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "Each subsequent lightning strike on the same enemy deals +25% more damage (stacks additively).",
+      "masteryExpRequirement": "Kill enemies with this hero",
       "baseStats": {
         "damage": 26,
         "dps": 26,
@@ -15492,6 +15523,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "All heroes within range gain +1.0% more splash damage per second (stacks additively).",
+      "masteryExpRequirement": "Buff nearby heroes with this hero's skill",
       "baseStats": {
         "damage": 27,
         "dps": 16,
@@ -15992,6 +16024,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "Each Power Mage ultra boss killed within range rewards +8% more energy (stacks additively / max 240%).",
+      "masteryExpRequirement": "Kill enemies within this hero's skill aura",
       "baseStats": {
         "damage": 16,
         "dps": 16,
@@ -16489,6 +16522,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "This hero gains +5% super crit chance and +100% super crit damage.",
+      "masteryExpRequirement": "Kill enemies with this hero while her skill is active",
       "baseStats": {
         "damage": 27,
         "dps": 24,
@@ -16991,6 +17025,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "All heroes within range gain between +5% to +25% crit damage, +3% to +15% super crit damage, and +1% to +5% ultra crit damage.",
+      "masteryExpRequirement": "Buff nearby heroes with this hero's skill",
       "baseStats": {
         "damage": 20,
         "dps": 18,
@@ -17493,6 +17528,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "This hero gains +30% damage for every 1.00m distance the enemy is from the hero.",
+      "masteryExpRequirement": "Kill enemies with this hero while her skill is active",
       "baseStats": {
         "damage": 22,
         "dps": 22,
@@ -17995,6 +18031,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "This hero gains +3% ultra crit chance and +150% ultra crit damage.",
+      "masteryExpRequirement": "Kill enemies with this hero while her skill is active",
       "baseStats": {
         "damage": 24,
         "dps": 24,
@@ -18496,6 +18533,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "Each enemy killed within range rewards +10% ultra gold amount (stacks additively).",
+      "masteryExpRequirement": "Kill enemies within this hero's skill aura",
       "baseStats": {
         "damage": 22,
         "dps": 18,
@@ -18993,6 +19031,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "This hero gains the multi-shot ability, allowing her to target +1x additional nearby enemies on each attack. Also increases her super crit damage by +50%.",
+      "masteryExpRequirement": "Kill enemies with this hero while her skill is active",
       "baseStats": {
         "damage": 24,
         "dps": 24,
@@ -19495,6 +19534,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "All heroes within range gain +2% ultra crit chance and +50% ultra crit damage.",
+      "masteryExpRequirement": "Buff nearby heroes with this hero's skill",
       "baseStats": {
         "damage": 33,
         "dps": 26,
@@ -19996,6 +20036,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "There is a 1.0% chance that this hero's skill will trigger its maximum values.",
+      "masteryExpRequirement": "Kill enemies with this hero while her skill is active",
       "baseStats": {
         "damage": 31,
         "dps": 22,
@@ -20498,6 +20539,7 @@
         "durationIcon": "_skillDuration.png"
       },
       "masteryDescription": "Each enemy killed within range rewards +0.5% more super exp amount (stacks additively / max 50% / half effective on Training Dummy).",
+      "masteryExpRequirement": "Kill enemies within this hero's skill aura",
       "baseStats": {
         "damage": 28,
         "dps": 22,

@@ -60,10 +60,12 @@ const loadCalculatorViews = () => import("./views/calculatorViews.jsx");
 const CombatStylesView = lazy(() => loadCalculatorViews().then((module) => ({ default: module.CombatStylesView })));
 const EnemyHpView = lazy(() => loadCalculatorViews().then((module) => ({ default: module.EnemyHpView })));
 const ResourceOptimizerView = lazy(() => loadCalculatorViews().then((module) => ({ default: module.ResourceOptimizerView })));
+const RuneCalcView = lazy(() => loadCalculatorViews().then((module) => ({ default: module.RuneCalcView })));
 const loadAppDataViews = () => import("./views/appDataViews.jsx");
 const AllHeroesRoute = lazy(() => loadAppDataViews().then((module) => ({ default: module.AllHeroesRoute })));
 const AllSynergiesRoute = lazy(() => loadAppDataViews().then((module) => ({ default: module.AllSynergiesRoute })));
 const AllMilestonesRoute = lazy(() => loadAppDataViews().then((module) => ({ default: module.AllMilestonesRoute })));
+const AllMasteriesRoute = lazy(() => loadAppDataViews().then((module) => ({ default: module.AllMasteriesRoute })));
 const AllMapsRoute = lazy(() => loadAppDataViews().then((module) => ({ default: module.AllMapsRoute })));
 const loadBuilderViews = () => import("./views/loadoutBuilderViews.jsx");
 const LoadoutBuilderView = lazy(() => loadBuilderViews().then((module) => ({ default: module.LoadoutBuilderView })));
@@ -157,6 +159,7 @@ const NAV_GROUPS = [
       { key: "rankExp", label: "Rank Exp", menuIcon: "_killExp.png" },
       { key: "attributes", label: "Attributes", menuIcon: "_attributePoints_0.png" },
       { key: "combatStyles", label: "Combat Styles", menuIcon: "icon_scale.png" },
+      { key: "masteries", label: "Masteries", menuIcon: "_mastery_2.png" },
     ],
   },
   {
@@ -216,6 +219,7 @@ const NAV_GROUPS = [
       { key: "enemyHp",       label: "Enemy HP",         menuIcon: "_bosses.png" },
       { key: "heroGoldCost",  label: "Hero Gold Cost",   menuIcon: "_gold.png" },
       { key: "ultimusTokens", label: "Ultimus Tokens",   menuIcon: "ultimusBoss.png" },
+      { key: "runeCalc",      label: "Rune",             menuIcon: "_rune_2.png" },
     ],
   },
   {
@@ -6238,6 +6242,11 @@ export default function App() {
           )}
           {activeKey === "rankExp"    && <RankExpView />}
           {activeKey === "attributes"   && <AttributesView />}
+          {activeKey === "masteries" && (
+            <Suspense fallback={lazyFallback}>
+              <AllMasteriesRoute colors={colors} Badge={Badge} getIconUrl={getIconUrl} />
+            </Suspense>
+          )}
           {activeKey === "combatStyles" && (
             <Suspense fallback={lazyFallback}>
               <CombatStylesView colors={colors} isMobile={isMobile} />
@@ -6432,6 +6441,11 @@ export default function App() {
           )}
           {activeKey === "heroGoldCost" && <HeroGoldCostView />}
           {activeKey === "ultimusTokens" && <UltimusTokensView />}
+          {activeKey === "runeCalc" && (
+            <Suspense fallback={lazyFallback}>
+              <RuneCalcView colors={colors} fmt={fmt} getIconUrl={getIconUrl} isMobile={isMobile} />
+            </Suspense>
+          )}
           {activeKey === "immortalBrackets" && <ImmortalBracketsView />}
         </div>
 

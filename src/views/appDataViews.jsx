@@ -1022,3 +1022,231 @@ export function AllMapsRoute({ colors, Badge, getIconUrl }) {
     </div>
   );
 }
+
+/* ─── Masteries ─── */
+
+const MASTERY_BREAKPOINTS = [
+  { atLevel: 6, multIncremental: 1.1 },
+  { atLevel: 9, multIncremental: 1.1 },
+  { atLevel: 11, multIncremental: 1.2 },
+];
+
+function computeMasteryExpTable(baseAmount, maxLevel) {
+  const rows = [];
+  let cumulative = 0;
+  for (let level = 1; level <= maxLevel; level++) {
+    let mult = 1;
+    for (const bp of MASTERY_BREAKPOINTS) {
+      if (level >= bp.atLevel) mult *= bp.multIncremental;
+    }
+    const exp = Math.round(baseAmount * 24 * level * mult);
+    cumulative += exp;
+    rows.push({ level, exp, cumulative });
+  }
+  return rows;
+}
+
+function classifyMasteryCondition(description) {
+  if (!description) return "—";
+  const d = description.toLowerCase();
+  if (/\bkill(s|ed)?\b/.test(d)) return "Kill";
+  if (/\bhit(s)?\b|\btagged\b|\battack(s|ed)?\b|\bstrike\b|\bbleeding\b|\bstunned\b|\bslowed\b|\bconfused\b|\bteleported\b|\bimmolation\b/.test(d)) return "Tag";
+  if (/\bgain(s)?\b|\bincreas(e|ed|es)\b|\bboost\b|\bbuff\b/.test(d)) return "Buff";
+  return "Passive";
+}
+
+function classifyMasteryScope(description) {
+  if (!description) return "—";
+  const d = description.toLowerCase();
+  if (/all heroes within range/.test(d) || /heroes within range/.test(d) || /each enemy (killed |tagged )?within range/.test(d)) return "Aura";
+  if (/\bskill('s)?\b|\bthe skill\b|\bthis skill\b/.test(d)) return "Self Skill";
+  return "Self";
+}
+
+function deriveMasteryTags(hero) {
+  const tags = new Set();
+  const desc = (hero.masteryDescription ?? "").toLowerCase();
+  if (/\bgold\b/.test(desc)) tags.add("gold");
+  if (/\benergy\b/.test(desc)) tags.add("energy");
+  if (/\bexp\b|\bexperience\b/.test(desc)) tags.add("exp");
+  if (/\bdamage\b|\bbleed\b|\bimmolation\b/.test(desc)) tags.add("damage");
+  if (/\bcrit\b/.test(desc)) tags.add("crit");
+  if (/\battack speed\b|\btriple.shot\b|\bmulti.shot\b/.test(desc)) tags.add("speed");
+  if (/\bsplash\b|\bcleave\b/.test(desc)) tags.add("splash");
+  if (/\bstun\b/.test(desc)) tags.add("stun");
+  if (/\bslow\b/.test(desc)) tags.add("slow");
+  if (/\bcooldown\b/.test(desc)) tags.add("cooldown");
+  if (/\bconfuse\b/.test(desc)) tags.add("confuse");
+  if (/\bteleport\b/.test(desc)) tags.add("teleport");
+  if (/\brange\b.*distance/.test(desc)) tags.add("range");
+  if (/\bexecut/.test(desc)) tags.add("execute");
+  if (/\bchance\b.*\bmaximum\b|\bmaximum\b.*\bchance\b|\blucky\b/.test(desc)) tags.add("luck");
+  return [...tags];
+}
+
+const MASTERY_TAG_COLORS = {
+  gold: "#ffd040",
+  energy: "#2ecc71",
+  exp: "#4488ee",
+  damage: "#e05555",
+  crit: "#ff8800",
+  speed: "#00cc00",
+  splash: "#cc66ff",
+  stun: "#00cccc",
+  slow: "#00aacc",
+  cooldown: "#33cccc",
+  confuse: "#dd66aa",
+  teleport: "#aa44ff",
+  range: "#cccc00",
+  execute: "#cc3333",
+  luck: "#ff66ff",
+};
+
+const CLASS_DISPLAY = { melee: "Melee", mage: "Mage", range: "Range" };
+
+function MasteryModal({ hero, onClose, colors, getIconUrl }) {
+  const rows = computeMasteryExpTable(hero.masteryExp.baseAmount, hero.masteryExp.maxLevel);
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.72)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 400, padding: 20 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: colors.panel, border: `1px solid ${colors.border}`, borderRadius: 12, padding: 0, maxWidth: 520, width: "100%", maxHeight: "88vh", overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "0 8px 32px rgba(0,0,0,0.5)" }}>
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "16px 20px", borderBottom: `1px solid ${colors.border}`, background: colors.header }}>
+          <div style={{ width: 48, height: 48, borderRadius: 8, background: (RARITY_COLORS[hero.rarity] ?? RARITY_COLORS.Common).bg, border: `1px solid ${(RARITY_COLORS[hero.rarity] ?? RARITY_COLORS.Common).border}`, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <img src={getIconUrl(hero.heroIcon)} alt="" style={{ width: 44, height: 44, objectFit: "contain" }} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: colors.text }}>{hero.name} — Mastery</div>
+            <div style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{hero.masteryDescription}</div>
+          </div>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: colors.muted, fontSize: 22, cursor: "pointer", padding: "4px 8px", lineHeight: 1 }}>✕</button>
+        </div>
+        {/* Table */}
+        <div style={{ overflowY: "auto", flex: 1 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead style={{ position: "sticky", top: 0, background: colors.panel, zIndex: 1 }}>
+              <tr>
+                <th style={{ padding: "8px 12px", color: colors.muted, fontWeight: 700, fontSize: 11, textAlign: "center", borderBottom: `1px solid ${colors.border}`, letterSpacing: "0.06em", textTransform: "uppercase" }}>Level</th>
+                <th style={{ padding: "8px 12px", color: colors.muted, fontWeight: 700, fontSize: 11, textAlign: "right", borderBottom: `1px solid ${colors.border}`, letterSpacing: "0.06em", textTransform: "uppercase" }}>Exp Required</th>
+                <th style={{ padding: "8px 12px", color: colors.muted, fontWeight: 700, fontSize: 11, textAlign: "right", borderBottom: `1px solid ${colors.border}`, letterSpacing: "0.06em", textTransform: "uppercase" }}>Cumulative</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, idx) => (
+                <tr key={row.level} style={{ background: idx % 2 === 0 ? "transparent" : colors.panel + "60", borderBottom: `1px solid ${colors.border}22` }}>
+                  <td style={{ padding: "8px 12px", textAlign: "center", color: colors.accent, fontWeight: 700 }}>{row.level}</td>
+                  <td style={{ padding: "8px 12px", textAlign: "right", color: colors.text, fontFamily: "monospace" }}>{row.exp.toLocaleString()}</td>
+                  <td style={{ padding: "8px 12px", textAlign: "right", color: colors.gold, fontFamily: "monospace" }}>{row.cumulative.toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr style={{ borderTop: `2px solid ${colors.border}` }}>
+                <td style={{ padding: "10px 12px", fontWeight: 700, color: colors.text, textAlign: "center" }}>Total</td>
+                <td />
+                <td style={{ padding: "10px 12px", textAlign: "right", color: colors.gold, fontWeight: 700, fontFamily: "monospace" }}>{rows[rows.length - 1]?.cumulative.toLocaleString()}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function AllMasteriesRoute({ colors, Badge, getIconUrl }) {
+  const isMobile = useIsMobile();
+  const [query, setQuery] = useState("");
+  const [classFilter, setClassFilter] = useState("all");
+  const [selectedHero, setSelectedHero] = useState(null);
+
+  const heroes = heroesData.heroes ?? [];
+
+  const enriched = useMemo(() =>
+    heroes.map((hero) => ({
+      hero,
+      heroClass: CLASS_DISPLAY[hero.class] ?? hero.class,
+      condition: classifyMasteryCondition(hero.masteryDescription),
+      scope: classifyMasteryScope(hero.masteryDescription),
+      tags: deriveMasteryTags(hero),
+    })).sort((a, b) => a.hero.order - b.hero.order),
+    [heroes],
+  );
+
+  const filtered = useMemo(() => {
+    const lq = query.trim().toLowerCase();
+    return enriched.filter((entry) => {
+      if (classFilter !== "all" && entry.hero.class !== classFilter) return false;
+      if (!lq) return true;
+      return (
+        entry.hero.name.toLowerCase().includes(lq) ||
+        entry.heroClass.toLowerCase().includes(lq) ||
+        entry.condition.toLowerCase().includes(lq) ||
+        entry.scope.toLowerCase().includes(lq) ||
+        entry.tags.some((t) => t.toLowerCase().includes(lq)) ||
+        (entry.hero.masteryDescription ?? "").toLowerCase().includes(lq)
+      );
+    });
+  }, [enriched, query, classFilter]);
+
+  const headerStyle = { padding: "8px 12px", color: colors.muted, fontWeight: 700, fontSize: 11, textAlign: "left", borderBottom: `1px solid ${colors.border}`, letterSpacing: "0.06em", textTransform: "uppercase" };
+  const CLASS_COLORS = { melee: "#e05555", mage: "#7d7cff", range: "#2ecc71" };
+
+  return (
+    <div>
+      <SearchBar colors={colors} value={query} onChange={setQuery} placeholder="Search by name, class, condition, scope, or tag..." />
+      <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
+        <span style={{ fontSize: 12, color: colors.muted, fontWeight: 600 }}>Class:</span>
+        {["all", "melee", "mage", "range"].map((c) => (
+          <button key={c} onClick={() => setClassFilter(c)} style={{ background: classFilter === c ? (c === "all" ? colors.accent + "33" : (CLASS_COLORS[c] ?? colors.accent) + "33") : "transparent", border: `1px solid ${classFilter === c ? (c === "all" ? colors.accent : CLASS_COLORS[c] ?? colors.accent) : colors.border}`, color: classFilter === c ? (c === "all" ? colors.accent : CLASS_COLORS[c] ?? colors.accent) : colors.muted, borderRadius: 6, padding: "4px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", textTransform: "capitalize" }}>
+            {c === "all" ? "All" : CLASS_DISPLAY[c] ?? c}
+          </button>
+        ))}
+      </div>
+      <div style={{ fontSize: 12, color: colors.muted, marginBottom: 12 }}>{filtered.length} hero{filtered.length !== 1 ? "es" : ""}</div>
+      <div style={{ background: colors.header, border: `1px solid ${colors.border}`, borderRadius: 8, overflow: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: isMobile ? 700 : undefined }}>
+          <thead style={{ position: "sticky", top: 0, background: colors.panel, zIndex: 1 }}>
+            <tr>
+              <th style={headerStyle}>Hero</th>
+              <th style={headerStyle}>Class</th>
+              <th style={headerStyle}>Condition</th>
+              <th style={headerStyle}>Scope</th>
+              <th style={{ ...headerStyle, minWidth: 200 }}>Description</th>
+              <th style={headerStyle}>Tags</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map(({ hero, heroClass, condition, scope, tags }, idx) => {
+              const rarityColor = RARITY_COLORS[hero.rarity] ?? RARITY_COLORS.Common;
+              return (
+                <tr key={hero.id} onClick={() => setSelectedHero(hero)} style={{ background: idx % 2 === 0 ? "transparent" : colors.panel + "60", borderBottom: `1px solid ${colors.border}22`, cursor: "pointer", transition: "background 0.15s" }} onMouseEnter={(e) => (e.currentTarget.style.background = colors.accent + "18")} onMouseLeave={(e) => (e.currentTarget.style.background = idx % 2 === 0 ? "transparent" : colors.panel + "60")}>
+                  <td style={{ padding: "8px 12px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ width: 32, height: 32, borderRadius: 6, background: rarityColor.bg, border: `1px solid ${rarityColor.border}`, overflow: "hidden", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {hero.heroIcon && <img src={getIconUrl(hero.heroIcon)} alt="" style={{ width: 30, height: 30, objectFit: "contain" }} />}
+                      </div>
+                      <span style={{ color: colors.text, fontWeight: 600, whiteSpace: "nowrap" }}>{hero.name}</span>
+                    </div>
+                  </td>
+                  <td style={{ padding: "8px 12px" }}><Badge color={CLASS_COLORS[hero.class] ?? colors.accent}>{heroClass}</Badge></td>
+                  <td style={{ padding: "8px 12px", color: colors.text }}>{condition}</td>
+                  <td style={{ padding: "8px 12px", color: colors.text }}>{scope}</td>
+                  <td style={{ padding: "8px 12px", color: colors.muted, fontSize: 12, lineHeight: 1.4, maxWidth: 320 }}>{hero.masteryExpRequirement}</td>
+                  <td style={{ padding: "8px 12px" }}>
+                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                      {tags.map((tag) => (
+                        <span key={tag} style={{ background: (MASTERY_TAG_COLORS[tag] ?? colors.accent) + "22", color: MASTERY_TAG_COLORS[tag] ?? colors.accent, border: `1px solid ${(MASTERY_TAG_COLORS[tag] ?? colors.accent)}44`, borderRadius: 4, padding: "1px 6px", fontSize: 10, fontWeight: 600, textTransform: "capitalize" }}>{tag}</span>
+                      ))}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {filtered.length === 0 && <div style={{ padding: 32, textAlign: "center", color: colors.muted, fontSize: 14 }}>No heroes match your search.</div>}
+      </div>
+      {selectedHero && <MasteryModal hero={selectedHero} onClose={() => setSelectedHero(null)} colors={colors} getIconUrl={getIconUrl} />}
+    </div>
+  );
+}

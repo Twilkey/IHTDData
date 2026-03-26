@@ -13,7 +13,9 @@ import {
   parseResourceOptimizerNumber,
   RESOURCE_OPTIMIZER_CURRENCIES,
 } from "../lib/resourceOptimizer";
+import { buildGlobalLoadoutStatModel } from "../lib/loadoutStatEngine";
 import { LOADOUT_RUNTIME_CHANGED_EVENT } from "../lib/loadoutRuntimeStore";
+import { readPlayerLoadoutState } from "../lib/playerLoadout";
 import { formatStatPerLevel, readStatsLoadoutState } from "../lib/statsLoadout";
 import { useIsNarrowScreen } from "../lib/useIsNarrowScreen";
 
@@ -477,7 +479,7 @@ function ResourceButton({ label, icon, selected, colors, getIconUrl, onClick }) 
   );
 }
 
-function SyncToggle({ checked, onChange, colors }) {
+function SyncToggle({ checked, onChange, colors, activeLabel = "Pull Upgrade Loadout", inactiveLabel = "Don't pull Upgrade Loadout" }) {
   return (
     <button
       type="button"
@@ -521,7 +523,7 @@ function SyncToggle({ checked, onChange, colors }) {
           }}
         />
       </span>
-      {checked ? "Pull Upgrade Loadout" : "Don't pull Upgrade Loadout"}
+      {checked ? activeLabel : inactiveLabel}
     </button>
   );
 }
@@ -944,6 +946,338 @@ export function ResourceOptimizerView({ colors, fmt, getIconUrl, isMobile }) {
           </div>
         </div>
       </form>
+    </div>
+  );
+}
+
+/* ────────────────────────────────────────────────────────
+   Rune Calculator
+   ──────────────────────────────────────────────────────── */
+
+const RUNE_CALC_STORAGE_KEY = "ihtddata.runeCalc.v2";
+
+const RUNE_CALC_SCALING_RUNES = [
+  { id: "damage_i", name: "Damage I", rarity: "Common", stat: "damage", perLevel: 5, icon: "_dps.png" },
+  { id: "kill_gold_i", name: "Kill Gold I", rarity: "Common", stat: "kill_gold", perLevel: 5, icon: "_coin.png" },
+  { id: "prestige_power_i", name: "Prestige Power I", rarity: "Uncommon", stat: "prestige_power", perLevel: 10, icon: "_planet.png" },
+  { id: "damage_ii", name: "Damage II", rarity: "Rare", stat: "damage", perLevel: 15, icon: "_dps.png" },
+  { id: "kill_gold_ii", name: "Kill Gold II", rarity: "Rare", stat: "kill_gold", perLevel: 15, icon: "_coin.png" },
+  { id: "prestige_power_ii", name: "Prestige Power II", rarity: "Epic", stat: "prestige_power", perLevel: 25, icon: "_planet.png" },
+  { id: "damage_iii", name: "Damage III", rarity: "Legendary", stat: "damage", perLevel: 50, icon: "_dps.png" },
+  { id: "kill_gold_iii", name: "Kill Gold III", rarity: "Legendary", stat: "kill_gold", perLevel: 50, icon: "_coin.png" },
+  { id: "damage_iv", name: "Damage IV", rarity: "Mythic", stat: "damage", perLevel: 100, icon: "_dps.png" },
+  { id: "kill_gold_iv", name: "Kill Gold IV", rarity: "Mythic", stat: "kill_gold", perLevel: 100, icon: "_coin.png" },
+];
+
+const RUNE_CALC_STAT_ORDER = ["damage", "kill_gold", "prestige_power"];
+
+const RARITY_BADGE_COLORS = {
+  Common: "#aaaaaa",
+  Uncommon: "#55ff55",
+  Rare: "#5588ff",
+  Epic: "#cc55ff",
+  Legendary: "#ffaa00",
+  Mythic: "#ff5555",
+};
+
+const STAT_LABEL = { damage: "DMG", kill_gold: "GOLD", prestige_power: "PP" };
+const STAT_COLOR = { damage: "#f87171", kill_gold: "#facc15", prestige_power: "#c084fc" };
+const STAT_NAMES = { damage: "Damage", kill_gold: "Kill Gold", prestige_power: "Prestige Power" };
+
+function formatRuneAmount(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return "-";
+  }
+
+  return numeric.toLocaleString("en-US", {
+    minimumFractionDigits: Number.isInteger(numeric) ? 0 : 1,
+    maximumFractionDigits: 2,
+  });
+}
+
+function buildLevelInputSnapshot(levels) {
+  const result = {};
+  for (const rune of RUNE_CALC_SCALING_RUNES) {
+    result[rune.id] = String(levels?.[rune.id] ?? 0);
+  }
+  return result;
+}
+
+function computeRuneScenario(levels) {
+  const runeResults = RUNE_CALC_SCALING_RUNES.map((rune) => {
+    const level = Number(levels[rune.id] ?? 0);
+    return { ...rune, level, currentTotal: level * rune.perLevel };
+  });
+  const totalRunes = runeResults.reduce((sum, r) => sum + r.level, 0);
+  const statGroups = {};
+  for (const statKey of RUNE_CALC_STAT_ORDER) {
+    const relevant = runeResults.filter((r) => r.stat === statKey);
+    const product = relevant.every((r) => r.currentTotal > 0)
+      ? { logValue: relevant.reduce((sum, r) => sum + Math.log10(r.currentTotal), 0) }
+      : 0;
+    statGroups[statKey] = {
+      rows: relevant,
+      product,
+      totalLevels: relevant.reduce((sum, r) => sum + r.level, 0),
+    };
+  }
+  return { runeResults, totalRunes, statGroups };
+}
+
+function readRuneCalcState() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(RUNE_CALC_STORAGE_KEY) ?? "{}");
+    if (parsed && typeof parsed === "object") return parsed;
+  } catch { /* ignore */ }
+  return {};
+}
+
+export function RuneCalcView({ colors, fmt, getIconUrl, isMobile }) {
+  const isCompact = useIsNarrowScreen(900);
+  const savedState = useMemo(() => readRuneCalcState(), []);
+
+  const [useLoadout, setUseLoadout] = useState(Boolean(savedState.useLoadout));
+  const [manualLevelInputs, setManualLevelInputs] = useState(() => buildLevelInputSnapshot(savedState.levels));
+
+  const [statsLoadoutState, setStatsLoadoutState] = useState(() => readStatsLoadoutState(localStorage));
+  const [playerLoadoutState, setPlayerLoadoutState] = useState(() => readPlayerLoadoutState(localStorage));
+
+  useEffect(() => {
+    function sync() {
+      const nextStatsLoadoutState = readStatsLoadoutState(localStorage);
+      const nextPlayerLoadoutState = readPlayerLoadoutState(localStorage);
+      setStatsLoadoutState(nextStatsLoadoutState);
+      setPlayerLoadoutState(nextPlayerLoadoutState);
+    }
+    window.addEventListener(LOADOUT_RUNTIME_CHANGED_EVENT, sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener(LOADOUT_RUNTIME_CHANGED_EVENT, sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
+
+  const loadoutLevels = useMemo(() => statsLoadoutState.levelsByTab?.runes ?? {}, [statsLoadoutState]);
+  const loadoutLevelInputs = useMemo(() => buildLevelInputSnapshot(loadoutLevels), [loadoutLevels]);
+  const displayLevelInputs = useMemo(() => (useLoadout ? loadoutLevelInputs : manualLevelInputs), [useLoadout, loadoutLevelInputs, manualLevelInputs]);
+  const loadoutRarityBonus = useMemo(() => {
+    const totals = buildGlobalLoadoutStatModel({ statsLoadoutState, playerLoadoutState }).totals ?? {};
+    return Math.max(0, Number(totals.runeRarityChance ?? 0));
+  }, [playerLoadoutState, statsLoadoutState]);
+
+  useEffect(() => {
+    localStorage.setItem(RUNE_CALC_STORAGE_KEY, JSON.stringify({
+      useLoadout,
+      levels: manualLevelInputs,
+    }));
+  }, [manualLevelInputs, useLoadout]);
+
+  function resetLevels() {
+    if (useLoadout) {
+      setStatsLoadoutState(readStatsLoadoutState(localStorage));
+      setPlayerLoadoutState(readPlayerLoadoutState(localStorage));
+    } else {
+      const next = {};
+      for (const rune of RUNE_CALC_SCALING_RUNES) next[rune.id] = "0";
+      setManualLevelInputs(next);
+    }
+  }
+
+  function setLevel(id, value) {
+    setManualLevelInputs((prev) => ({ ...prev, [id]: value }));
+  }
+
+  const currentLevels = useMemo(() => {
+    const result = {};
+    for (const rune of RUNE_CALC_SCALING_RUNES) {
+      result[rune.id] = Math.max(0, Number(displayLevelInputs[rune.id]) || 0);
+    }
+    return result;
+  }, [displayLevelInputs]);
+  const currentScenario = useMemo(() => computeRuneScenario(currentLevels), [currentLevels]);
+  const summaryRows = useMemo(() => RUNE_CALC_STAT_ORDER.map((statKey) => {
+    const group = currentScenario.statGroups[statKey];
+    return {
+      statKey,
+      label: STAT_NAMES[statKey],
+      shortLabel: STAT_LABEL[statKey],
+      tiers: group.rows.map((row) => row.name).join(" x "),
+      tierTotals: group.rows.map((row) => (row.currentTotal > 0 ? fmt(row.currentTotal) : "0")).join(" x "),
+      totalLevels: group.totalLevels,
+      product: group.product,
+    };
+  }), [currentScenario, fmt]);
+
+  const smallInput = {
+    background: "#0f2640",
+    border: `1px solid ${colors.border}`,
+    borderRadius: 6,
+    color: colors.text,
+    padding: "5px 8px",
+    fontSize: 13,
+    fontFamily: "inherit",
+    width: 100,
+    textAlign: "center",
+    outline: "none",
+  };
+  const tableCell = {
+    padding: "8px 10px",
+    borderBottom: `1px solid ${colors.border}33`,
+    fontSize: 12,
+  };
+  const tableHeader = {
+    ...tableCell,
+    color: colors.muted,
+    fontWeight: 700,
+    fontSize: 11,
+    letterSpacing: "0.06em",
+    textTransform: "uppercase",
+    background: colors.header,
+  };
+
+  return (
+    <div>
+      <div style={{ display: "grid", gridTemplateColumns: isCompact ? "1fr" : "auto 1fr", alignItems: "end", gap: 12, marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <SyncToggle
+            checked={useLoadout}
+            onChange={setUseLoadout}
+            colors={colors}
+            activeLabel="Pull Shared Loadouts"
+            inactiveLabel="Use Manual Values"
+          />
+          <button
+            type="button"
+            onClick={resetLevels}
+            style={{
+              background: "transparent",
+              color: colors.muted,
+              border: `1px solid ${colors.border}`,
+              borderRadius: 6,
+              padding: "8px 18px",
+              cursor: "pointer",
+              fontWeight: 600,
+              fontSize: 13,
+              fontFamily: "inherit",
+            }}
+          >
+            Reset
+          </button>
+        </div>
+      </div>
+
+      <div style={{ background: colors.panel, border: `1px solid ${colors.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+        <div style={{ padding: "12px 14px", borderBottom: `1px solid ${colors.border}`, background: colors.header }}>
+          <div style={{ fontWeight: 800, fontSize: 14, color: colors.text, marginBottom: 4 }}>Rune Calculator Sheet</div>
+          <div style={{ color: colors.muted, fontSize: 12, lineHeight: 1.5 }}>
+            {useLoadout
+              ? `Current levels are pulled from the shared Upgrades Loadout. Shared Rune Rarity Bonus: ${formatRuneAmount(loadoutRarityBonus)}% for reference only.`
+              : "Manual mode is active. Enter the current rune levels directly in the sheet below."}
+          </div>
+        </div>
+
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: isCompact ? 760 : 0 }}>
+            <thead>
+              <tr>
+                <th style={{ ...tableHeader, textAlign: "left" }}>Rarity</th>
+                <th style={{ ...tableHeader, textAlign: "left" }}>Rune</th>
+                <th style={{ ...tableHeader, textAlign: "left" }}>Stat</th>
+                <th style={{ ...tableHeader, textAlign: "right" }}>Per Level</th>
+                <th style={{ ...tableHeader, textAlign: "right" }}>Current Level</th>
+                <th style={{ ...tableHeader, textAlign: "right" }}>Current Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {currentScenario.runeResults.map((row, index) => {
+                const badgeColor = RARITY_BADGE_COLORS[row.rarity];
+                return (
+                  <tr key={row.id} style={{ background: index % 2 === 0 ? "transparent" : `${colors.bg}88` }}>
+                    <td style={tableCell}>
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          padding: "2px 7px",
+                          borderRadius: 999,
+                          background: `${badgeColor}22`,
+                          border: `1px solid ${badgeColor}55`,
+                          color: badgeColor,
+                          fontWeight: 700,
+                          fontSize: 10,
+                          letterSpacing: "0.04em",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        {row.rarity}
+                      </span>
+                    </td>
+                    <td style={tableCell}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, color: colors.text, fontWeight: 600 }}>
+                        <img src={getIconUrl(row.icon)} alt="" style={{ width: 18, height: 18, objectFit: "contain", flexShrink: 0 }} />
+                        {row.name}
+                      </div>
+                    </td>
+                    <td style={{ ...tableCell, color: STAT_COLOR[row.stat], fontWeight: 700 }}>{STAT_LABEL[row.stat]}</td>
+                    <td style={{ ...tableCell, textAlign: "right", color: colors.muted, fontFamily: "monospace" }}>{formatRuneAmount(row.perLevel)}</td>
+                    <td style={{ ...tableCell, textAlign: "right" }}>
+                      <input
+                        type="number"
+                        min={0}
+                        value={displayLevelInputs[row.id]}
+                        onChange={(e) => setLevel(row.id, e.target.value)}
+                        disabled={useLoadout}
+                        style={{ ...smallInput, width: 96, opacity: useLoadout ? 0.6 : 1 }}
+                      />
+                    </td>
+                    <td style={{ ...tableCell, textAlign: "right", color: colors.accent, fontWeight: 700, fontFamily: "monospace" }}>{fmt(row.currentTotal)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colSpan={4} style={{ ...tableCell, borderBottom: "none", color: colors.muted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>Sheet Total</td>
+                <td style={{ ...tableCell, borderBottom: "none", textAlign: "right", color: colors.muted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>Runes</td>
+                <td style={{ ...tableCell, borderBottom: "none", textAlign: "right", color: colors.accent, fontWeight: 800, fontFamily: "monospace" }}>{fmt(currentScenario.totalRunes)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      <div style={{ background: colors.panel, border: `1px solid ${colors.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+        <div style={{ padding: "12px 14px", borderBottom: `1px solid ${colors.border}`, background: colors.header }}>
+          <div style={{ fontWeight: 800, fontSize: 14, color: colors.text, marginBottom: 4 }}>Current Summary</div>
+          <div style={{ color: colors.muted, fontSize: 12 }}>Spreadsheet-style rollup of the active rune totals into the three current multipliers.</div>
+        </div>
+
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: isCompact ? 760 : 0 }}>
+            <thead>
+              <tr>
+                <th style={{ ...tableHeader, textAlign: "left" }}>Stat</th>
+                <th style={{ ...tableHeader, textAlign: "left" }}>Rune Tiers</th>
+                <th style={{ ...tableHeader, textAlign: "left" }}>Current Totals</th>
+                <th style={{ ...tableHeader, textAlign: "right" }}>Levels Used</th>
+                <th style={{ ...tableHeader, textAlign: "right" }}>Product</th>
+              </tr>
+            </thead>
+            <tbody>
+              {summaryRows.map((row, index) => (
+                <tr key={row.statKey} style={{ background: index % 2 === 0 ? "transparent" : `${colors.bg}88` }}>
+                  <td style={{ ...tableCell, color: STAT_COLOR[row.statKey], fontWeight: 800 }}>{row.shortLabel}</td>
+                  <td style={{ ...tableCell, color: colors.text }}>{row.tiers}</td>
+                  <td style={{ ...tableCell, color: colors.muted, fontFamily: "monospace" }}>{row.tierTotals}</td>
+                  <td style={{ ...tableCell, textAlign: "right", color: colors.text, fontFamily: "monospace" }}>{fmt(row.totalLevels)}</td>
+                  <td style={{ ...tableCell, textAlign: "right", color: STAT_COLOR[row.statKey], fontWeight: 800, fontFamily: "monospace" }}>{fmt(row.product)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
